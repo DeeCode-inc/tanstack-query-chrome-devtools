@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import JsonView from "@microlink/react-json-view";
 import type { QueryKey, QueryObserverBaseResult } from "@tanstack/query-core";
-import "./App.css";
 
 // Query data interface using TanStack Query types
 interface QueryData {
@@ -599,19 +598,21 @@ function App() {
   }, [connectToBackground]);
 
   return (
-    <div style={{ padding: "20px", fontFamily: "system-ui, sans-serif" }}>
-      <h1>🏠 TanStack Query DevTools</h1>
+    <div className="p-5 font-sans text-sm">
+      <h1 className="text-lg font-semibold mb-5">🏠 TanStack Query DevTools</h1>
 
-      <div style={{ marginBottom: "20px" }}>
-        <h3>Connection Status</h3>
+      <div className="mb-5">
+        <h3 className="text-base font-medium mb-2">Connection Status</h3>
         <div
-          style={{
-            padding: "10px",
-            borderRadius: "4px",
-            backgroundColor: connectionStatus === "connected" ? "#d4edda" : connectionStatus === "reconnecting" ? "#fff3cd" : "#f8d7da",
-            color: connectionStatus === "connected" ? "#155724" : connectionStatus === "reconnecting" ? "#856404" : "#721c24",
-            border: `1px solid ${connectionStatus === "connected" ? "#c3e6cb" : connectionStatus === "reconnecting" ? "#ffeaa7" : "#f5c6cb"}`,
-          }}
+          className={`
+            p-2.5 rounded border
+            ${connectionStatus === "connected"
+              ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
+              : connectionStatus === "reconnecting"
+              ? "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-100 dark:border-yellow-700"
+              : "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"
+            }
+          `}
         >
           {connectionStatus === "connecting" && "🔄 Connecting..."}
           {connectionStatus === "connected" && `✅ Connected to background script${connectionId ? ` (${connectionId})` : ""}`}
@@ -620,16 +621,18 @@ function App() {
         </div>
       </div>
 
-      <div style={{ marginBottom: "20px" }}>
-        <h3>TanStack Query Detection</h3>
+      <div className="mb-5">
+        <h3 className="text-base font-medium mb-2">TanStack Query Detection</h3>
         <div
-          style={{
-            padding: "10px",
-            borderRadius: "4px",
-            backgroundColor: tanStackQueryDetected === true ? "#d4edda" : tanStackQueryDetected === false ? "#fff3cd" : "#e2e3e5",
-            color: tanStackQueryDetected === true ? "#155724" : tanStackQueryDetected === false ? "#856404" : "#6c757d",
-            border: `1px solid ${tanStackQueryDetected === true ? "#c3e6cb" : tanStackQueryDetected === false ? "#ffeaa7" : "#d1ecf1"}`,
-          }}
+          className={`
+            p-2.5 rounded border
+            ${tanStackQueryDetected === true
+              ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
+              : tanStackQueryDetected === false
+              ? "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-100 dark:border-yellow-700"
+              : "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
+            }
+          `}
         >
           {tanStackQueryDetected === null && "🔍 Checking for TanStack Query..."}
           {tanStackQueryDetected === true && "🎉 TanStack Query detected on this page!"}
@@ -639,32 +642,28 @@ function App() {
 
       {/* Action Feedback Toast */}
       {actionFeedback && (
-        <div style={{ marginBottom: "20px" }}>
+        <div className="mb-5">
           <div
-            style={{
-              padding: "10px",
-              borderRadius: "4px",
-              backgroundColor: actionFeedback.type === "success" ? "#d4edda" : "#f8d7da",
-              color: actionFeedback.type === "success" ? "#155724" : "#721c24",
-              border: `1px solid ${actionFeedback.type === "success" ? "#c3e6cb" : "#f5c6cb"}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
+            className={`
+              p-2.5 rounded border flex items-center justify-between
+              ${actionFeedback.type === "success"
+                ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
+                : "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"
+              }
+            `}
           >
             <span>
               {actionFeedback.type === "success" ? "✅" : "❌"} {actionFeedback.message}
             </span>
             <button
               onClick={() => setActionFeedback(null)}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: "16px",
-                cursor: "pointer",
-                color: actionFeedback.type === "success" ? "#155724" : "#721c24",
-                padding: "0 4px",
-              }}
+              className={`
+                bg-transparent border-none text-base cursor-pointer px-1
+                ${actionFeedback.type === "success"
+                  ? "text-green-800 dark:text-green-100"
+                  : "text-red-800 dark:text-red-100"
+                }
+              `}
             >
               ×
             </button>
@@ -673,42 +672,24 @@ function App() {
       )}
 
       {tanStackQueryDetected === true && (
-        <div style={{ marginBottom: "20px" }}>
-          <h3>Queries ({queries.length})</h3>
+        <div className="mb-5">
+          <h3 className="text-base font-medium mb-4">Queries ({queries.length})</h3>
 
           {/* Search bar */}
-          <div style={{ marginBottom: "15px" }}>
+          <div className="mb-4">
             <input
               type="text"
               placeholder="🔍 Search queries..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                fontSize: "14px",
-              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
             />
           </div>
 
           {/* Query list */}
-          <div
-            style={{
-              border: "1px solid #dee2e6",
-              borderRadius: "4px",
-              backgroundColor: "#fff",
-            }}
-          >
+          <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800">
             {queries.length === 0 ? (
-              <div
-                style={{
-                  padding: "20px",
-                  textAlign: "center",
-                  color: "#6c757d",
-                }}
-              >
+              <div className="p-5 text-center text-gray-500 dark:text-gray-400">
                 No queries found. Make sure window.queryClient is set in your application.
               </div>
             ) : (
@@ -724,7 +705,7 @@ function App() {
         </div>
       )}
 
-      <div style={{ fontSize: "12px", color: "#6c757d", marginTop: "40px" }}>
+      <div className="text-xs text-gray-500 mt-10 dark:text-gray-400">
         <p>TanStack Query Chrome DevTools v0.1.0</p>
         <p>Extension context: DevTools Panel</p>
       </div>
