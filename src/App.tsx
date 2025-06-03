@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import './App.css'
 
 // Query data interface matching injected script
@@ -138,53 +138,124 @@ function QueryItem({ query }: { query: QueryData }) {
 
 function App() {
   const [tanStackQueryDetected, setTanStackQueryDetected] = useState<boolean | null>(null)
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting')
   const [queries, setQueries] = useState<QueryData[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [reconnectAttempts, setReconnectAttempts] = useState(0)
+  const [connectionId, setConnectionId] = useState<string | null>(null)
+
+  // Connection management
+  const portRef = useRef<chrome.runtime.Port | null>(null)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  const connectToBackground = useCallback(() => {
+    try {
+      console.log('Attempting to connect to background script...')
+      const port = chrome.runtime.connect({ name: 'devtools' })
+      portRef.current = port
+
+      setConnectionStatus('connecting')
+
+      port.onMessage.addListener((message) => {
+        console.log('DevTools panel received message:', message)
+
+        if (message.type === 'CONNECTION_ESTABLISHED') {
+          setConnectionId(message.connectionId)
+          setConnectionStatus('connected')
+          setReconnectAttempts(0)
+          console.log('Connection established:', message.connectionId)
+
+          // Start heartbeat
+          if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current)
+          }
+          heartbeatIntervalRef.current = setInterval(() => {
+            if (portRef.current) {
+              try {
+                portRef.current.postMessage({ type: 'PING', timestamp: Date.now() })
+              } catch (error) {
+                console.warn('Failed to send ping:', error)
+              }
+            }
+          }, 10000) // Ping every 10 seconds
+        } else if (message.type === 'PONG') {
+          // Connection is healthy
+          console.log('Received pong, connection healthy')
+        } else if (message.type === 'INITIAL_STATE') {
+          setTanStackQueryDetected(message.hasTanStackQuery)
+        } else if (message.type === 'QEVENT') {
+          switch (message.subtype) {
+            case 'QUERY_CLIENT_DETECTED':
+              setTanStackQueryDetected(true)
+              break
+            case 'QUERY_CLIENT_NOT_FOUND':
+              setTanStackQueryDetected(false)
+              break
+            case 'QUERY_STATE_UPDATE':
+              console.log('Query state update:', message.payload)
+              break
+            case 'QUERY_DATA_UPDATE':
+              console.log('Query data update:', message.payload)
+              if (Array.isArray(message.payload)) {
+                setQueries(message.payload)
+              }
+              break
+          }
+        }
+      })
+
+      port.onDisconnect.addListener(() => {
+        console.log('Port disconnected')
+        portRef.current = null
+
+        // Clear heartbeat
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current)
+          heartbeatIntervalRef.current = null
+        }
+
+        // Attempt reconnection with exponential backoff
+        const attempt = reconnectAttempts + 1
+        setReconnectAttempts(attempt)
+
+        if (attempt <= 5) {
+          setConnectionStatus('reconnecting')
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000) // Max 10s delay
+          console.log(`Reconnecting in ${delay}ms (attempt ${attempt}/5)`)
+
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectToBackground()
+          }, delay)
+        } else {
+          setConnectionStatus('disconnected')
+          console.error('Failed to reconnect after 5 attempts')
+        }
+      })
+
+    } catch (error) {
+      console.error('Failed to connect to background script:', error)
+      setConnectionStatus('disconnected')
+    }
+  }, [reconnectAttempts])
 
   useEffect(() => {
-    // Connect to background script
-    const port = chrome.runtime.connect({ name: 'devtools' })
+    connectToBackground()
 
-    setConnectionStatus('connected')
-
-    port.onMessage.addListener((message) => {
-      console.log('DevTools panel received message:', message)
-
-      if (message.type === 'INITIAL_STATE') {
-        setTanStackQueryDetected(message.hasTanStackQuery)
-      } else if (message.type === 'QEVENT') {
-        switch (message.subtype) {
-          case 'QUERY_CLIENT_DETECTED':
-            setTanStackQueryDetected(true)
-            break
-          case 'QUERY_CLIENT_NOT_FOUND':
-            setTanStackQueryDetected(false)
-            break
-          case 'QUERY_STATE_UPDATE':
-            // Handle query state updates here
-            console.log('Query state update:', message.payload)
-            break
-          case 'QUERY_DATA_UPDATE':
-            // Handle query data updates
-            console.log('Query data update:', message.payload)
-            if (Array.isArray(message.payload)) {
-              setQueries(message.payload)
-            }
-            break
-        }
-      }
-    })
-
-    port.onDisconnect.addListener(() => {
-      setConnectionStatus('disconnected')
-    })
-
-    // Cleanup
+    // Cleanup function
     return () => {
-      port.disconnect()
+      if (portRef.current) {
+        portRef.current.disconnect()
+        portRef.current = null
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+      }
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current)
+      }
     }
-  }, [])
+  }, [connectToBackground])
 
   return (
     <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
@@ -195,13 +266,21 @@ function App() {
         <div style={{
           padding: '10px',
           borderRadius: '4px',
-          backgroundColor: connectionStatus === 'connected' ? '#d4edda' : '#f8d7da',
-          color: connectionStatus === 'connected' ? '#155724' : '#721c24',
-          border: `1px solid ${connectionStatus === 'connected' ? '#c3e6cb' : '#f5c6cb'}`
+          backgroundColor:
+            connectionStatus === 'connected' ? '#d4edda' :
+            connectionStatus === 'reconnecting' ? '#fff3cd' : '#f8d7da',
+          color:
+            connectionStatus === 'connected' ? '#155724' :
+            connectionStatus === 'reconnecting' ? '#856404' : '#721c24',
+          border: `1px solid ${
+            connectionStatus === 'connected' ? '#c3e6cb' :
+            connectionStatus === 'reconnecting' ? '#ffeaa7' : '#f5c6cb'
+          }`
         }}>
           {connectionStatus === 'connecting' && '🔄 Connecting...'}
-          {connectionStatus === 'connected' && '✅ Connected to background script'}
-          {connectionStatus === 'disconnected' && '❌ Disconnected'}
+          {connectionStatus === 'connected' && `✅ Connected to background script${connectionId ? ` (${connectionId})` : ''}`}
+          {connectionStatus === 'reconnecting' && `🔄 Reconnecting... (attempt ${reconnectAttempts}/5)`}
+          {connectionStatus === 'disconnected' && '❌ Disconnected - Failed to reconnect after 5 attempts'}
         </div>
       </div>
 

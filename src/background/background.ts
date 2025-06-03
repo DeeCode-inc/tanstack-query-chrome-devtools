@@ -4,6 +4,39 @@ console.log('TanStack Query DevTools: Background script loaded');
 // Track which tabs have TanStack Query detected
 const tabsWithTanStackQuery = new Set<number>();
 
+// Keep-alive mechanism to prevent Chrome from terminating the service worker
+// Chrome terminates inactive service workers after ~30 seconds
+let keepAliveInterval: NodeJS.Timeout | null = null;
+
+function startKeepAlive() {
+  if (keepAliveInterval) return;
+
+  console.log('Starting service worker keep-alive');
+  keepAliveInterval = setInterval(() => {
+    // Minimal activity to prevent Chrome timeout
+    // Using setBadgeText as it's lightweight and doesn't affect users
+    chrome.action.setBadgeText({ text: '' });
+  }, 25000); // Every 25 seconds (before 30s timeout)
+}
+
+function stopKeepAlive() {
+  if (keepAliveInterval) {
+    console.log('Stopping service worker keep-alive');
+    clearInterval(keepAliveInterval);
+    keepAliveInterval = null;
+  }
+}
+
+// Connection health tracking
+interface ConnectionInfo {
+  port: chrome.runtime.Port;
+  tabId: number | null;
+  connectedAt: number;
+  lastPing: number;
+}
+
+const activeConnections = new Map<string, ConnectionInfo>();
+
 // Message types
 interface TanStackQueryMessage {
   type: 'QEVENT';
@@ -17,11 +50,23 @@ let devtoolsPort: chrome.runtime.Port | null = null;
 // Handle DevTools connections
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === 'devtools') {
+    const connectionId = `devtools-${Date.now()}`;
     devtoolsPort = port;
-    console.log('DevTools connected');
+    console.log('DevTools connected:', connectionId);
+
+    // Start keep-alive when DevTools connects
+    startKeepAlive();
+
+    // Track this connection
+    const currentTabId = getCurrentTabId();
+    activeConnections.set(connectionId, {
+      port,
+      tabId: currentTabId,
+      connectedAt: Date.now(),
+      lastPing: Date.now()
+    });
 
     // Send initial state to DevTools
-    const currentTabId = getCurrentTabId();
     if (currentTabId) {
       port.postMessage({
         type: 'INITIAL_STATE',
@@ -29,13 +74,40 @@ chrome.runtime.onConnect.addListener((port) => {
       });
     }
 
+    // Send connection health info
+    port.postMessage({
+      type: 'CONNECTION_ESTABLISHED',
+      connectionId,
+      timestamp: Date.now()
+    });
+
     port.onDisconnect.addListener(() => {
       devtoolsPort = null;
-      console.log('DevTools disconnected');
+      activeConnections.delete(connectionId);
+      console.log('DevTools disconnected:', connectionId);
+
+      // Stop keep-alive if no active connections
+      if (activeConnections.size === 0) {
+        stopKeepAlive();
+      }
     });
 
     port.onMessage.addListener((message) => {
       console.log('Message from DevTools:', message);
+
+      // Handle ping messages for connection health
+      if (message.type === 'PING') {
+        const connection = activeConnections.get(connectionId);
+        if (connection) {
+          connection.lastPing = Date.now();
+          port.postMessage({
+            type: 'PONG',
+            timestamp: Date.now()
+          });
+        }
+        return;
+      }
+
       // Forward messages to content script if needed
       const currentTabId = getCurrentTabId();
       if (currentTabId && message.type) {
