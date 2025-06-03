@@ -8,10 +8,41 @@ interface TanStackQueryMessage {
   payload?: unknown;
 }
 
+// Query action message types
+interface QueryActionMessage {
+  type: 'QUERY_ACTION';
+  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET';
+  queryKey: readonly unknown[];
+}
+
+// Action result message
+interface QueryActionResult {
+  type: 'QUERY_ACTION_RESULT';
+  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET';
+  queryKey: readonly unknown[];
+  success: boolean;
+  error?: string;
+}
+
 // Send message to background script
 function sendToBackground(message: TanStackQueryMessage) {
   chrome.runtime.sendMessage(message).catch((error) => {
     console.warn('TanStack Query DevTools: Failed to send message to background:', error);
+  });
+}
+
+// Send action to injected script
+function sendActionToInjected(action: QueryActionMessage) {
+  window.postMessage({
+    source: 'tanstack-query-devtools-content',
+    ...action
+  }, '*');
+}
+
+// Send action result to background script
+function sendActionResultToBackground(result: QueryActionResult) {
+  chrome.runtime.sendMessage(result).catch((error) => {
+    console.warn('TanStack Query DevTools: Failed to send action result to background:', error);
   });
 }
 
@@ -30,6 +61,11 @@ window.addEventListener('message', (event) => {
       subtype: event.data.subtype,
       payload: event.data.payload
     });
+  }
+
+  // Forward action results to background script
+  if (event.data.type === 'QUERY_ACTION_RESULT') {
+    sendActionResultToBackground(event.data);
   }
 });
 
@@ -51,11 +87,18 @@ if (document.readyState === 'loading') {
   injectScript();
 }
 
-// Listen for messages from DevTools (for future extension)
+// Listen for messages from DevTools and background script
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log("Content script received message from DevTools:", message);
+  console.log("Content script received message from DevTools/Background:", message);
 
-  // For now, just acknowledge receipt
+  // Handle query actions from DevTools
+  if (message.type === 'QUERY_ACTION') {
+    sendActionToInjected(message);
+    sendResponse({ received: true });
+    return true;
+  }
+
+  // For other messages, just acknowledge receipt
   sendResponse({ received: true });
   return true; // Keep message channel open for async response
 });

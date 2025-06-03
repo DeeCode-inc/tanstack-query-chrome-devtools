@@ -44,6 +44,15 @@ interface TanStackQueryMessage {
   payload?: unknown;
 }
 
+// Action result message
+interface QueryActionResult {
+  type: 'QUERY_ACTION_RESULT';
+  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET';
+  queryKey: readonly unknown[];
+  success: boolean;
+  error?: string;
+}
+
 // Store DevTools port connection
 let devtoolsPort: chrome.runtime.Port | null = null;
 
@@ -120,7 +129,7 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 // Handle messages from content scripts
-chrome.runtime.onMessage.addListener((message: TanStackQueryMessage, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: TanStackQueryMessage | QueryActionResult, sender, sendResponse) => {
   console.log('Background received message:', message, 'from tab:', sender.tab?.id);
 
   const tabId = sender.tab?.id;
@@ -178,6 +187,17 @@ chrome.runtime.onMessage.addListener((message: TanStackQueryMessage, sender, sen
         });
         break;
     }
+  }
+
+  // Handle query action results from content script
+  if (message.type === 'QUERY_ACTION_RESULT') {
+    console.log('Query action result from tab:', tabId, message);
+
+    // Forward to DevTools panel
+    devtoolsPort?.postMessage({
+      ...message,
+      tabId: tabId
+    });
   }
 
   sendResponse({ received: true });

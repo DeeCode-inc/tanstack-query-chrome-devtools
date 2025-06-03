@@ -51,12 +51,22 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 // QueryItem component with expandable details
-function QueryItem({ query }: { query: QueryData }) {
+function QueryItem({ query, onAction }: { query: QueryData; onAction: (action: string, queryKey: QueryKey) => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const status = getStatusDisplay(query);
   const lastUpdated = Math.max(query.state.dataUpdatedAt, query.state.errorUpdatedAt);
 
   const toggleExpanded = () => setIsExpanded(!isExpanded);
+
+  const handleAction = async (action: string) => {
+    setActionLoading(action);
+    try {
+      await onAction(action, query.queryKey);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   return (
     <div
@@ -252,6 +262,124 @@ function QueryItem({ query }: { query: QueryData }) {
             </div>
           ) : undefined}
 
+          <div style={{ marginBottom: "16px" }}>
+            <h4
+              style={{
+                margin: "0 0 8px 0",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#495057",
+              }}
+            >
+              Actions
+            </h4>
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAction("REFETCH");
+                }}
+                disabled={actionLoading !== null}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  border: "1px solid #007bff",
+                  backgroundColor: actionLoading === "REFETCH" ? "#f8f9fa" : "#007bff",
+                  color: actionLoading === "REFETCH" ? "#6c757d" : "#fff",
+                  borderRadius: "4px",
+                  cursor: actionLoading !== null ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                {actionLoading === "REFETCH" ? "🔄" : "🔄"}
+                {actionLoading === "REFETCH" ? "Refetching..." : "Refetch"}
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAction("INVALIDATE");
+                }}
+                disabled={actionLoading !== null}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  border: "1px solid #ffc107",
+                  backgroundColor: actionLoading === "INVALIDATE" ? "#f8f9fa" : "#ffc107",
+                  color: actionLoading === "INVALIDATE" ? "#6c757d" : "#212529",
+                  borderRadius: "4px",
+                  cursor: actionLoading !== null ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                {actionLoading === "INVALIDATE" ? "🔄" : "❌"}
+                {actionLoading === "INVALIDATE" ? "Invalidating..." : "Invalidate"}
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Are you sure you want to remove this query from cache?\n\nQuery: ${formatQueryKey(query.queryKey)}`)) {
+                    handleAction("REMOVE");
+                  }
+                }}
+                disabled={actionLoading !== null}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  border: "1px solid #dc3545",
+                  backgroundColor: actionLoading === "REMOVE" ? "#f8f9fa" : "#dc3545",
+                  color: actionLoading === "REMOVE" ? "#6c757d" : "#fff",
+                  borderRadius: "4px",
+                  cursor: actionLoading !== null ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                {actionLoading === "REMOVE" ? "🔄" : "🗑️"}
+                {actionLoading === "REMOVE" ? "Removing..." : "Remove"}
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (query.isActive && confirm(`This query has ${query.observersCount} active observers. Are you sure you want to reset it?\n\nQuery: ${formatQueryKey(query.queryKey)}`)) {
+                    handleAction("RESET");
+                  } else if (!query.isActive) {
+                    handleAction("RESET");
+                  }
+                }}
+                disabled={actionLoading !== null}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  border: "1px solid #6c757d",
+                  backgroundColor: actionLoading === "RESET" ? "#f8f9fa" : "#6c757d",
+                  color: actionLoading === "RESET" ? "#6c757d" : "#fff",
+                  borderRadius: "4px",
+                  cursor: actionLoading !== null ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                {actionLoading === "RESET" ? "🔄" : "↩️"}
+                {actionLoading === "RESET" ? "Resetting..." : "Reset"}
+              </button>
+            </div>
+          </div>
+
           <div>
             <h4
               style={{
@@ -306,11 +434,49 @@ function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // Connection management
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle query actions
+  const handleQueryAction = useCallback(async (action: string, queryKey: QueryKey) => {
+    if (!portRef.current) {
+      setActionFeedback({
+        message: "Not connected to background script",
+        type: "error"
+      });
+      return;
+    }
+
+    console.log("Sending query action:", action, queryKey);
+
+    try {
+      portRef.current.postMessage({
+        type: "QUERY_ACTION",
+        action: action,
+        queryKey: queryKey
+      });
+    } catch (error) {
+      console.error("Failed to send action:", error);
+      setActionFeedback({
+        message: `Failed to send ${action.toLowerCase()} action`,
+        type: "error"
+      });
+    }
+  }, []);
+
+  // Clear action feedback after delay
+  useEffect(() => {
+    if (actionFeedback) {
+      const timer = setTimeout(() => {
+        setActionFeedback(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [actionFeedback]);
 
   const connectToBackground = useCallback(() => {
     try {
@@ -364,6 +530,19 @@ function App() {
                 setQueries(message.payload);
               }
               break;
+          }
+        } else if (message.type === "QUERY_ACTION_RESULT") {
+          console.log("Query action result:", message);
+          if (message.success) {
+            setActionFeedback({
+              message: `${message.action.toLowerCase()} completed successfully`,
+              type: "success"
+            });
+          } else {
+            setActionFeedback({
+              message: `${message.action.toLowerCase()} failed: ${message.error || "Unknown error"}`,
+              type: "error"
+            });
           }
         }
       });
@@ -458,6 +637,41 @@ function App() {
         </div>
       </div>
 
+      {/* Action Feedback Toast */}
+      {actionFeedback && (
+        <div style={{ marginBottom: "20px" }}>
+          <div
+            style={{
+              padding: "10px",
+              borderRadius: "4px",
+              backgroundColor: actionFeedback.type === "success" ? "#d4edda" : "#f8d7da",
+              color: actionFeedback.type === "success" ? "#155724" : "#721c24",
+              border: `1px solid ${actionFeedback.type === "success" ? "#c3e6cb" : "#f5c6cb"}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>
+              {actionFeedback.type === "success" ? "✅" : "❌"} {actionFeedback.message}
+            </span>
+            <button
+              onClick={() => setActionFeedback(null)}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "16px",
+                cursor: "pointer",
+                color: actionFeedback.type === "success" ? "#155724" : "#721c24",
+                padding: "0 4px",
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       {tanStackQueryDetected === true && (
         <div style={{ marginBottom: "20px" }}>
           <h3>Queries ({queries.length})</h3>
@@ -504,7 +718,7 @@ function App() {
                   const queryKeyStr = JSON.stringify(query.queryKey).toLowerCase();
                   return queryKeyStr.includes(searchTerm.toLowerCase());
                 })
-                .map((query, index) => <QueryItem key={index} query={query} />)
+                .map((query, index) => <QueryItem key={index} query={query} onAction={handleQueryAction} />)
             )}
           </div>
         </div>

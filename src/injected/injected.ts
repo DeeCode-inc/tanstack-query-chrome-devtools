@@ -10,6 +10,22 @@ interface TanStackQueryEvent {
   payload?: unknown;
 }
 
+// Action message types
+interface QueryActionMessage {
+  type: 'QUERY_ACTION';
+  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET';
+  queryKey: readonly unknown[];
+}
+
+// Action result message
+interface QueryActionResult {
+  type: 'QUERY_ACTION_RESULT';
+  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET';
+  queryKey: readonly unknown[];
+  success: boolean;
+  error?: string;
+}
+
 // Query data interface
 interface QueryData {
   queryKey: readonly unknown[];
@@ -145,6 +161,91 @@ function performEnhancedDetection() {
     });
   }
 }
+
+// Query action handlers
+async function handleQueryAction(action: QueryActionMessage): Promise<QueryActionResult> {
+  const queryClient = getQueryClient();
+
+  if (!queryClient) {
+    return {
+      type: 'QUERY_ACTION_RESULT',
+      action: action.action,
+      queryKey: action.queryKey,
+      success: false,
+      error: 'QueryClient not found'
+    };
+  }
+
+  try {
+    switch (action.action) {
+      case 'INVALIDATE':
+        await queryClient.invalidateQueries({ queryKey: action.queryKey });
+        console.log('TanStack Query DevTools: Query invalidated:', action.queryKey);
+        break;
+
+      case 'REFETCH':
+        await queryClient.refetchQueries({ queryKey: action.queryKey });
+        console.log('TanStack Query DevTools: Query refetched:', action.queryKey);
+        break;
+
+      case 'REMOVE':
+        queryClient.removeQueries({ queryKey: action.queryKey });
+        console.log('TanStack Query DevTools: Query removed:', action.queryKey);
+        break;
+
+      case 'RESET':
+        queryClient.resetQueries({ queryKey: action.queryKey });
+        console.log('TanStack Query DevTools: Query reset:', action.queryKey);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${action.action}`);
+    }
+
+    return {
+      type: 'QUERY_ACTION_RESULT',
+      action: action.action,
+      queryKey: action.queryKey,
+      success: true
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('TanStack Query DevTools: Action failed:', error);
+
+    return {
+      type: 'QUERY_ACTION_RESULT',
+      action: action.action,
+      queryKey: action.queryKey,
+      success: false,
+      error: errorMessage
+    };
+  }
+}
+
+// Send action result to content script
+function sendActionResult(result: QueryActionResult) {
+  window.postMessage({
+    source: 'tanstack-query-devtools-injected',
+    ...result
+  }, '*');
+}
+
+// Listen for action messages from content script
+window.addEventListener('message', async (event) => {
+  // Only accept messages from same origin and our content script
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.source !== 'tanstack-query-devtools-content') return;
+
+  console.log('Injected script received action message:', event.data);
+
+  if (event.data.type === 'QUERY_ACTION') {
+    const result = await handleQueryAction(event.data);
+    sendActionResult(result);
+
+    // Trigger query data update after action
+    setTimeout(sendQueryDataUpdate, 100);
+  }
+});
 
 // Check if we're in a valid context
 if (typeof window !== 'undefined') {
