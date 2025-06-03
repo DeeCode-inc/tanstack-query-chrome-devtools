@@ -7,7 +7,7 @@ const tabsWithTanStackQuery = new Set<number>();
 // Message types
 interface TanStackQueryMessage {
   type: 'QEVENT';
-  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE';
+  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE' | 'QUERY_DATA_UPDATE';
   payload?: unknown;
 }
 
@@ -89,6 +89,18 @@ chrome.runtime.onMessage.addListener((message: TanStackQueryMessage, sender, sen
         devtoolsPort?.postMessage({
           type: 'QEVENT',
           subtype: 'QUERY_STATE_UPDATE',
+          tabId: tabId,
+          payload: message.payload
+        });
+        break;
+
+      case 'QUERY_DATA_UPDATE':
+        console.log('Query data update from tab:', tabId, 'queries:', Array.isArray(message.payload) ? message.payload.length : 'unknown');
+
+        // Forward to DevTools panel
+        devtoolsPort?.postMessage({
+          type: 'QEVENT',
+          subtype: 'QUERY_DATA_UPDATE',
           tabId: tabId,
           payload: message.payload
         });

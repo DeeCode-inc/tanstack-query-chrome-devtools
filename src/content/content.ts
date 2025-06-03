@@ -4,7 +4,7 @@ console.log('TanStack Query DevTools: Content script loaded');
 // Message types for communication with background script
 interface TanStackQueryMessage {
   type: 'QEVENT';
-  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE';
+  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE' | 'QUERY_DATA_UPDATE';
   payload?: unknown;
 }
 
