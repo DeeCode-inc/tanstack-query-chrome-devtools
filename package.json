@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@microlink/react-json-view": "^1.26.2",
     "@tanstack/query-core": "^5.80.2",
     "@types/chrome": "^0.0.326",
     "react": "^19.1.0",
