@@ -11,26 +11,59 @@ interface QueryData {
   observersCount: number;
 }
 
-// Helper function to get status icon and color
+// Helper function to get status display with state-based colors
 function getStatusDisplay(query: QueryData) {
   if (query.state.isFetching) {
-    return { icon: "🔄", color: "#007bff", text: "Fetching" };
+    return {
+      icon: "🔄",
+      text: "Fetching",
+      bgColor: "bg-blue-500",
+      textColor: "text-blue-600"
+    };
   }
 
   switch (query.state.status) {
     case "success":
-      return { icon: "✅", color: "#28a745", text: "Success" };
+      if (query.state.isStale) {
+        return {
+          icon: "🔄",
+          text: "Stale",
+          bgColor: "bg-yellow-500",
+          textColor: "text-yellow-600"
+        };
+      }
+      return {
+        icon: "✅",
+        text: "Fresh",
+        bgColor: "bg-green-500",
+        textColor: "text-green-600"
+      };
     case "error":
-      return { icon: "❌", color: "#dc3545", text: "Error" };
+      return {
+        icon: "❌",
+        text: "Error",
+        bgColor: "bg-red-500",
+        textColor: "text-red-600"
+      };
     case "pending":
-      return { icon: "⏳", color: "#ffc107", text: "Pending" };
+      return {
+        icon: "⏳",
+        text: "Pending",
+        bgColor: "bg-orange-500",
+        textColor: "text-orange-600"
+      };
     default:
-      return { icon: "❓", color: "#6c757d", text: "Unknown" };
+      return {
+        icon: "❓",
+        text: query.isActive ? "Unknown" : "Inactive",
+        bgColor: "bg-gray-400",
+        textColor: "text-gray-600"
+      };
   }
 }
 
-// Helper function to format query key
-function formatQueryKey(queryKey: readonly unknown[]): string {
+// Helper function to format query key (single line for list)
+function formatQueryKeyShort(queryKey: readonly unknown[]): string {
   try {
     return JSON.stringify(queryKey).replace(/"/g, "");
   } catch {
@@ -38,27 +71,73 @@ function formatQueryKey(queryKey: readonly unknown[]): string {
   }
 }
 
-// Helper function to format relative time
-function formatRelativeTime(timestamp: number): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-
-  if (diff < 1000) return "now";
-  if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  return `${Math.floor(diff / 3600000)}h ago`;
+// Helper function to format query key (multi-line for details)
+function formatQueryKeyDetailed(queryKey: readonly unknown[]): string {
+  try {
+    return JSON.stringify(queryKey, null, 2);
+  } catch {
+    return String(queryKey);
+  }
 }
 
-// QueryItem component with expandable details
-function QueryItem({ query, onAction }: { query: QueryData; onAction: (action: string, queryKey: QueryKey) => void }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const status = getStatusDisplay(query);
-  const lastUpdated = Math.max(query.state.dataUpdatedAt, query.state.errorUpdatedAt);
 
-  const toggleExpanded = () => setIsExpanded(!isExpanded);
+// QueryListItem component for left column
+function QueryListItem({
+  query,
+  index,
+  isSelected,
+  onSelect
+}: {
+  query: QueryData;
+  index: number;
+  isSelected: boolean;
+  onSelect: (index: number) => void;
+}) {
+  const status = getStatusDisplay(query);
+
+  return (
+    <div
+      onClick={() => onSelect(index)}
+      className={`
+        p-3 flex items-center gap-3 cursor-pointer border-b border-gray-200 dark:border-gray-600
+        transition-colors duration-200 ease-in-out
+        ${isSelected
+          ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500'
+          : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+        }
+      `}
+    >
+      {/* Observer count square */}
+      <div
+        className={`
+          w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded
+          ${status.bgColor}
+        `}
+      >
+        {query.observersCount}
+      </div>
+
+      {/* Query key - single line with truncation */}
+      <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 truncate">
+        {formatQueryKeyShort(query.queryKey)}
+      </div>
+    </div>
+  );
+}
+
+// QueryDetails component for right column
+function QueryDetails({
+  query,
+  onAction
+}: {
+  query: QueryData | null;
+  onAction: (action: string, queryKey: QueryKey) => void;
+}) {
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const handleAction = async (action: string) => {
+    if (!query) return;
+
     setActionLoading(action);
     try {
       await onAction(action, query.queryKey);
@@ -67,313 +146,224 @@ function QueryItem({ query, onAction }: { query: QueryData; onAction: (action: s
     }
   };
 
+  if (!query) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+        <div className="text-center">
+          <div className="text-2xl mb-2">👈</div>
+          <p>Select a query from the list to view details</p>
+        </div>
+      </div>
+    );
+  }
+
+  const status = getStatusDisplay(query);
+  const lastUpdated = Math.max(query.state.dataUpdatedAt, query.state.errorUpdatedAt);
+
   return (
-    <div className="border-b border-gray-200 dark:border-gray-600">
-      {/* Query header - clickable */}
-      <div
-        onClick={toggleExpanded}
-        className={`
-          p-3 flex items-center gap-3 text-sm cursor-pointer
-          transition-colors duration-200 ease-in-out
-          ${isExpanded
-            ? 'bg-gray-50 dark:bg-gray-700'
-            : 'bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
-          }
-        `}
-      >
-        {/* Expand/collapse indicator */}
-        <div className="text-xs text-gray-500 min-w-4 dark:text-gray-400">
-          {isExpanded ? "▼" : "▶"}
-        </div>
+    <div className="h-full overflow-y-auto">
+      {/* Query Details Header */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+        <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Query Details</h3>
 
-        {/* Status indicator */}
-        <div className="flex items-center gap-1.5 min-w-25">
-          <span className="text-base">{status.icon}</span>
-          <span style={{ color: status.color }} className="font-medium">{status.text}</span>
-        </div>
-
-        {/* Query key */}
-        <div className="flex-1 font-mono bg-gray-50 dark:bg-gray-600 px-2 py-1 rounded text-xs dark:text-gray-200">
-          {formatQueryKey(query.queryKey)}
-        </div>
-
-        {/* Active indicator */}
-        {query.isActive && (
-          <div className="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
-            Active ({query.observersCount})
+        <div className="flex items-start justify-between gap-4 mb-3">
+          {/* Query key - multi-line */}
+          <div className="flex-1">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Query:</div>
+            <pre className="text-xs font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded border dark:border-gray-600 text-gray-800 dark:text-gray-200">
+              {formatQueryKeyDetailed(query.queryKey)}
+            </pre>
           </div>
-        )}
 
-        {/* Stale indicator */}
-        {query.state.isStale && (
-          <div className="text-xs bg-yellow-400 text-gray-900 px-1.5 py-0.5 rounded-full dark:bg-yellow-500">
-            Stale
+          {/* Status badge */}
+          <div className="flex-shrink-0">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status:</div>
+            <div className={`px-3 py-1 rounded text-white text-sm font-medium ${status.bgColor}`}>
+              {status.text}
+            </div>
           </div>
-        )}
+        </div>
 
-        {/* Last updated */}
-        <div className="text-xs text-gray-500 min-w-15 text-right dark:text-gray-400">
-          {lastUpdated > 0 ? formatRelativeTime(lastUpdated) : "-"}
+        {/* Observers and Last Updated */}
+        <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+          <div>Observers: {query.observersCount}</div>
+          <div>Last updated: {lastUpdated > 0 ? new Date(lastUpdated).toLocaleTimeString() : "Never"}</div>
         </div>
       </div>
 
-      {/* Expanded details */}
-      {isExpanded && (
-        <div
-          style={{
-            padding: "0 16px 16px 44px", // Align with content, account for arrow
-            backgroundColor: "#f8f9fa",
-            borderTop: "1px solid #e9ecef",
-          }}
-        >
-          <div style={{ marginBottom: "16px" }}>
-            <h4
-              style={{
-                margin: "0 0 8px 0",
-                fontSize: "14px",
-                fontWeight: "600",
-                color: "#495057",
-              }}
-            >
-              Data
-            </h4>
-            <div
-              style={{
-                backgroundColor: "#fff",
-                border: "1px solid #dee2e6",
-                borderRadius: "4px",
-                padding: "12px",
-                maxHeight: "300px",
-                overflowY: "auto",
-              }}
-            >
-              {query.state.data !== undefined && query.state.data !== null ? (
-                <JsonView
-                  src={query.state.data}
-                  collapsed={2}
-                  displayDataTypes={false}
-                  displayObjectSize={true}
-                  enableClipboard={true}
-                  style={{
-                    fontSize: "12px",
-                    fontFamily: "monospace",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    color: "#6c757d",
-                    fontStyle: "italic",
-                    fontSize: "12px",
-                  }}
-                >
-                  No data available
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Actions Section */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+        <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Actions</h4>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => handleAction("REFETCH")}
+            disabled={actionLoading !== null}
+            className={`
+              px-3 py-2 text-sm font-medium rounded border transition-colors
+              ${actionLoading === "REFETCH"
+                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
+                : "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
+              }
+            `}
+          >
+            {actionLoading === "REFETCH" ? "Refreshing..." : "Refresh"}
+          </button>
 
-          {query.state.error ? (
-            <div style={{ marginBottom: "16px" }}>
-              <h4
-                style={{
-                  margin: "0 0 8px 0",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  color: "#dc3545",
-                }}
-              >
-                Error
-              </h4>
-              <div
-                style={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #f5c6cb",
-                  borderRadius: "4px",
-                  padding: "12px",
-                  maxHeight: "200px",
-                  overflowY: "auto",
-                }}
-              >
-                <JsonView
-                  src={query.state.error}
-                  collapsed={1}
-                  displayDataTypes={false}
-                  displayObjectSize={true}
-                  enableClipboard={true}
-                  style={{
-                    fontSize: "12px",
-                    fontFamily: "monospace",
-                  }}
-                />
-              </div>
-            </div>
-          ) : undefined}
+          <button
+            onClick={() => handleAction("INVALIDATE")}
+            disabled={actionLoading !== null}
+            className={`
+              px-3 py-2 text-sm font-medium rounded border transition-colors
+              ${actionLoading === "INVALIDATE"
+                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
+                : "bg-yellow-500 text-gray-900 border-yellow-500 hover:bg-yellow-600"
+              }
+            `}
+          >
+            {actionLoading === "INVALIDATE" ? "Invalidating..." : "Invalidate"}
+          </button>
 
-          <div style={{ marginBottom: "16px" }}>
-            <h4
-              style={{
-                margin: "0 0 8px 0",
-                fontSize: "14px",
-                fontWeight: "600",
-                color: "#495057",
-              }}
-            >
-              Actions
-            </h4>
-            <div
-              style={{
-                display: "flex",
-                gap: "8px",
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAction("REFETCH");
-                }}
-                disabled={actionLoading !== null}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: "12px",
-                  border: "1px solid #007bff",
-                  backgroundColor: actionLoading === "REFETCH" ? "#f8f9fa" : "#007bff",
-                  color: actionLoading === "REFETCH" ? "#6c757d" : "#fff",
-                  borderRadius: "4px",
-                  cursor: actionLoading !== null ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                {actionLoading === "REFETCH" ? "🔄" : "🔄"}
-                {actionLoading === "REFETCH" ? "Refetching..." : "Refetch"}
-              </button>
+          <button
+            onClick={() => handleAction("RESET")}
+            disabled={actionLoading !== null}
+            className={`
+              px-3 py-2 text-sm font-medium rounded border transition-colors
+              ${actionLoading === "RESET"
+                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
+                : "bg-gray-500 text-white border-gray-500 hover:bg-gray-600"
+              }
+            `}
+          >
+            {actionLoading === "RESET" ? "Resetting..." : "Reset"}
+          </button>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAction("INVALIDATE");
-                }}
-                disabled={actionLoading !== null}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: "12px",
-                  border: "1px solid #ffc107",
-                  backgroundColor: actionLoading === "INVALIDATE" ? "#f8f9fa" : "#ffc107",
-                  color: actionLoading === "INVALIDATE" ? "#6c757d" : "#212529",
-                  borderRadius: "4px",
-                  cursor: actionLoading !== null ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                {actionLoading === "INVALIDATE" ? "🔄" : "❌"}
-                {actionLoading === "INVALIDATE" ? "Invalidating..." : "Invalidate"}
-              </button>
+          <button
+            onClick={() => {
+              if (confirm(`Are you sure you want to remove this query from cache?\n\nQuery: ${formatQueryKeyShort(query.queryKey)}`)) {
+                handleAction("REMOVE");
+              }
+            }}
+            disabled={actionLoading !== null}
+            className={`
+              px-3 py-2 text-sm font-medium rounded border transition-colors
+              ${actionLoading === "REMOVE"
+                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
+                : "bg-red-500 text-white border-red-500 hover:bg-red-600"
+              }
+            `}
+          >
+            {actionLoading === "REMOVE" ? "Removing..." : "Remove"}
+          </button>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm(`Are you sure you want to remove this query from cache?\n\nQuery: ${formatQueryKey(query.queryKey)}`)) {
-                    handleAction("REMOVE");
-                  }
-                }}
-                disabled={actionLoading !== null}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: "12px",
-                  border: "1px solid #dc3545",
-                  backgroundColor: actionLoading === "REMOVE" ? "#f8f9fa" : "#dc3545",
-                  color: actionLoading === "REMOVE" ? "#6c757d" : "#fff",
-                  borderRadius: "4px",
-                  cursor: actionLoading !== null ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                {actionLoading === "REMOVE" ? "🔄" : "🗑️"}
-                {actionLoading === "REMOVE" ? "Removing..." : "Remove"}
-              </button>
+          <button
+            onClick={() => handleAction("TRIGGER_LOADING")}
+            disabled={actionLoading !== null}
+            className={`
+              px-3 py-2 text-sm font-medium rounded border transition-colors
+              ${actionLoading === "TRIGGER_LOADING"
+                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
+                : "bg-purple-500 text-white border-purple-500 hover:bg-purple-600"
+              }
+            `}
+          >
+            {actionLoading === "TRIGGER_LOADING" ? "Triggering..." : "Trigger Loading"}
+          </button>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (query.isActive && confirm(`This query has ${query.observersCount} active observers. Are you sure you want to reset it?\n\nQuery: ${formatQueryKey(query.queryKey)}`)) {
-                    handleAction("RESET");
-                  } else if (!query.isActive) {
-                    handleAction("RESET");
-                  }
-                }}
-                disabled={actionLoading !== null}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: "12px",
-                  border: "1px solid #6c757d",
-                  backgroundColor: actionLoading === "RESET" ? "#f8f9fa" : "#6c757d",
-                  color: actionLoading === "RESET" ? "#6c757d" : "#fff",
-                  borderRadius: "4px",
-                  cursor: actionLoading !== null ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                {actionLoading === "RESET" ? "🔄" : "↩️"}
-                {actionLoading === "RESET" ? "Resetting..." : "Reset"}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <h4
-              style={{
-                margin: "0 0 8px 0",
-                fontSize: "14px",
-                fontWeight: "600",
-                color: "#495057",
-              }}
-            >
-              Metadata
-            </h4>
-            <div
-              style={{
-                backgroundColor: "#fff",
-                border: "1px solid #dee2e6",
-                borderRadius: "4px",
-                padding: "12px",
-                fontSize: "12px",
-              }}
-            >
-              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "8px 16px" }}>
-                <strong>Status:</strong>
-                <span style={{ color: status.color }}>{query.state.status}</span>
-
-                <strong>Fetching:</strong>
-                <span>{query.state.isFetching ? "Yes" : "No"}</span>
-
-                <strong>Stale:</strong>
-                <span>{query.state.isStale ? "Yes" : "No"}</span>
-
-                <strong>Active:</strong>
-                <span>{query.isActive ? `Yes (${query.observersCount} observers)` : "No"}</span>
-
-                <strong>Data Updated:</strong>
-                <span>{query.state.dataUpdatedAt > 0 ? new Date(query.state.dataUpdatedAt).toLocaleString() : "Never"}</span>
-
-                <strong>Error Updated:</strong>
-                <span>{query.state.errorUpdatedAt > 0 ? new Date(query.state.errorUpdatedAt).toLocaleString() : "Never"}</span>
-              </div>
-            </div>
-          </div>
+          <button
+            onClick={() => handleAction("TRIGGER_ERROR")}
+            disabled={actionLoading !== null}
+            className={`
+              px-3 py-2 text-sm font-medium rounded border transition-colors
+              ${actionLoading === "TRIGGER_ERROR"
+                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
+                : "bg-orange-500 text-white border-orange-500 hover:bg-orange-600"
+              }
+            `}
+          >
+            {actionLoading === "TRIGGER_ERROR" ? "Triggering..." : "Trigger Error"}
+          </button>
         </div>
-      )}
+      </div>
+
+      {/* Data Explorer Section */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+        <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Data Explorer</h4>
+        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 max-h-80 overflow-y-auto">
+          {query.state.data !== undefined && query.state.data !== null ? (
+            <JsonView
+              src={query.state.data}
+              collapsed={2}
+              displayDataTypes={false}
+              displayObjectSize={true}
+              enableClipboard={true}
+              theme="rjv-default"
+              style={{
+                fontSize: "12px",
+                fontFamily: "monospace",
+                backgroundColor: "transparent",
+              }}
+            />
+          ) : query.state.error ? (
+            <div className="text-red-600 dark:text-red-400 text-sm">
+              <div className="font-medium mb-2">Error occurred:</div>
+              <JsonView
+                src={query.state.error}
+                collapsed={1}
+                displayDataTypes={false}
+                displayObjectSize={true}
+                enableClipboard={true}
+                theme="rjv-default"
+                style={{
+                  fontSize: "12px",
+                  fontFamily: "monospace",
+                  backgroundColor: "transparent",
+                }}
+              />
+            </div>
+          ) : (
+            <div className="text-gray-500 dark:text-gray-400 text-sm italic">
+              No data available
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Query Explorer Section */}
+      <div className="p-4 bg-white dark:bg-gray-800">
+        <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Query Explorer</h4>
+        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 max-h-80 overflow-y-auto">
+          <JsonView
+            src={{
+              queryKey: query.queryKey,
+              state: {
+                status: query.state.status,
+                isFetching: query.state.isFetching,
+                isStale: query.state.isStale,
+                dataUpdatedAt: query.state.dataUpdatedAt,
+                errorUpdatedAt: query.state.errorUpdatedAt,
+                fetchStatus: query.state.fetchStatus,
+              },
+              isActive: query.isActive,
+              observersCount: query.observersCount,
+              meta: query.meta,
+            }}
+            collapsed={1}
+            displayDataTypes={true}
+            displayObjectSize={true}
+            enableClipboard={true}
+            theme="rjv-default"
+            style={{
+              fontSize: "12px",
+              fontFamily: "monospace",
+              backgroundColor: "transparent",
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
+
 
 function App() {
   const [tanStackQueryDetected, setTanStackQueryDetected] = useState<boolean | null>(null);
@@ -383,6 +373,7 @@ function App() {
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [connectionId, setConnectionId] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(null);
 
   // Connection management
   const portRef = useRef<chrome.runtime.Port | null>(null);
@@ -635,21 +626,45 @@ function App() {
             />
           </div>
 
-          {/* Query list */}
-          <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800">
-            {queries.length === 0 ? (
-              <div className="p-5 text-center text-gray-500 dark:text-gray-400">
-                No queries found. Make sure window.queryClient is set in your application.
+          {/* Two-column layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[600px]">
+            {/* Left column - Query list */}
+            <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden">
+              <div className="p-3 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Query List</h4>
               </div>
-            ) : (
-              queries
-                .filter((query) => {
-                  if (!searchTerm) return true;
-                  const queryKeyStr = JSON.stringify(query.queryKey).toLowerCase();
-                  return queryKeyStr.includes(searchTerm.toLowerCase());
-                })
-                .map((query, index) => <QueryItem key={index} query={query} onAction={handleQueryAction} />)
-            )}
+              <div className="h-full overflow-y-auto">
+                {queries.length === 0 ? (
+                  <div className="p-5 text-center text-gray-500 dark:text-gray-400">
+                    No queries found. Make sure window.queryClient is set in your application.
+                  </div>
+                ) : (
+                  queries
+                    .filter((query) => {
+                      if (!searchTerm) return true;
+                      const queryKeyStr = JSON.stringify(query.queryKey).toLowerCase();
+                      return queryKeyStr.includes(searchTerm.toLowerCase());
+                    })
+                    .map((query, index) => (
+                      <QueryListItem
+                        key={index}
+                        query={query}
+                        index={index}
+                        isSelected={selectedQueryIndex === index}
+                        onSelect={setSelectedQueryIndex}
+                      />
+                    ))
+                )}
+              </div>
+            </div>
+
+            {/* Right column - Query details */}
+            <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden">
+              <QueryDetails
+                query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null}
+                onAction={handleQueryAction}
+              />
+            </div>
           </div>
         </div>
       )}
