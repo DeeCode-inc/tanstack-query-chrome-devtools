@@ -68,102 +68,51 @@ function QueryItem({ query, onAction }: { query: QueryData; onAction: (action: s
   };
 
   return (
-    <div
-      style={{
-        borderBottom: "1px solid #e9ecef",
-      }}
-    >
+    <div className="border-b border-gray-200 dark:border-gray-600">
       {/* Query header - clickable */}
       <div
         onClick={toggleExpanded}
-        style={{
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          fontSize: "14px",
-          cursor: "pointer",
-          backgroundColor: isExpanded ? "#f8f9fa" : "transparent",
-          transition: "background-color 0.2s ease",
-        }}
+        className={`
+          p-3 flex items-center gap-3 text-sm cursor-pointer
+          transition-colors duration-200 ease-in-out
+          ${isExpanded
+            ? 'bg-gray-50 dark:bg-gray-700'
+            : 'bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
+          }
+        `}
       >
         {/* Expand/collapse indicator */}
-        <div
-          style={{
-            fontSize: "12px",
-            color: "#6c757d",
-            minWidth: "16px",
-          }}
-        >
+        <div className="text-xs text-gray-500 min-w-4 dark:text-gray-400">
           {isExpanded ? "▼" : "▶"}
         </div>
 
         {/* Status indicator */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            minWidth: "100px",
-          }}
-        >
-          <span style={{ fontSize: "16px" }}>{status.icon}</span>
-          <span style={{ color: status.color, fontWeight: "500" }}>{status.text}</span>
+        <div className="flex items-center gap-1.5 min-w-25">
+          <span className="text-base">{status.icon}</span>
+          <span style={{ color: status.color }} className="font-medium">{status.text}</span>
         </div>
 
         {/* Query key */}
-        <div
-          style={{
-            flex: 1,
-            fontFamily: "monospace",
-            backgroundColor: "#f8f9fa",
-            padding: "4px 8px",
-            borderRadius: "3px",
-            fontSize: "13px",
-          }}
-        >
+        <div className="flex-1 font-mono bg-gray-50 dark:bg-gray-600 px-2 py-1 rounded text-xs dark:text-gray-200">
           {formatQueryKey(query.queryKey)}
         </div>
 
         {/* Active indicator */}
         {query.isActive && (
-          <div
-            style={{
-              fontSize: "12px",
-              backgroundColor: "#007bff",
-              color: "white",
-              padding: "2px 6px",
-              borderRadius: "10px",
-            }}
-          >
+          <div className="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
             Active ({query.observersCount})
           </div>
         )}
 
         {/* Stale indicator */}
         {query.state.isStale && (
-          <div
-            style={{
-              fontSize: "12px",
-              backgroundColor: "#ffc107",
-              color: "#212529",
-              padding: "2px 6px",
-              borderRadius: "10px",
-            }}
-          >
+          <div className="text-xs bg-yellow-400 text-gray-900 px-1.5 py-0.5 rounded-full dark:bg-yellow-500">
             Stale
           </div>
         )}
 
         {/* Last updated */}
-        <div
-          style={{
-            fontSize: "12px",
-            color: "#6c757d",
-            minWidth: "60px",
-            textAlign: "right",
-          }}
-        >
+        <div className="text-xs text-gray-500 min-w-15 text-right dark:text-gray-400">
           {lastUpdated > 0 ? formatRelativeTime(lastUpdated) : "-"}
         </div>
       </div>
