@@ -15,7 +15,7 @@ interface QueryData {
 interface MutationData {
   mutationId: number;
   mutationKey?: string;
-  state: 'idle' | 'pending' | 'success' | 'error' | 'paused';
+  state: "idle" | "pending" | "success" | "error" | "paused";
   variables?: unknown;
   context?: unknown;
   data?: unknown;
@@ -25,7 +25,7 @@ interface MutationData {
 }
 
 // View type for toggle group
-type ViewType = 'queries' | 'mutations';
+type ViewType = "queries" | "mutations";
 
 // Helper function to get status display with state-based colors
 function getStatusDisplay(query: QueryData) {
@@ -192,12 +192,8 @@ function MutationListItem({ mutation, index, isSelected, onSelect }: { mutation:
 
       {/* Mutation info - single line with truncation */}
       <div className="flex-1">
-        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">
-          {mutation.mutationKey || `Mutation #${mutation.mutationId}`}
-        </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-          {new Date(mutation.submittedAt).toLocaleTimeString()}
-        </div>
+        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{mutation.mutationKey || `Mutation #${mutation.mutationId}`}</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{new Date(mutation.submittedAt).toLocaleTimeString()}</div>
       </div>
     </div>
   );
@@ -411,9 +407,7 @@ function MutationDetails({ mutation, isDarkMode }: { mutation: MutationData | nu
           {/* Mutation info */}
           <div className="flex-1">
             <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mutation:</div>
-            <div className="text-sm font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded border dark:border-gray-600 text-gray-800 dark:text-gray-200">
-              {mutation.mutationKey || `Mutation #${mutation.mutationId}`}
-            </div>
+            <div className="text-sm font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded border dark:border-gray-600 text-gray-800 dark:text-gray-200">{mutation.mutationKey || `Mutation #${mutation.mutationId}`}</div>
           </div>
 
           {/* Status badge */}
@@ -427,7 +421,7 @@ function MutationDetails({ mutation, isDarkMode }: { mutation: MutationData | nu
         <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
           <div>Mutation ID: {mutation.mutationId}</div>
           <div>Submitted: {new Date(mutation.submittedAt).toLocaleString()}</div>
-          <div>Pending: {mutation.isPending ? 'Yes' : 'No'}</div>
+          <div>Pending: {mutation.isPending ? "Yes" : "No"}</div>
         </div>
       </div>
 
@@ -531,7 +525,7 @@ function App() {
   const [tanStackQueryDetected, setTanStackQueryDetected] = useState<boolean | null>(null);
   const [queries, setQueries] = useState<QueryData[]>([]);
   const [mutations, setMutations] = useState<MutationData[]>([]);
-  const [currentView, setCurrentView] = useState<ViewType>('queries');
+  const [currentView, setCurrentView] = useState<ViewType>("queries");
   const [searchTerm, setSearchTerm] = useState("");
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -555,8 +549,6 @@ function App() {
       });
       return;
     }
-
-    console.log("Sending query action:", action, queryKey);
 
     try {
       portRef.current.postMessage({
@@ -585,16 +577,12 @@ function App() {
 
   const connectToBackground = useCallback(() => {
     try {
-      console.log("Attempting to connect to background script...");
       const port = chrome.runtime.connect({ name: "devtools" });
       portRef.current = port;
 
       port.onMessage.addListener((message) => {
-        console.log("DevTools panel received message:", message);
-
         if (message.type === "CONNECTION_ESTABLISHED") {
           setReconnectAttempts(0);
-          console.log("Connection established:", message.connectionId);
 
           // Start heartbeat
           if (heartbeatIntervalRef.current) {
@@ -611,7 +599,6 @@ function App() {
           }, 10000); // Ping every 10 seconds
         } else if (message.type === "PONG") {
           // Connection is healthy
-          console.log("Received pong, connection healthy");
         } else if (message.type === "INITIAL_STATE") {
           setTanStackQueryDetected(message.hasTanStackQuery);
         } else if (message.type === "QEVENT") {
@@ -623,24 +610,19 @@ function App() {
               setTanStackQueryDetected(false);
               break;
             case "QUERY_STATE_UPDATE":
-              console.log("Query state update:", message.payload);
               break;
             case "QUERY_DATA_UPDATE":
-              console.log("Query data update:", message.payload);
               if (Array.isArray(message.payload)) {
                 setQueries(message.payload);
               }
               break;
             case "MUTATION_DATA_UPDATE":
-              console.log("Mutation data update:", message.payload);
               if (Array.isArray(message.payload)) {
                 setMutations(message.payload);
               }
               break;
           }
         } else if (message.type === "QUERY_ACTION_RESULT") {
-          console.log("Query action result:", message);
-
           // Update artificial states based on action results
           if (message.success && (message.action === "TRIGGER_LOADING" || message.action === "TRIGGER_ERROR")) {
             setArtificialStates((prev) => {
@@ -672,7 +654,6 @@ function App() {
       });
 
       port.onDisconnect.addListener(() => {
-        console.log("Port disconnected");
         portRef.current = null;
 
         // Clear heartbeat
@@ -687,7 +668,6 @@ function App() {
 
         if (attempt <= 5) {
           const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10s delay
-          console.log(`Reconnecting in ${delay}ms (attempt ${attempt}/5)`);
 
           reconnectTimeoutRef.current = setTimeout(() => {
             connectToBackground();
@@ -791,27 +771,19 @@ function App() {
               <div className="flex items-center gap-1 mb-4 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg w-fit">
                 <button
                   onClick={() => {
-                    setCurrentView('queries');
+                    setCurrentView("queries");
                     setSelectedMutationIndex(null);
                   }}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    currentView === 'queries'
-                      ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${currentView === "queries" ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"}`}
                 >
                   Queries ({queries.length})
                 </button>
                 <button
                   onClick={() => {
-                    setCurrentView('mutations');
+                    setCurrentView("mutations");
                     setSelectedQueryIndex(null);
                   }}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    currentView === 'mutations'
-                      ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${currentView === "mutations" ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"}`}
                 >
                   Mutations ({mutations.length})
                 </button>
@@ -819,13 +791,7 @@ function App() {
 
               {/* Search bar */}
               <div className="mb-4">
-                <input
-                  type="text"
-                  placeholder={`🔍 Search ${currentView}...`}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-                />
+                <input type="text" placeholder={`🔍 Search ${currentView}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" />
               </div>
             </div>
 
@@ -834,12 +800,10 @@ function App() {
               {/* Left column - List */}
               <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden flex flex-col min-h-0">
                 <div className="p-3 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 flex-shrink-0">
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {currentView === 'queries' ? 'Query List' : 'Mutation List'}
-                  </h4>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{currentView === "queries" ? "Query List" : "Mutation List"}</h4>
                 </div>
                 <div className="flex-1 overflow-y-auto min-h-0">
-                  {currentView === 'queries' ? (
+                  {currentView === "queries" ? (
                     queries.length === 0 ? (
                       <div className="p-5 text-center text-gray-500 dark:text-gray-400">No queries found.</div>
                     ) : (
@@ -851,30 +815,22 @@ function App() {
                         })
                         .map((query, index) => <QueryListItem key={index} query={query} index={index} isSelected={selectedQueryIndex === index} onSelect={setSelectedQueryIndex} />)
                     )
+                  ) : mutations.length === 0 ? (
+                    <div className="p-5 text-center text-gray-500 dark:text-gray-400">No mutations found.</div>
                   ) : (
-                    mutations.length === 0 ? (
-                      <div className="p-5 text-center text-gray-500 dark:text-gray-400">No mutations found.</div>
-                    ) : (
-                      mutations
-                        .filter((mutation) => {
-                          if (!searchTerm) return true;
-                          const mutationStr = (mutation.mutationKey || `Mutation #${mutation.mutationId}`).toLowerCase();
-                          return mutationStr.includes(searchTerm.toLowerCase());
-                        })
-                        .map((mutation, index) => <MutationListItem key={index} mutation={mutation} index={index} isSelected={selectedMutationIndex === index} onSelect={setSelectedMutationIndex} />)
-                    )
+                    mutations
+                      .filter((mutation) => {
+                        if (!searchTerm) return true;
+                        const mutationStr = (mutation.mutationKey || `Mutation #${mutation.mutationId}`).toLowerCase();
+                        return mutationStr.includes(searchTerm.toLowerCase());
+                      })
+                      .map((mutation, index) => <MutationListItem key={index} mutation={mutation} index={index} isSelected={selectedMutationIndex === index} onSelect={setSelectedMutationIndex} />)
                   )}
                 </div>
               </div>
 
               {/* Right column - Details */}
-              <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden flex flex-col min-h-0">
-                {currentView === 'queries' ? (
-                  <QueryDetails query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null} onAction={handleQueryAction} isDarkMode={isDarkMode} artificialStates={artificialStates} />
-                ) : (
-                  <MutationDetails mutation={selectedMutationIndex !== null ? mutations[selectedMutationIndex] : null} isDarkMode={isDarkMode} />
-                )}
-              </div>
+              <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden flex flex-col min-h-0">{currentView === "queries" ? <QueryDetails query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null} onAction={handleQueryAction} isDarkMode={isDarkMode} artificialStates={artificialStates} /> : <MutationDetails mutation={selectedMutationIndex !== null ? mutations[selectedMutationIndex] : null} isDarkMode={isDarkMode} />}</div>
             </div>
           </div>
         )}

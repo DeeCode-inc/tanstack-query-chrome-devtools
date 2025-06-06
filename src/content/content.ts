@@ -1,24 +1,23 @@
 // Content script - bridges between injected script and extension
-console.log('TanStack Query DevTools: Content script loaded');
 
 // Message types for communication with background script
 interface TanStackQueryMessage {
-  type: 'QEVENT';
-  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE' | 'QUERY_DATA_UPDATE';
+  type: "QEVENT";
+  subtype: "QUERY_CLIENT_DETECTED" | "QUERY_CLIENT_NOT_FOUND" | "QUERY_STATE_UPDATE" | "QUERY_DATA_UPDATE";
   payload?: unknown;
 }
 
 // Query action message types
 interface QueryActionMessage {
-  type: 'QUERY_ACTION';
-  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET';
+  type: "QUERY_ACTION";
+  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET";
   queryKey: readonly unknown[];
 }
 
 // Action result message
 interface QueryActionResult {
-  type: 'QUERY_ACTION_RESULT';
-  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET';
+  type: "QUERY_ACTION_RESULT";
+  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET";
   queryKey: readonly unknown[];
   success: boolean;
   error?: string;
@@ -27,84 +26,84 @@ interface QueryActionResult {
 // Send message to background script
 function sendToBackground(message: TanStackQueryMessage) {
   chrome.runtime.sendMessage(message).catch((error) => {
-    console.warn('TanStack Query DevTools: Failed to send message to background:', error);
+    console.warn("TanStack Query DevTools: Failed to send message to background:", error);
   });
 }
 
 // Send action to injected script
 function sendActionToInjected(action: QueryActionMessage) {
-  window.postMessage({
-    source: 'tanstack-query-devtools-content',
-    ...action
-  }, '*');
+  window.postMessage(
+    {
+      source: "tanstack-query-devtools-content",
+      ...action,
+    },
+    "*"
+  );
 }
 
 // Send action result to background script
 function sendActionResultToBackground(result: QueryActionResult) {
   chrome.runtime.sendMessage(result).catch((error) => {
-    console.warn('TanStack Query DevTools: Failed to send action result to background:', error);
+    console.warn("TanStack Query DevTools: Failed to send action result to background:", error);
   });
 }
 
 // Listen for messages from injected script via postMessage
-window.addEventListener('message', (event) => {
+window.addEventListener("message", (event) => {
   // Only accept messages from same origin and our injected script
   if (event.origin !== window.location.origin) return;
-  if (event.data?.source !== 'tanstack-query-devtools-injected') return;
-
-  console.log('Content script received message from injected script:', event.data);
+  if (event.data?.source !== "tanstack-query-devtools-injected") return;
 
   // Forward the QEVENT to background script
-  if (event.data.type === 'QEVENT') {
+  if (event.data.type === "QEVENT") {
     sendToBackground({
-      type: 'QEVENT',
+      type: "QEVENT",
       subtype: event.data.subtype,
-      payload: event.data.payload
+      payload: event.data.payload,
     });
   }
 
   // Forward action results to background script
-  if (event.data.type === 'QUERY_ACTION_RESULT') {
+  if (event.data.type === "QUERY_ACTION_RESULT") {
     sendActionResultToBackground(event.data);
   }
 });
 
 // Inject the injected script into the page context
 function injectScript() {
-  const script = document.createElement('script');
-  script.src = chrome.runtime.getURL('injected/injected.js');
+  const script = document.createElement("script");
+  script.src = chrome.runtime.getURL("injected/injected.js");
   script.onload = () => {
-    console.log('TanStack Query DevTools: Injected script loaded into page context');
     script.remove();
   };
   (document.head || document.documentElement).appendChild(script);
 }
 
 // Inject script immediately or when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', injectScript);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", injectScript);
 } else {
   injectScript();
 }
 
 // Listen for messages from DevTools and background script
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log("Content script received message from DevTools/Background:", message);
-
   // Handle query actions from DevTools
-  if (message.type === 'QUERY_ACTION') {
+  if (message.type === "QUERY_ACTION") {
     sendActionToInjected(message);
     sendResponse({ received: true });
     return true;
   }
 
   // Handle immediate update requests from background script
-  if (message.type === 'REQUEST_IMMEDIATE_UPDATE') {
-    console.log('Content script: Requesting immediate data update from injected script');
-    window.postMessage({
-      source: 'tanstack-query-devtools-content',
-      type: 'REQUEST_IMMEDIATE_UPDATE'
-    }, '*');
+  if (message.type === "REQUEST_IMMEDIATE_UPDATE") {
+    window.postMessage(
+      {
+        source: "tanstack-query-devtools-content",
+        type: "REQUEST_IMMEDIATE_UPDATE",
+      },
+      "*"
+    );
     sendResponse({ received: true });
     return true;
   }

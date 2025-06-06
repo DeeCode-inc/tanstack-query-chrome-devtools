@@ -1,26 +1,24 @@
 // Injected script - runs in the webpage context for deeper TanStack Query integration
-import type { Query, Mutation } from '@tanstack/query-core';
-
-console.log('TanStack Query DevTools: Injected script loaded');
+import type { Query, Mutation } from "@tanstack/query-core";
 
 // Message types for communication
 interface TanStackQueryEvent {
-  type: 'QEVENT';
-  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE' | 'QUERY_DATA_UPDATE' | 'MUTATION_DATA_UPDATE';
+  type: "QEVENT";
+  subtype: "QUERY_CLIENT_DETECTED" | "QUERY_CLIENT_NOT_FOUND" | "QUERY_STATE_UPDATE" | "QUERY_DATA_UPDATE" | "MUTATION_DATA_UPDATE";
   payload?: unknown;
 }
 
 // Action message types
 interface QueryActionMessage {
-  type: 'QUERY_ACTION';
-  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET' | 'TRIGGER_LOADING' | 'TRIGGER_ERROR' | 'CANCEL_LOADING' | 'CANCEL_ERROR';
+  type: "QUERY_ACTION";
+  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR";
   queryKey: readonly unknown[];
 }
 
 // Action result message
 interface QueryActionResult {
-  type: 'QUERY_ACTION_RESULT';
-  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET' | 'TRIGGER_LOADING' | 'TRIGGER_ERROR' | 'CANCEL_LOADING' | 'CANCEL_ERROR';
+  type: "QUERY_ACTION_RESULT";
+  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR";
   queryKey: readonly unknown[];
   success: boolean;
   error?: string;
@@ -32,14 +30,14 @@ interface QueryData {
   state: {
     data?: unknown;
     error?: unknown;
-    status: 'idle' | 'pending' | 'success' | 'error';
+    status: "idle" | "pending" | "success" | "error";
     isFetching: boolean;
     isPending: boolean;
     isLoading: boolean;
     isStale: boolean;
     dataUpdatedAt: number;
     errorUpdatedAt: number;
-    fetchStatus: 'idle' | 'fetching' | 'paused';
+    fetchStatus: "idle" | "fetching" | "paused";
   };
   meta?: Record<string, unknown>;
   isActive: boolean;
@@ -50,7 +48,7 @@ interface QueryData {
 interface MutationData {
   mutationId: number;
   mutationKey?: string;
-  state: 'idle' | 'pending' | 'success' | 'error' | 'paused';
+  state: "idle" | "pending" | "success" | "error" | "paused";
   variables?: unknown;
   context?: unknown;
   data?: unknown;
@@ -63,7 +61,6 @@ interface MutationData {
 function detectTanStackQuery(): boolean {
   // Only check for __TANSTACK_QUERY_CLIENT__
   if (window.__TANSTACK_QUERY_CLIENT__) {
-    console.log('TanStack Query DevTools: __TANSTACK_QUERY_CLIENT__ found');
     return true;
   }
 
@@ -86,26 +83,28 @@ function getQueryData(): QueryData[] {
     const queryCache = queryClient.getQueryCache();
     const queries = queryCache.getAll();
 
-    return queries.map((query: Query): QueryData => ({
-      queryKey: query.queryKey,
-      state: {
-        data: query.state.data,
-        error: query.state.error,
-        status: query.state.status,
-        isFetching: query.state.fetchStatus === 'fetching',
-        isPending: query.state.status === 'pending',
-        isLoading: query.state.fetchStatus === 'fetching' && query.state.status === 'pending',
-        isStale: query.isStale(),
-        dataUpdatedAt: query.state.dataUpdatedAt,
-        errorUpdatedAt: query.state.errorUpdatedAt,
-        fetchStatus: query.state.fetchStatus
-      },
-      meta: query.meta || {},
-      isActive: query.getObserversCount() > 0,
-      observersCount: query.getObserversCount()
-    }));
+    return queries.map(
+      (query: Query): QueryData => ({
+        queryKey: query.queryKey,
+        state: {
+          data: query.state.data,
+          error: query.state.error,
+          status: query.state.status,
+          isFetching: query.state.fetchStatus === "fetching",
+          isPending: query.state.status === "pending",
+          isLoading: query.state.fetchStatus === "fetching" && query.state.status === "pending",
+          isStale: query.isStale(),
+          dataUpdatedAt: query.state.dataUpdatedAt,
+          errorUpdatedAt: query.state.errorUpdatedAt,
+          fetchStatus: query.state.fetchStatus,
+        },
+        meta: query.meta || {},
+        isActive: query.getObserversCount() > 0,
+        observersCount: query.getObserversCount(),
+      })
+    );
   } catch (error) {
-    console.error('TanStack Query DevTools: Error collecting query data:', error);
+    console.error("TanStack Query DevTools: Error collecting query data:", error);
     return [];
   }
 }
@@ -121,38 +120,43 @@ function getMutationData(): MutationData[] {
     const mutationCache = queryClient.getMutationCache();
     const mutations = mutationCache.getAll();
 
-    return mutations.map((mutation: Mutation): MutationData => ({
-      mutationId: mutation.mutationId,
-      mutationKey: mutation.options.mutationKey ? JSON.stringify(mutation.options.mutationKey) : undefined,
-      state: mutation.state.status,
-      variables: mutation.state.variables,
-      context: mutation.state.context,
-      data: mutation.state.data,
-      error: mutation.state.error,
-      submittedAt: mutation.state.submittedAt || Date.now(),
-      isPending: mutation.state.status === 'pending'
-    }));
+    return mutations.map(
+      (mutation: Mutation): MutationData => ({
+        mutationId: mutation.mutationId,
+        mutationKey: mutation.options.mutationKey ? JSON.stringify(mutation.options.mutationKey) : undefined,
+        state: mutation.state.status,
+        variables: mutation.state.variables,
+        context: mutation.state.context,
+        data: mutation.state.data,
+        error: mutation.state.error,
+        submittedAt: mutation.state.submittedAt || Date.now(),
+        isPending: mutation.state.status === "pending",
+      })
+    );
   } catch (error) {
-    console.error('TanStack Query DevTools: Error collecting mutation data:', error);
+    console.error("TanStack Query DevTools: Error collecting mutation data:", error);
     return [];
   }
 }
 
 // Send message to content script via postMessage
 function sendToContentScript(event: TanStackQueryEvent) {
-  window.postMessage({
-    source: 'tanstack-query-devtools-injected',
-    ...event
-  }, '*');
+  window.postMessage(
+    {
+      source: "tanstack-query-devtools-injected",
+      ...event,
+    },
+    "*"
+  );
 }
 
 // Send query data update
 function sendQueryDataUpdate() {
   const queryData = getQueryData();
   sendToContentScript({
-    type: 'QEVENT',
-    subtype: 'QUERY_DATA_UPDATE',
-    payload: queryData
+    type: "QEVENT",
+    subtype: "QUERY_DATA_UPDATE",
+    payload: queryData,
   });
 }
 
@@ -160,24 +164,22 @@ function sendQueryDataUpdate() {
 function sendMutationDataUpdate() {
   const mutationData = getMutationData();
   sendToContentScript({
-    type: 'QEVENT',
-    subtype: 'MUTATION_DATA_UPDATE',
-    payload: mutationData
+    type: "QEVENT",
+    subtype: "MUTATION_DATA_UPDATE",
+    payload: mutationData,
   });
 }
 
 // Setup query cache subscription
 function setupQuerySubscription() {
   const queryClient = getQueryClient();
-  if (!queryClient || typeof queryClient.getQueryCache !== 'function') {
+  if (!queryClient || typeof queryClient.getQueryCache !== "function") {
     return;
   }
 
   try {
     const queryCache = queryClient.getQueryCache();
-    if (typeof queryCache.subscribe === 'function') {
-      console.log('TanStack Query DevTools: Setting up query cache subscription');
-
+    if (typeof queryCache.subscribe === "function") {
       // Subscribe to cache changes
       queryCache.subscribe(() => {
         sendQueryDataUpdate();
@@ -187,22 +189,20 @@ function setupQuerySubscription() {
       sendQueryDataUpdate();
     }
   } catch (error) {
-    console.error('TanStack Query DevTools: Error setting up subscription:', error);
+    console.error("TanStack Query DevTools: Error setting up subscription:", error);
   }
 }
 
 // Setup mutation cache subscription
 function setupMutationSubscription() {
   const queryClient = getQueryClient();
-  if (!queryClient || typeof queryClient.getMutationCache !== 'function') {
+  if (!queryClient || typeof queryClient.getMutationCache !== "function") {
     return;
   }
 
   try {
     const mutationCache = queryClient.getMutationCache();
-    if (typeof mutationCache.subscribe === 'function') {
-      console.log('TanStack Query DevTools: Setting up mutation cache subscription');
-
+    if (typeof mutationCache.subscribe === "function") {
       // Subscribe to mutation cache changes
       mutationCache.subscribe(() => {
         sendMutationDataUpdate();
@@ -212,16 +212,19 @@ function setupMutationSubscription() {
       sendMutationDataUpdate();
     }
   } catch (error) {
-    console.error('TanStack Query DevTools: Error setting up mutation subscription:', error);
+    console.error("TanStack Query DevTools: Error setting up mutation subscription:", error);
   }
 }
 
 // Storage for tracking artificial states triggered by DevTools
-const artificialStates = new Map<string, {
-  type: 'loading' | 'error';
-  controller?: AbortController;
-  originalData?: unknown;
-}>();
+const artificialStates = new Map<
+  string,
+  {
+    type: "loading" | "error";
+    controller?: AbortController;
+    originalData?: unknown;
+  }
+>();
 
 // Helper function to create a query key string for tracking
 function getQueryKeyString(queryKey: readonly unknown[]): string {
@@ -233,20 +236,18 @@ function performEnhancedDetection() {
   const detected = detectTanStackQuery();
 
   if (detected) {
-    console.log('TanStack Query DevTools: Sending detection confirmation');
     sendToContentScript({
-      type: 'QEVENT',
-      subtype: 'QUERY_CLIENT_DETECTED'
+      type: "QEVENT",
+      subtype: "QUERY_CLIENT_DETECTED",
     });
 
     // Set up subscriptions for real-time updates
     setupQuerySubscription();
     setupMutationSubscription();
   } else {
-    console.log('TanStack Query DevTools: No TanStack Query found');
     sendToContentScript({
-      type: 'QEVENT',
-      subtype: 'QUERY_CLIENT_NOT_FOUND'
+      type: "QEVENT",
+      subtype: "QUERY_CLIENT_NOT_FOUND",
     });
   }
 }
@@ -257,130 +258,124 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
 
   if (!queryClient) {
     return {
-      type: 'QUERY_ACTION_RESULT',
+      type: "QUERY_ACTION_RESULT",
       action: action.action,
       queryKey: action.queryKey,
       success: false,
-      error: 'QueryClient not found'
+      error: "QueryClient not found",
     };
   }
 
   try {
     switch (action.action) {
-      case 'INVALIDATE':
+      case "INVALIDATE":
         await queryClient.invalidateQueries({ queryKey: action.queryKey });
-        console.log('TanStack Query DevTools: Query invalidated:', action.queryKey);
         break;
 
-      case 'REFETCH':
+      case "REFETCH":
         await queryClient.refetchQueries({ queryKey: action.queryKey });
-        console.log('TanStack Query DevTools: Query refetched:', action.queryKey);
         break;
 
-      case 'REMOVE':
+      case "REMOVE":
         queryClient.removeQueries({ queryKey: action.queryKey });
-        console.log('TanStack Query DevTools: Query removed:', action.queryKey);
         break;
 
-      case 'RESET':
+      case "RESET":
         queryClient.resetQueries({ queryKey: action.queryKey });
-        console.log('TanStack Query DevTools: Query reset:', action.queryKey);
         break;
 
-      case 'TRIGGER_LOADING': {
+      case "TRIGGER_LOADING": {
         const keyString = getQueryKeyString(action.queryKey);
 
         // If already in artificial loading state, this becomes a cancel operation
-        if (artificialStates.has(keyString) && artificialStates.get(keyString)?.type === 'loading') {
+        if (artificialStates.has(keyString) && artificialStates.get(keyString)?.type === "loading") {
           // Cancel the loading state
           const state = artificialStates.get(keyString);
           if (state?.controller) {
             state.controller.abort();
           }
           artificialStates.delete(keyString);
-          console.log('TanStack Query DevTools: Loading state cancelled for:', action.queryKey);
         } else {
           // Start artificial loading state
           const controller = new AbortController();
-          artificialStates.set(keyString, { type: 'loading', controller });
+          artificialStates.set(keyString, { type: "loading", controller });
 
           // Trigger a fetch that will keep loading until cancelled
-          queryClient.fetchQuery({
-            queryKey: action.queryKey,
-            queryFn: () => new Promise((resolve) => {
-              // This promise will only resolve when cancelled
-              controller.signal.addEventListener('abort', () => {
-                // Restore to success state with existing data or default
-                const existingData = queryClient.getQueryData(action.queryKey);
-                resolve(existingData || { message: 'Loading state was cancelled' });
-              });
+          queryClient
+            .fetchQuery({
+              queryKey: action.queryKey,
+              queryFn: () =>
+                new Promise((resolve) => {
+                  // This promise will only resolve when cancelled
+                  controller.signal.addEventListener("abort", () => {
+                    // Restore to success state with existing data or default
+                    const existingData = queryClient.getQueryData(action.queryKey);
+                    resolve(existingData || { message: "Loading state was cancelled" });
+                  });
 
-              // Never reject or resolve naturally - only when cancelled
-            }),
-            staleTime: 0,
-          }).catch(() => {
-            // Handle any errors gracefully
-            artificialStates.delete(keyString);
-          });
-
-          console.log('TanStack Query DevTools: Loading state triggered for:', action.queryKey);
+                  // Never reject or resolve naturally - only when cancelled
+                }),
+              staleTime: 0,
+            })
+            .catch(() => {
+              // Handle any errors gracefully
+              artificialStates.delete(keyString);
+            });
         }
         break;
       }
 
-      case 'TRIGGER_ERROR': {
+      case "TRIGGER_ERROR": {
         const keyString = getQueryKeyString(action.queryKey);
 
         // If already in artificial error state, this becomes a cancel operation
-        if (artificialStates.has(keyString) && artificialStates.get(keyString)?.type === 'error') {
+        if (artificialStates.has(keyString) && artificialStates.get(keyString)?.type === "error") {
           // Cancel the error state - restore original data
           const state = artificialStates.get(keyString);
           if (state?.originalData !== undefined) {
             queryClient.setQueryData(action.queryKey, state.originalData);
           }
           artificialStates.delete(keyString);
-          console.log('TanStack Query DevTools: Error state cancelled for:', action.queryKey);
         } else {
           // Store original data before triggering error
           const originalData = queryClient.getQueryData(action.queryKey);
-          artificialStates.set(keyString, { type: 'error', originalData });
+          artificialStates.set(keyString, { type: "error", originalData });
 
           // Trigger an error state
-          queryClient.fetchQuery({
-            queryKey: action.queryKey,
-            queryFn: () => Promise.reject(new Error('Error state triggered by TanStack Query DevTools for testing purposes')),
-            retry: false,
-            staleTime: 0,
-          }).catch(() => {
-            // Error is expected, this is the desired behavior
-            console.log('TanStack Query DevTools: Error state triggered for:', action.queryKey);
-          });
+          queryClient
+            .fetchQuery({
+              queryKey: action.queryKey,
+              queryFn: () => Promise.reject(new Error("Error state triggered by TanStack Query DevTools for testing purposes")),
+              retry: false,
+              staleTime: 0,
+            })
+            .catch(() => {
+              // Error is expected, this is the desired behavior
+            });
         }
         break;
       }
 
-      case 'CANCEL_LOADING': {
+      case "CANCEL_LOADING": {
         const keyString = getQueryKeyString(action.queryKey);
         const state = artificialStates.get(keyString);
 
-        if (state?.type === 'loading' && state.controller) {
+        if (state?.type === "loading" && state.controller) {
           state.controller.abort();
           artificialStates.delete(keyString);
-          console.log('TanStack Query DevTools: Loading state cancelled for:', action.queryKey);
         }
         break;
       }
 
-      case 'CANCEL_ERROR': {
+      case "CANCEL_ERROR": {
         const keyString = getQueryKeyString(action.queryKey);
         const state = artificialStates.get(keyString);
 
-        if (state?.type === 'error') {
+        if (state?.type === "error") {
           if (state.originalData !== undefined) {
             queryClient.setQueryData(action.queryKey, state.originalData);
           }
           artificialStates.delete(keyString);
-          console.log('TanStack Query DevTools: Error state cancelled for:', action.queryKey);
         }
         break;
       }
@@ -390,42 +385,43 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
     }
 
     return {
-      type: 'QUERY_ACTION_RESULT',
+      type: "QUERY_ACTION_RESULT",
       action: action.action,
       queryKey: action.queryKey,
-      success: true
+      success: true,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('TanStack Query DevTools: Action failed:', error);
+    console.error("TanStack Query DevTools: Action failed:", error);
 
     return {
-      type: 'QUERY_ACTION_RESULT',
+      type: "QUERY_ACTION_RESULT",
       action: action.action,
       queryKey: action.queryKey,
       success: false,
-      error: errorMessage
+      error: errorMessage,
     };
   }
 }
 
 // Send action result to content script
 function sendActionResult(result: QueryActionResult) {
-  window.postMessage({
-    source: 'tanstack-query-devtools-injected',
-    ...result
-  }, '*');
+  window.postMessage(
+    {
+      source: "tanstack-query-devtools-injected",
+      ...result,
+    },
+    "*"
+  );
 }
 
 // Listen for action messages from content script
-window.addEventListener('message', async (event) => {
+window.addEventListener("message", async (event) => {
   // Only accept messages from same origin and our content script
   if (event.origin !== window.location.origin) return;
-  if (event.data?.source !== 'tanstack-query-devtools-content') return;
+  if (event.data?.source !== "tanstack-query-devtools-content") return;
 
-  console.log('Injected script received message:', event.data);
-
-  if (event.data.type === 'QUERY_ACTION') {
+  if (event.data.type === "QUERY_ACTION") {
     const result = await handleQueryAction(event.data);
     sendActionResult(result);
 
@@ -434,24 +430,19 @@ window.addEventListener('message', async (event) => {
   }
 
   // Handle immediate update requests from DevTools
-  if (event.data.type === 'REQUEST_IMMEDIATE_UPDATE') {
-    console.log('Injected script: Received immediate update request');
+  if (event.data.type === "REQUEST_IMMEDIATE_UPDATE") {
     if (detectTanStackQuery()) {
-      console.log('Injected script: Sending immediate query and mutation data updates');
       sendQueryDataUpdate();
       sendMutationDataUpdate();
     } else {
-      console.log('Injected script: TanStack Query not available for immediate update');
     }
   }
 });
 
 // Check if we're in a valid context
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   // Mark that our injected script is present
   window.__TANSTACK_QUERY_DEVTOOLS_INJECTED__ = true;
-
-  console.log('TanStack Query DevTools: Injected script ready');
 
   // Perform initial detection
   performEnhancedDetection();
@@ -462,7 +453,6 @@ if (typeof window !== 'undefined') {
   const interval = setInterval(() => {
     if (!detectionFound && detectTanStackQuery()) {
       detectionFound = true;
-      console.log('TanStack Query DevTools: Periodic detection successful');
       performEnhancedDetection();
       clearInterval(interval);
     }
@@ -472,7 +462,6 @@ if (typeof window !== 'undefined') {
   setTimeout(() => {
     if (!detectionFound) {
       clearInterval(interval);
-      console.log('TanStack Query DevTools: Stopped periodic detection after 2 minutes');
     }
   }, 120000);
 }
