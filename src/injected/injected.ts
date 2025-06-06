@@ -1,12 +1,12 @@
 // Injected script - runs in the webpage context for deeper TanStack Query integration
-import type { Query } from '@tanstack/query-core';
+import type { Query, Mutation } from '@tanstack/query-core';
 
 console.log('TanStack Query DevTools: Injected script loaded');
 
 // Message types for communication
 interface TanStackQueryEvent {
   type: 'QEVENT';
-  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE' | 'QUERY_DATA_UPDATE';
+  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE' | 'QUERY_DATA_UPDATE' | 'MUTATION_DATA_UPDATE';
   payload?: unknown;
 }
 
@@ -44,6 +44,19 @@ interface QueryData {
   meta?: Record<string, unknown>;
   isActive: boolean;
   observersCount: number;
+}
+
+// Mutation data interface
+interface MutationData {
+  mutationId: number;
+  mutationKey?: string;
+  state: 'idle' | 'pending' | 'success' | 'error' | 'paused';
+  variables?: unknown;
+  context?: unknown;
+  data?: unknown;
+  error?: unknown;
+  submittedAt: number;
+  isPending: boolean;
 }
 
 // Check for TanStack Query in the application's window context
@@ -97,6 +110,34 @@ function getQueryData(): QueryData[] {
   }
 }
 
+// Extract mutation data from QueryClient
+function getMutationData(): MutationData[] {
+  const queryClient = getQueryClient();
+  if (!queryClient || !queryClient.getMutationCache) {
+    return [];
+  }
+
+  try {
+    const mutationCache = queryClient.getMutationCache();
+    const mutations = mutationCache.getAll();
+
+    return mutations.map((mutation: Mutation): MutationData => ({
+      mutationId: mutation.mutationId,
+      mutationKey: mutation.options.mutationKey ? JSON.stringify(mutation.options.mutationKey) : undefined,
+      state: mutation.state.status,
+      variables: mutation.state.variables,
+      context: mutation.state.context,
+      data: mutation.state.data,
+      error: mutation.state.error,
+      submittedAt: mutation.state.submittedAt || Date.now(),
+      isPending: mutation.state.status === 'pending'
+    }));
+  } catch (error) {
+    console.error('TanStack Query DevTools: Error collecting mutation data:', error);
+    return [];
+  }
+}
+
 // Send message to content script via postMessage
 function sendToContentScript(event: TanStackQueryEvent) {
   window.postMessage({
@@ -112,6 +153,16 @@ function sendQueryDataUpdate() {
     type: 'QEVENT',
     subtype: 'QUERY_DATA_UPDATE',
     payload: queryData
+  });
+}
+
+// Send mutation data update
+function sendMutationDataUpdate() {
+  const mutationData = getMutationData();
+  sendToContentScript({
+    type: 'QEVENT',
+    subtype: 'MUTATION_DATA_UPDATE',
+    payload: mutationData
   });
 }
 
@@ -140,6 +191,31 @@ function setupQuerySubscription() {
   }
 }
 
+// Setup mutation cache subscription
+function setupMutationSubscription() {
+  const queryClient = getQueryClient();
+  if (!queryClient || typeof queryClient.getMutationCache !== 'function') {
+    return;
+  }
+
+  try {
+    const mutationCache = queryClient.getMutationCache();
+    if (typeof mutationCache.subscribe === 'function') {
+      console.log('TanStack Query DevTools: Setting up mutation cache subscription');
+
+      // Subscribe to mutation cache changes
+      mutationCache.subscribe(() => {
+        sendMutationDataUpdate();
+      });
+
+      // Send initial mutation data
+      sendMutationDataUpdate();
+    }
+  } catch (error) {
+    console.error('TanStack Query DevTools: Error setting up mutation subscription:', error);
+  }
+}
+
 // Storage for tracking artificial states triggered by DevTools
 const artificialStates = new Map<string, {
   type: 'loading' | 'error';
@@ -163,8 +239,9 @@ function performEnhancedDetection() {
       subtype: 'QUERY_CLIENT_DETECTED'
     });
 
-    // Set up subscription for real-time updates
+    // Set up subscriptions for real-time updates
     setupQuerySubscription();
+    setupMutationSubscription();
   } else {
     console.log('TanStack Query DevTools: No TanStack Query found');
     sendToContentScript({
@@ -360,8 +437,9 @@ window.addEventListener('message', async (event) => {
   if (event.data.type === 'REQUEST_IMMEDIATE_UPDATE') {
     console.log('Injected script: Received immediate update request');
     if (detectTanStackQuery()) {
-      console.log('Injected script: Sending immediate query data update');
+      console.log('Injected script: Sending immediate query and mutation data updates');
       sendQueryDataUpdate();
+      sendMutationDataUpdate();
     } else {
       console.log('Injected script: TanStack Query not available for immediate update');
     }

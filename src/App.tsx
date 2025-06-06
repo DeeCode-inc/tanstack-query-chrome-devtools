@@ -11,6 +11,22 @@ interface QueryData {
   observersCount: number;
 }
 
+// Mutation data interface
+interface MutationData {
+  mutationId: number;
+  mutationKey?: string;
+  state: 'idle' | 'pending' | 'success' | 'error' | 'paused';
+  variables?: unknown;
+  context?: unknown;
+  data?: unknown;
+  error?: unknown;
+  submittedAt: number;
+  isPending: boolean;
+}
+
+// View type for toggle group
+type ViewType = 'queries' | 'mutations';
+
 // Helper function to get status display with state-based colors
 function getStatusDisplay(query: QueryData) {
   if (query.state.isFetching) {
@@ -62,6 +78,48 @@ function getStatusDisplay(query: QueryData) {
   }
 }
 
+// Helper function to get mutation status display
+function getMutationStatusDisplay(mutation: MutationData) {
+  switch (mutation.state) {
+    case "pending":
+      return {
+        icon: "⏳",
+        text: "Pending",
+        bgColor: "bg-orange-500",
+        textColor: "text-orange-600",
+      };
+    case "success":
+      return {
+        icon: "✅",
+        text: "Success",
+        bgColor: "bg-green-500",
+        textColor: "text-green-600",
+      };
+    case "error":
+      return {
+        icon: "❌",
+        text: "Error",
+        bgColor: "bg-red-500",
+        textColor: "text-red-600",
+      };
+    case "paused":
+      return {
+        icon: "⏸️",
+        text: "Paused",
+        bgColor: "bg-yellow-500",
+        textColor: "text-yellow-600",
+      };
+    case "idle":
+    default:
+      return {
+        icon: "💤",
+        text: "Idle",
+        bgColor: "bg-gray-400",
+        textColor: "text-gray-600",
+      };
+  }
+}
+
 // Helper function to format query key (single line for list)
 function formatQueryKeyShort(queryKey: readonly unknown[]): string {
   try {
@@ -105,6 +163,42 @@ function QueryListItem({ query, index, isSelected, onSelect }: { query: QueryDat
 
       {/* Query key - single line with truncation */}
       <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{formatQueryKeyShort(query.queryKey)}</div>
+    </div>
+  );
+}
+
+// MutationListItem component for left column
+function MutationListItem({ mutation, index, isSelected, onSelect }: { mutation: MutationData; index: number; isSelected: boolean; onSelect: (index: number) => void }) {
+  const status = getMutationStatusDisplay(mutation);
+
+  return (
+    <div
+      onClick={() => onSelect(index)}
+      className={`
+        p-3 flex items-center gap-3 cursor-pointer border-b border-gray-200 dark:border-gray-600
+        transition-colors duration-200 ease-in-out
+        ${isSelected ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500" : "hover:bg-gray-50 dark:hover:bg-gray-700"}
+      `}
+    >
+      {/* Status indicator */}
+      <div
+        className={`
+          w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded
+          ${status.bgColor}
+        `}
+      >
+        {status.icon}
+      </div>
+
+      {/* Mutation info - single line with truncation */}
+      <div className="flex-1">
+        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">
+          {mutation.mutationKey || `Mutation #${mutation.mutationId}`}
+        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+          {new Date(mutation.submittedAt).toLocaleTimeString()}
+        </div>
+      </div>
     </div>
   );
 }
@@ -292,13 +386,157 @@ function QueryDetails({ query, onAction, isDarkMode, artificialStates }: { query
   );
 }
 
+// MutationDetails component for right column
+function MutationDetails({ mutation, isDarkMode }: { mutation: MutationData | null; isDarkMode: boolean }) {
+  if (!mutation) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+        <div className="text-center">
+          <div className="text-2xl mb-2">👈</div>
+          <p>Select a mutation from the list to view details</p>
+        </div>
+      </div>
+    );
+  }
+
+  const status = getMutationStatusDisplay(mutation);
+
+  return (
+    <div className="h-full overflow-y-auto">
+      {/* Mutation Details Header */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+        <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Mutation Details</h3>
+
+        <div className="flex items-start justify-between gap-4 mb-3">
+          {/* Mutation info */}
+          <div className="flex-1">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mutation:</div>
+            <div className="text-sm font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded border dark:border-gray-600 text-gray-800 dark:text-gray-200">
+              {mutation.mutationKey || `Mutation #${mutation.mutationId}`}
+            </div>
+          </div>
+
+          {/* Status badge */}
+          <div className="flex-shrink-0">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status:</div>
+            <div className={`px-3 py-1 rounded text-white text-sm font-medium ${status.bgColor}`}>{status.text}</div>
+          </div>
+        </div>
+
+        {/* Mutation metadata */}
+        <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+          <div>Mutation ID: {mutation.mutationId}</div>
+          <div>Submitted: {new Date(mutation.submittedAt).toLocaleString()}</div>
+          <div>Pending: {mutation.isPending ? 'Yes' : 'No'}</div>
+        </div>
+      </div>
+
+      {/* Variables Section */}
+      {mutation.variables !== undefined && (
+        <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+          <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Variables</h4>
+          <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
+            <JsonView
+              src={mutation.variables ?? {}}
+              collapsed={2}
+              displayDataTypes={false}
+              displayObjectSize={true}
+              enableClipboard={true}
+              theme={isDarkMode ? "monokai" : "rjv-default"}
+              style={{
+                fontSize: "12px",
+                fontFamily: "monospace",
+                backgroundColor: "transparent",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Data Explorer Section */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+        <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Data Explorer</h4>
+        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
+          {mutation.data !== undefined && mutation.data !== null ? (
+            <JsonView
+              src={mutation.data}
+              collapsed={2}
+              displayDataTypes={false}
+              displayObjectSize={true}
+              enableClipboard={true}
+              theme={isDarkMode ? "monokai" : "rjv-default"}
+              style={{
+                fontSize: "12px",
+                fontFamily: "monospace",
+                backgroundColor: "transparent",
+              }}
+            />
+          ) : mutation.error ? (
+            <div className="text-red-600 dark:text-red-400 text-sm">
+              <div className="font-medium mb-2">Error occurred:</div>
+              <JsonView
+                src={mutation.error}
+                collapsed={1}
+                displayDataTypes={false}
+                displayObjectSize={true}
+                enableClipboard={true}
+                theme={isDarkMode ? "monokai" : "rjv-default"}
+                style={{
+                  fontSize: "12px",
+                  fontFamily: "monospace",
+                  backgroundColor: "transparent",
+                }}
+              />
+            </div>
+          ) : (
+            <div className="text-gray-500 dark:text-gray-400 text-sm italic">No data available</div>
+          )}
+        </div>
+      </div>
+
+      {/* Mutation Explorer Section */}
+      <div className="p-4 bg-white dark:bg-gray-800">
+        <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Mutation Explorer</h4>
+        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
+          <JsonView
+            src={{
+              mutationId: mutation.mutationId,
+              mutationKey: mutation.mutationKey || null,
+              state: mutation.state,
+              isPending: mutation.isPending,
+              submittedAt: mutation.submittedAt,
+              variables: mutation.variables || null,
+              context: mutation.context || null,
+              data: mutation.data || null,
+              error: mutation.error || null,
+            }}
+            collapsed={1}
+            displayDataTypes={true}
+            displayObjectSize={true}
+            enableClipboard={true}
+            theme={isDarkMode ? "monokai" : "rjv-default"}
+            style={{
+              fontSize: "12px",
+              fontFamily: "monospace",
+              backgroundColor: "transparent",
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [tanStackQueryDetected, setTanStackQueryDetected] = useState<boolean | null>(null);
   const [queries, setQueries] = useState<QueryData[]>([]);
+  const [mutations, setMutations] = useState<MutationData[]>([]);
+  const [currentView, setCurrentView] = useState<ViewType>('queries');
   const [searchTerm, setSearchTerm] = useState("");
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(null);
+  const [selectedMutationIndex, setSelectedMutationIndex] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   // Track artificial states triggered by DevTools
   const [artificialStates, setArtificialStates] = useState<Map<string, "loading" | "error">>(new Map());
@@ -391,6 +629,12 @@ function App() {
               console.log("Query data update:", message.payload);
               if (Array.isArray(message.payload)) {
                 setQueries(message.payload);
+              }
+              break;
+            case "MUTATION_DATA_UPDATE":
+              console.log("Mutation data update:", message.payload);
+              if (Array.isArray(message.payload)) {
+                setMutations(message.payload);
               }
               break;
           }
@@ -543,39 +787,93 @@ function App() {
         {tanStackQueryDetected === true && (
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex-shrink-0">
-              <h3 className="text-base font-medium mb-4">Queries ({queries.length})</h3>
+              {/* Toggle Group */}
+              <div className="flex items-center gap-1 mb-4 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg w-fit">
+                <button
+                  onClick={() => {
+                    setCurrentView('queries');
+                    setSelectedMutationIndex(null);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    currentView === 'queries'
+                      ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  Queries ({queries.length})
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentView('mutations');
+                    setSelectedQueryIndex(null);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    currentView === 'mutations'
+                      ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  Mutations ({mutations.length})
+                </button>
+              </div>
 
               {/* Search bar */}
               <div className="mb-4">
-                <input type="text" placeholder="🔍 Search queries..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" />
+                <input
+                  type="text"
+                  placeholder={`🔍 Search ${currentView}...`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                />
               </div>
             </div>
 
             {/* Two-column layout - constrained height */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
-              {/* Left column - Query list */}
+              {/* Left column - List */}
               <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden flex flex-col min-h-0">
                 <div className="p-3 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 flex-shrink-0">
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Query List</h4>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {currentView === 'queries' ? 'Query List' : 'Mutation List'}
+                  </h4>
                 </div>
                 <div className="flex-1 overflow-y-auto min-h-0">
-                  {queries.length === 0 ? (
-                    <div className="p-5 text-center text-gray-500 dark:text-gray-400">No queries found.</div>
+                  {currentView === 'queries' ? (
+                    queries.length === 0 ? (
+                      <div className="p-5 text-center text-gray-500 dark:text-gray-400">No queries found.</div>
+                    ) : (
+                      queries
+                        .filter((query) => {
+                          if (!searchTerm) return true;
+                          const queryKeyStr = JSON.stringify(query.queryKey).toLowerCase();
+                          return queryKeyStr.includes(searchTerm.toLowerCase());
+                        })
+                        .map((query, index) => <QueryListItem key={index} query={query} index={index} isSelected={selectedQueryIndex === index} onSelect={setSelectedQueryIndex} />)
+                    )
                   ) : (
-                    queries
-                      .filter((query) => {
-                        if (!searchTerm) return true;
-                        const queryKeyStr = JSON.stringify(query.queryKey).toLowerCase();
-                        return queryKeyStr.includes(searchTerm.toLowerCase());
-                      })
-                      .map((query, index) => <QueryListItem key={index} query={query} index={index} isSelected={selectedQueryIndex === index} onSelect={setSelectedQueryIndex} />)
+                    mutations.length === 0 ? (
+                      <div className="p-5 text-center text-gray-500 dark:text-gray-400">No mutations found.</div>
+                    ) : (
+                      mutations
+                        .filter((mutation) => {
+                          if (!searchTerm) return true;
+                          const mutationStr = (mutation.mutationKey || `Mutation #${mutation.mutationId}`).toLowerCase();
+                          return mutationStr.includes(searchTerm.toLowerCase());
+                        })
+                        .map((mutation, index) => <MutationListItem key={index} mutation={mutation} index={index} isSelected={selectedMutationIndex === index} onSelect={setSelectedMutationIndex} />)
+                    )
                   )}
                 </div>
               </div>
 
-              {/* Right column - Query details */}
+              {/* Right column - Details */}
               <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden flex flex-col min-h-0">
-                <QueryDetails query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null} onAction={handleQueryAction} isDarkMode={isDarkMode} artificialStates={artificialStates} />
+                {currentView === 'queries' ? (
+                  <QueryDetails query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null} onAction={handleQueryAction} isDarkMode={isDarkMode} artificialStates={artificialStates} />
+                ) : (
+                  <MutationDetails mutation={selectedMutationIndex !== null ? mutations[selectedMutationIndex] : null} isDarkMode={isDarkMode} />
+                )}
               </div>
             </div>
           </div>

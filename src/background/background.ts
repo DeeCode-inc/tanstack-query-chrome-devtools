@@ -40,7 +40,7 @@ const activeConnections = new Map<string, ConnectionInfo>();
 // Message types
 interface TanStackQueryMessage {
   type: 'QEVENT';
-  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE' | 'QUERY_DATA_UPDATE';
+  subtype: 'QUERY_CLIENT_DETECTED' | 'QUERY_CLIENT_NOT_FOUND' | 'QUERY_STATE_UPDATE' | 'QUERY_DATA_UPDATE' | 'MUTATION_DATA_UPDATE';
   payload?: unknown;
 }
 
@@ -194,6 +194,18 @@ chrome.runtime.onMessage.addListener((message: TanStackQueryMessage | QueryActio
         devtoolsPort?.postMessage({
           type: 'QEVENT',
           subtype: 'QUERY_DATA_UPDATE',
+          tabId: tabId,
+          payload: message.payload
+        });
+        break;
+
+      case 'MUTATION_DATA_UPDATE':
+        console.log('Mutation data update from tab:', tabId, 'mutations:', Array.isArray(message.payload) ? message.payload.length : 'unknown');
+
+        // Forward to DevTools panel
+        devtoolsPort?.postMessage({
+          type: 'QEVENT',
+          subtype: 'MUTATION_DATA_UPDATE',
           tabId: tabId,
           payload: message.payload
         });
