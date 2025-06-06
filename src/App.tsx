@@ -254,7 +254,7 @@ function QueryDetails({
       {/* Data Explorer Section */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
         <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Data Explorer</h4>
-        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 max-h-80 overflow-y-auto">
+        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
           {query.state.data !== undefined && query.state.data !== null ? (
             <JsonView
               src={query.state.data}
@@ -297,7 +297,7 @@ function QueryDetails({
       {/* Query Explorer Section */}
       <div className="p-4 bg-white dark:bg-gray-800">
         <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Query Explorer</h4>
-        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 max-h-80 overflow-y-auto">
+        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
           <JsonView
             src={{
               queryKey: query.queryKey,
@@ -333,11 +333,9 @@ function QueryDetails({
 
 function App() {
   const [tanStackQueryDetected, setTanStackQueryDetected] = useState<boolean | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected">("connecting");
   const [queries, setQueries] = useState<QueryData[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const [connectionId, setConnectionId] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
@@ -390,14 +388,10 @@ function App() {
       const port = chrome.runtime.connect({ name: "devtools" });
       portRef.current = port;
 
-      setConnectionStatus("connecting");
-
       port.onMessage.addListener((message) => {
         console.log("DevTools panel received message:", message);
 
         if (message.type === "CONNECTION_ESTABLISHED") {
-          setConnectionId(message.connectionId);
-          setConnectionStatus("connected");
           setReconnectAttempts(0);
           console.log("Connection established:", message.connectionId);
 
@@ -468,7 +462,6 @@ function App() {
         setReconnectAttempts(attempt);
 
         if (attempt <= 5) {
-          setConnectionStatus("reconnecting");
           const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10s delay
           console.log(`Reconnecting in ${delay}ms (attempt ${attempt}/5)`);
 
@@ -476,13 +469,11 @@ function App() {
             connectToBackground();
           }, delay);
         } else {
-          setConnectionStatus("disconnected");
           console.error("Failed to reconnect after 5 attempts");
         }
       });
     } catch (error) {
       console.error("Failed to connect to background script:", error);
-      setConnectionStatus("disconnected");
     }
   }, [reconnectAttempts]);
 
@@ -524,47 +515,13 @@ function App() {
   }, [connectToBackground]);
 
   return (
-    <div className="p-5 font-sans text-sm bg-white dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100">
-      <h1 className="text-lg font-semibold mb-5">🏠 TanStack Query DevTools</h1>
+    <div className="h-screen flex flex-col font-sans text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
+      <header className="p-5 pb-0 flex-shrink-0">
+        <h1 className="text-lg font-semibold mb-5">🏠 TanStack Query DevTools</h1>
+      </header>
 
-      <div className="mb-5">
-        <h3 className="text-base font-medium mb-2">Connection Status</h3>
-        <div
-          className={`
-            p-2.5 rounded border
-            ${connectionStatus === "connected"
-              ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
-              : connectionStatus === "reconnecting"
-              ? "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-100 dark:border-yellow-700"
-              : "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"
-            }
-          `}
-        >
-          {connectionStatus === "connecting" && "🔄 Connecting..."}
-          {connectionStatus === "connected" && `✅ Connected to background script${connectionId ? ` (${connectionId})` : ""}`}
-          {connectionStatus === "reconnecting" && `🔄 Reconnecting... (attempt ${reconnectAttempts}/5)`}
-          {connectionStatus === "disconnected" && "❌ Disconnected - Failed to reconnect after 5 attempts"}
-        </div>
-      </div>
+      <main className="flex-1 px-5 flex flex-col min-h-0">
 
-      <div className="mb-5">
-        <h3 className="text-base font-medium mb-2">TanStack Query Detection</h3>
-        <div
-          className={`
-            p-2.5 rounded border
-            ${tanStackQueryDetected === true
-              ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
-              : tanStackQueryDetected === false
-              ? "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-100 dark:border-yellow-700"
-              : "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
-            }
-          `}
-        >
-          {tanStackQueryDetected === null && "🔍 Checking for TanStack Query..."}
-          {tanStackQueryDetected === true && "🎉 TanStack Query detected on this page!"}
-          {tanStackQueryDetected === false && "⚠️ TanStack Query not found on this page"}
-        </div>
-      </div>
 
       {/* Action Feedback Toast */}
       {actionFeedback && (
@@ -597,69 +554,94 @@ function App() {
         </div>
       )}
 
-      {tanStackQueryDetected === true && (
-        <div className="mb-5">
-          <h3 className="text-base font-medium mb-4">Queries ({queries.length})</h3>
-
-          {/* Search bar */}
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="🔍 Search queries..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-            />
-          </div>
-
-          {/* Two-column layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[600px]">
-            {/* Left column - Query list */}
-            <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden">
-              <div className="p-3 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Query List</h4>
+        {tanStackQueryDetected === false && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="max-w-lg mx-auto p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-center">
+              <div className="text-4xl mb-4">🔌</div>
+              <h3 className="text-2xl font-semibold mb-3 text-gray-900 dark:text-gray-100">Connect Your App</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                To use TanStack Query DevTools, add this line to your application:
+              </p>
+              <div className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded p-3 mb-4">
+                <code className="text-sm font-mono text-gray-800 dark:text-gray-200">
+                  window.__TANSTACK_QUERY_CLIENT__ = queryClient
+                </code>
               </div>
-              <div className="h-full overflow-y-auto">
-                {queries.length === 0 ? (
-                  <div className="p-5 text-center text-gray-500 dark:text-gray-400">
-                    No queries found. Make sure window.queryClient is set in your application.
-                  </div>
-                ) : (
-                  queries
-                    .filter((query) => {
-                      if (!searchTerm) return true;
-                      const queryKeyStr = JSON.stringify(query.queryKey).toLowerCase();
-                      return queryKeyStr.includes(searchTerm.toLowerCase());
-                    })
-                    .map((query, index) => (
-                      <QueryListItem
-                        key={index}
-                        query={query}
-                        index={index}
-                        isSelected={selectedQueryIndex === index}
-                        onSelect={setSelectedQueryIndex}
-                      />
-                    ))
-                )}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Place this code where you create your QueryClient instance, typically in your app setup or main component.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tanStackQueryDetected === true && (
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-shrink-0">
+              <h3 className="text-base font-medium mb-4">Queries ({queries.length})</h3>
+
+              {/* Search bar */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="🔍 Search queries..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                />
               </div>
             </div>
 
-            {/* Right column - Query details */}
-            <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden">
-              <QueryDetails
-                query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null}
-                onAction={handleQueryAction}
-                isDarkMode={isDarkMode}
-              />
+            {/* Two-column layout - constrained height */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
+              {/* Left column - Query list */}
+              <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden flex flex-col min-h-0">
+                <div className="p-3 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 flex-shrink-0">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Query List</h4>
+                </div>
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  {queries.length === 0 ? (
+                    <div className="p-5 text-center text-gray-500 dark:text-gray-400">
+                      No queries found. Make sure window.__TANSTACK_QUERY_CLIENT__ is set in your application.
+                    </div>
+                  ) : (
+                    queries
+                      .filter((query) => {
+                        if (!searchTerm) return true;
+                        const queryKeyStr = JSON.stringify(query.queryKey).toLowerCase();
+                        return queryKeyStr.includes(searchTerm.toLowerCase());
+                      })
+                      .map((query, index) => (
+                        <QueryListItem
+                          key={index}
+                          query={query}
+                          index={index}
+                          isSelected={selectedQueryIndex === index}
+                          onSelect={setSelectedQueryIndex}
+                        />
+                      ))
+                  )}
+                </div>
+              </div>
+
+              {/* Right column - Query details */}
+              <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden flex flex-col min-h-0">
+                <QueryDetails
+                  query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null}
+                  onAction={handleQueryAction}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
             </div>
           </div>
+        )}
+      </main>
+
+      <footer className="px-5 pb-5 pt-2 flex-shrink-0">
+        <div className="text-xs text-gray-500 dark:text-gray-400">
+          <p>TanStack Query Chrome DevTools v0.1.0</p>
+          <p>Extension context: DevTools Panel</p>
         </div>
-      )}
-
-      <div className="text-xs text-gray-500 mt-10 dark:text-gray-400">
-        <p>TanStack Query Chrome DevTools v0.1.0</p>
-        <p>Extension context: DevTools Panel</p>
-      </div>
+      </footer>
     </div>
   );
 }

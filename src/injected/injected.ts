@@ -45,13 +45,7 @@ interface QueryData {
 
 // Check for TanStack Query in the application's window context
 function detectTanStackQuery(): boolean {
-  // Check for global queryClient (as mentioned by user for Lit app)
-  if (window.queryClient) {
-    console.log('TanStack Query DevTools: queryClient found on application window');
-    return true;
-  }
-
-  // Check for other common patterns
+  // Only check for __TANSTACK_QUERY_CLIENT__
   if (window.__TANSTACK_QUERY_CLIENT__) {
     console.log('TanStack Query DevTools: __TANSTACK_QUERY_CLIENT__ found');
     return true;
@@ -62,7 +56,7 @@ function detectTanStackQuery(): boolean {
 
 // Get the active QueryClient
 function getQueryClient() {
-  return window.queryClient || window.__TANSTACK_QUERY_CLIENT__ || null;
+  return window.__TANSTACK_QUERY_CLIENT__ || null;
 }
 
 // Extract query data from QueryClient
