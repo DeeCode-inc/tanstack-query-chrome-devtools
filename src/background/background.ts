@@ -57,7 +57,7 @@ interface QueryActionResult {
 let devtoolsPort: chrome.runtime.Port | null = null;
 
 // Handle DevTools connections
-chrome.runtime.onConnect.addListener((port) => {
+chrome.runtime.onConnect.addListener(async (port) => {
   if (port.name === 'devtools') {
     const connectionId = `devtools-${Date.now()}`;
     devtoolsPort = port;
@@ -66,8 +66,10 @@ chrome.runtime.onConnect.addListener((port) => {
     // Start keep-alive when DevTools connects
     startKeepAlive();
 
+    // Get current tab ID asynchronously
+    const currentTabId = await getCurrentTabId();
+
     // Track this connection
-    const currentTabId = getCurrentTabId();
     activeConnections.set(connectionId, {
       port,
       tabId: currentTabId,
@@ -81,6 +83,16 @@ chrome.runtime.onConnect.addListener((port) => {
         type: 'INITIAL_STATE',
         hasTanStackQuery: tabsWithTanStackQuery.has(currentTabId)
       });
+
+      // If TanStack Query is already detected, request immediate data update
+      if (tabsWithTanStackQuery.has(currentTabId)) {
+        console.log('TanStack Query already detected, requesting immediate data update');
+        chrome.tabs.sendMessage(currentTabId, {
+          type: 'REQUEST_IMMEDIATE_UPDATE'
+        }).catch((error: unknown) => {
+          console.warn('Failed to request immediate update:', error);
+        });
+      }
     }
 
     // Send connection health info
@@ -101,7 +113,7 @@ chrome.runtime.onConnect.addListener((port) => {
       }
     });
 
-    port.onMessage.addListener((message) => {
+    port.onMessage.addListener(async (message) => {
       console.log('Message from DevTools:', message);
 
       // Handle ping messages for connection health
@@ -118,9 +130,9 @@ chrome.runtime.onConnect.addListener((port) => {
       }
 
       // Forward messages to content script if needed
-      const currentTabId = getCurrentTabId();
+      const currentTabId = await getCurrentTabId();
       if (currentTabId && message.type) {
-        chrome.tabs.sendMessage(currentTabId, message).catch((error) => {
+        chrome.tabs.sendMessage(currentTabId, message).catch((error: unknown) => {
           console.warn('Failed to send message to content script:', error);
         });
       }
@@ -203,12 +215,17 @@ chrome.runtime.onMessage.addListener((message: TanStackQueryMessage | QueryActio
   sendResponse({ received: true });
 });
 
-// Helper function to get current tab ID (simplified for now)
-function getCurrentTabId(): number | null {
-  // In a real implementation, we'd get the active tab ID
-  // For now, we'll use the first tab with TanStack Query
-  return tabsWithTanStackQuery.values().next().value || null;
+// Helper function to get current active tab ID
+async function getCurrentTabId(): Promise<number | null> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab?.id || null;
+  } catch (error) {
+    console.warn('Failed to get current tab ID:', error);
+    return null;
+  }
 }
+
 
 // Clean up when tabs are closed
 chrome.tabs.onRemoved.addListener((tabId) => {

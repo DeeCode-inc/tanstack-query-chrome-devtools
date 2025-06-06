@@ -98,6 +98,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  // Handle immediate update requests from background script
+  if (message.type === 'REQUEST_IMMEDIATE_UPDATE') {
+    console.log('Content script: Requesting immediate data update from injected script');
+    window.postMessage({
+      source: 'tanstack-query-devtools-content',
+      type: 'REQUEST_IMMEDIATE_UPDATE'
+    }, '*');
+    sendResponse({ received: true });
+    return true;
+  }
+
   // For other messages, just acknowledge receipt
   sendResponse({ received: true });
   return true; // Keep message channel open for async response

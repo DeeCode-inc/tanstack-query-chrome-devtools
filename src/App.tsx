@@ -128,10 +128,12 @@ function QueryListItem({
 // QueryDetails component for right column
 function QueryDetails({
   query,
-  onAction
+  onAction,
+  isDarkMode
 }: {
   query: QueryData | null;
   onAction: (action: string, queryKey: QueryKey) => void;
+  isDarkMode: boolean;
 }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -198,13 +200,7 @@ function QueryDetails({
           <button
             onClick={() => handleAction("REFETCH")}
             disabled={actionLoading !== null}
-            className={`
-              px-3 py-2 text-sm font-medium rounded border transition-colors
-              ${actionLoading === "REFETCH"
-                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
-                : "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
-              }
-            `}
+            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-blue-500 text-white border-blue-500 hover:bg-blue-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
           >
             {actionLoading === "REFETCH" ? "Refreshing..." : "Refresh"}
           </button>
@@ -212,13 +208,7 @@ function QueryDetails({
           <button
             onClick={() => handleAction("INVALIDATE")}
             disabled={actionLoading !== null}
-            className={`
-              px-3 py-2 text-sm font-medium rounded border transition-colors
-              ${actionLoading === "INVALIDATE"
-                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
-                : "bg-yellow-500 text-gray-900 border-yellow-500 hover:bg-yellow-600"
-              }
-            `}
+            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-yellow-500 text-gray-900 border-yellow-500 hover:bg-yellow-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
           >
             {actionLoading === "INVALIDATE" ? "Invalidating..." : "Invalidate"}
           </button>
@@ -226,13 +216,7 @@ function QueryDetails({
           <button
             onClick={() => handleAction("RESET")}
             disabled={actionLoading !== null}
-            className={`
-              px-3 py-2 text-sm font-medium rounded border transition-colors
-              ${actionLoading === "RESET"
-                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
-                : "bg-gray-500 text-white border-gray-500 hover:bg-gray-600"
-              }
-            `}
+            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-gray-500 text-white border-gray-500 hover:bg-gray-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
           >
             {actionLoading === "RESET" ? "Resetting..." : "Reset"}
           </button>
@@ -244,13 +228,7 @@ function QueryDetails({
               }
             }}
             disabled={actionLoading !== null}
-            className={`
-              px-3 py-2 text-sm font-medium rounded border transition-colors
-              ${actionLoading === "REMOVE"
-                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
-                : "bg-red-500 text-white border-red-500 hover:bg-red-600"
-              }
-            `}
+            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-red-500 text-white border-red-500 hover:bg-red-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
           >
             {actionLoading === "REMOVE" ? "Removing..." : "Remove"}
           </button>
@@ -258,13 +236,7 @@ function QueryDetails({
           <button
             onClick={() => handleAction("TRIGGER_LOADING")}
             disabled={actionLoading !== null}
-            className={`
-              px-3 py-2 text-sm font-medium rounded border transition-colors
-              ${actionLoading === "TRIGGER_LOADING"
-                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
-                : "bg-purple-500 text-white border-purple-500 hover:bg-purple-600"
-              }
-            `}
+            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-purple-500 text-white border-purple-500 hover:bg-purple-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
           >
             {actionLoading === "TRIGGER_LOADING" ? "Triggering..." : "Trigger Loading"}
           </button>
@@ -272,13 +244,7 @@ function QueryDetails({
           <button
             onClick={() => handleAction("TRIGGER_ERROR")}
             disabled={actionLoading !== null}
-            className={`
-              px-3 py-2 text-sm font-medium rounded border transition-colors
-              ${actionLoading === "TRIGGER_ERROR"
-                ? "bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed"
-                : "bg-orange-500 text-white border-orange-500 hover:bg-orange-600"
-              }
-            `}
+            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-orange-500 text-white border-orange-500 hover:bg-orange-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
           >
             {actionLoading === "TRIGGER_ERROR" ? "Triggering..." : "Trigger Error"}
           </button>
@@ -296,11 +262,11 @@ function QueryDetails({
               displayDataTypes={false}
               displayObjectSize={true}
               enableClipboard={true}
-              theme="rjv-default"
+              theme={isDarkMode ? "monokai" : "rjv-default"}
               style={{
                 fontSize: "12px",
                 fontFamily: "monospace",
-                backgroundColor: "transparent",
+                backgroundColor: "transparent"
               }}
             />
           ) : query.state.error ? (
@@ -312,11 +278,11 @@ function QueryDetails({
                 displayDataTypes={false}
                 displayObjectSize={true}
                 enableClipboard={true}
-                theme="rjv-default"
+                theme={isDarkMode ? "monokai" : "rjv-default"}
                 style={{
                   fontSize: "12px",
                   fontFamily: "monospace",
-                  backgroundColor: "transparent",
+                  backgroundColor: "transparent"
                 }}
               />
             </div>
@@ -351,11 +317,11 @@ function QueryDetails({
             displayDataTypes={true}
             displayObjectSize={true}
             enableClipboard={true}
-            theme="rjv-default"
+            theme={isDarkMode ? "monokai" : "rjv-default"}
             style={{
               fontSize: "12px",
               fontFamily: "monospace",
-              backgroundColor: "transparent",
+              backgroundColor: "transparent"
             }}
           />
         </div>
@@ -374,6 +340,7 @@ function App() {
   const [connectionId, setConnectionId] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   // Connection management
   const portRef = useRef<chrome.runtime.Port | null>(null);
@@ -519,6 +486,25 @@ function App() {
     }
   }, [reconnectAttempts]);
 
+  // Detect system dark mode preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    // Set initial state
+    setIsDarkMode(mediaQuery.matches);
+
+    // Listen for changes
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, []);
+
   useEffect(() => {
     connectToBackground();
 
@@ -538,7 +524,7 @@ function App() {
   }, [connectToBackground]);
 
   return (
-    <div className="p-5 font-sans text-sm">
+    <div className="p-5 font-sans text-sm bg-white dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100">
       <h1 className="text-lg font-semibold mb-5">🏠 TanStack Query DevTools</h1>
 
       <div className="mb-5">
@@ -663,6 +649,7 @@ function App() {
               <QueryDetails
                 query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null}
                 onAction={handleQueryAction}
+                isDarkMode={isDarkMode}
               />
             </div>
           </div>

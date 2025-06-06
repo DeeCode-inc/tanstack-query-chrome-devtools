@@ -236,7 +236,7 @@ window.addEventListener('message', async (event) => {
   if (event.origin !== window.location.origin) return;
   if (event.data?.source !== 'tanstack-query-devtools-content') return;
 
-  console.log('Injected script received action message:', event.data);
+  console.log('Injected script received message:', event.data);
 
   if (event.data.type === 'QUERY_ACTION') {
     const result = await handleQueryAction(event.data);
@@ -244,6 +244,17 @@ window.addEventListener('message', async (event) => {
 
     // Trigger query data update after action
     setTimeout(sendQueryDataUpdate, 100);
+  }
+
+  // Handle immediate update requests from DevTools
+  if (event.data.type === 'REQUEST_IMMEDIATE_UPDATE') {
+    console.log('Injected script: Received immediate update request');
+    if (detectTanStackQuery()) {
+      console.log('Injected script: Sending immediate query data update');
+      sendQueryDataUpdate();
+    } else {
+      console.log('Injected script: TanStack Query not available for immediate update');
+    }
   }
 });
 
@@ -258,17 +269,22 @@ if (typeof window !== 'undefined') {
   performEnhancedDetection();
 
   // Also check periodically in case TanStack Query is loaded dynamically
-  let checkCount = 0;
-  const maxChecks = 10;
+  // Continue checking until TanStack Query is found (no artificial limit)
+  let detectionFound = false;
   const interval = setInterval(() => {
-    checkCount++;
-
-    if (detectTanStackQuery() || checkCount >= maxChecks) {
+    if (!detectionFound && detectTanStackQuery()) {
+      detectionFound = true;
+      console.log('TanStack Query DevTools: Periodic detection successful');
+      performEnhancedDetection();
       clearInterval(interval);
-      if (detectTanStackQuery()) {
-        console.log('TanStack Query DevTools: Periodic detection successful');
-        performEnhancedDetection();
-      }
     }
   }, 1000);
+
+  // Stop checking after 2 minutes to avoid infinite polling
+  setTimeout(() => {
+    if (!detectionFound) {
+      clearInterval(interval);
+      console.log('TanStack Query DevTools: Stopped periodic detection after 2 minutes');
+    }
+  }, 120000);
 }
