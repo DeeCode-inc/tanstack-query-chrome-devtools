@@ -18,7 +18,7 @@ function getStatusDisplay(query: QueryData) {
       icon: "🔄",
       text: "Fetching",
       bgColor: "bg-blue-500",
-      textColor: "text-blue-600"
+      textColor: "text-blue-600",
     };
   }
 
@@ -29,35 +29,35 @@ function getStatusDisplay(query: QueryData) {
           icon: "🔄",
           text: "Stale",
           bgColor: "bg-yellow-500",
-          textColor: "text-yellow-600"
+          textColor: "text-yellow-600",
         };
       }
       return {
         icon: "✅",
         text: "Fresh",
         bgColor: "bg-green-500",
-        textColor: "text-green-600"
+        textColor: "text-green-600",
       };
     case "error":
       return {
         icon: "❌",
         text: "Error",
         bgColor: "bg-red-500",
-        textColor: "text-red-600"
+        textColor: "text-red-600",
       };
     case "pending":
       return {
         icon: "⏳",
         text: "Pending",
         bgColor: "bg-orange-500",
-        textColor: "text-orange-600"
+        textColor: "text-orange-600",
       };
     default:
       return {
         icon: "❓",
         text: query.isActive ? "Unknown" : "Inactive",
         bgColor: "bg-gray-400",
-        textColor: "text-gray-600"
+        textColor: "text-gray-600",
       };
   }
 }
@@ -80,19 +80,8 @@ function formatQueryKeyDetailed(queryKey: readonly unknown[]): string {
   }
 }
 
-
 // QueryListItem component for left column
-function QueryListItem({
-  query,
-  index,
-  isSelected,
-  onSelect
-}: {
-  query: QueryData;
-  index: number;
-  isSelected: boolean;
-  onSelect: (index: number) => void;
-}) {
+function QueryListItem({ query, index, isSelected, onSelect }: { query: QueryData; index: number; isSelected: boolean; onSelect: (index: number) => void }) {
   const status = getStatusDisplay(query);
 
   return (
@@ -101,10 +90,7 @@ function QueryListItem({
       className={`
         p-3 flex items-center gap-3 cursor-pointer border-b border-gray-200 dark:border-gray-600
         transition-colors duration-200 ease-in-out
-        ${isSelected
-          ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500'
-          : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-        }
+        ${isSelected ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500" : "hover:bg-gray-50 dark:hover:bg-gray-700"}
       `}
     >
       {/* Observer count square */}
@@ -118,23 +104,18 @@ function QueryListItem({
       </div>
 
       {/* Query key - single line with truncation */}
-      <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 truncate">
-        {formatQueryKeyShort(query.queryKey)}
-      </div>
+      <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{formatQueryKeyShort(query.queryKey)}</div>
     </div>
   );
 }
 
+// Helper function to create a query key string for tracking
+function getQueryKeyString(queryKey: readonly unknown[]): string {
+  return JSON.stringify(queryKey);
+}
+
 // QueryDetails component for right column
-function QueryDetails({
-  query,
-  onAction,
-  isDarkMode
-}: {
-  query: QueryData | null;
-  onAction: (action: string, queryKey: QueryKey) => void;
-  isDarkMode: boolean;
-}) {
+function QueryDetails({ query, onAction, isDarkMode, artificialStates }: { query: QueryData | null; onAction: (action: string, queryKey: QueryKey) => void; isDarkMode: boolean; artificialStates: Map<string, "loading" | "error"> }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const handleAction = async (action: string) => {
@@ -162,6 +143,11 @@ function QueryDetails({
   const status = getStatusDisplay(query);
   const lastUpdated = Math.max(query.state.dataUpdatedAt, query.state.errorUpdatedAt);
 
+  // Check artificial states for this query
+  const queryKeyString = getQueryKeyString(query.queryKey);
+  const isArtificialLoading = artificialStates.get(queryKeyString) === "loading";
+  const isArtificialError = artificialStates.get(queryKeyString) === "error";
+
   return (
     <div className="h-full overflow-y-auto">
       {/* Query Details Header */}
@@ -172,17 +158,13 @@ function QueryDetails({
           {/* Query key - multi-line */}
           <div className="flex-1">
             <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Query:</div>
-            <pre className="text-xs font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded border dark:border-gray-600 text-gray-800 dark:text-gray-200">
-              {formatQueryKeyDetailed(query.queryKey)}
-            </pre>
+            <pre className="text-xs font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded border dark:border-gray-600 text-gray-800 dark:text-gray-200">{formatQueryKeyDetailed(query.queryKey)}</pre>
           </div>
 
           {/* Status badge */}
           <div className="flex-shrink-0">
             <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status:</div>
-            <div className={`px-3 py-1 rounded text-white text-sm font-medium ${status.bgColor}`}>
-              {status.text}
-            </div>
+            <div className={`px-3 py-1 rounded text-white text-sm font-medium ${status.bgColor}`}>{status.text}</div>
           </div>
         </div>
 
@@ -197,27 +179,15 @@ function QueryDetails({
       <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
         <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Actions</h4>
         <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => handleAction("REFETCH")}
-            disabled={actionLoading !== null}
-            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-blue-500 text-white border-blue-500 hover:bg-blue-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
-          >
+          <button onClick={() => handleAction("REFETCH")} disabled={actionLoading !== null} className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-blue-500 text-white border-blue-500 hover:bg-blue-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600">
             {actionLoading === "REFETCH" ? "Refreshing..." : "Refresh"}
           </button>
 
-          <button
-            onClick={() => handleAction("INVALIDATE")}
-            disabled={actionLoading !== null}
-            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-yellow-500 text-gray-900 border-yellow-500 hover:bg-yellow-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
-          >
+          <button onClick={() => handleAction("INVALIDATE")} disabled={actionLoading !== null} className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-yellow-500 text-gray-900 border-yellow-500 hover:bg-yellow-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600">
             {actionLoading === "INVALIDATE" ? "Invalidating..." : "Invalidate"}
           </button>
 
-          <button
-            onClick={() => handleAction("RESET")}
-            disabled={actionLoading !== null}
-            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-gray-500 text-white border-gray-500 hover:bg-gray-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
-          >
+          <button onClick={() => handleAction("RESET")} disabled={actionLoading !== null} className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-gray-500 text-white border-gray-500 hover:bg-gray-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600">
             {actionLoading === "RESET" ? "Resetting..." : "Reset"}
           </button>
 
@@ -233,20 +203,12 @@ function QueryDetails({
             {actionLoading === "REMOVE" ? "Removing..." : "Remove"}
           </button>
 
-          <button
-            onClick={() => handleAction("TRIGGER_LOADING")}
-            disabled={actionLoading !== null}
-            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-purple-500 text-white border-purple-500 hover:bg-purple-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
-          >
-            {actionLoading === "TRIGGER_LOADING" ? "Triggering..." : "Trigger Loading"}
+          <button onClick={() => handleAction("TRIGGER_LOADING")} disabled={actionLoading !== null} className={`px-3 py-2 text-sm font-medium rounded border transition-colors disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600 ${isArtificialLoading ? "bg-gray-500 text-white border-gray-500 hover:bg-gray-600" : "bg-purple-500 text-white border-purple-500 hover:bg-purple-600"}`}>
+            {actionLoading === "TRIGGER_LOADING" ? "Triggering..." : isArtificialLoading ? "Cancel Loading" : "Trigger Loading"}
           </button>
 
-          <button
-            onClick={() => handleAction("TRIGGER_ERROR")}
-            disabled={actionLoading !== null}
-            className="px-3 py-2 text-sm font-medium rounded border transition-colors bg-orange-500 text-white border-orange-500 hover:bg-orange-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600"
-          >
-            {actionLoading === "TRIGGER_ERROR" ? "Triggering..." : "Trigger Error"}
+          <button onClick={() => handleAction("TRIGGER_ERROR")} disabled={actionLoading !== null} className={`px-3 py-2 text-sm font-medium rounded border transition-colors disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600 ${isArtificialError ? "bg-gray-500 text-white border-gray-500 hover:bg-gray-600" : "bg-orange-500 text-white border-orange-500 hover:bg-orange-600"}`}>
+            {actionLoading === "TRIGGER_ERROR" ? "Triggering..." : isArtificialError ? "Cancel Error" : "Trigger Error"}
           </button>
         </div>
       </div>
@@ -266,7 +228,7 @@ function QueryDetails({
               style={{
                 fontSize: "12px",
                 fontFamily: "monospace",
-                backgroundColor: "transparent"
+                backgroundColor: "transparent",
               }}
             />
           ) : query.state.error ? (
@@ -282,14 +244,12 @@ function QueryDetails({
                 style={{
                   fontSize: "12px",
                   fontFamily: "monospace",
-                  backgroundColor: "transparent"
+                  backgroundColor: "transparent",
                 }}
               />
             </div>
           ) : (
-            <div className="text-gray-500 dark:text-gray-400 text-sm italic">
-              No data available
-            </div>
+            <div className="text-gray-500 dark:text-gray-400 text-sm italic">No data available</div>
           )}
         </div>
       </div>
@@ -304,6 +264,8 @@ function QueryDetails({
               state: {
                 status: query.state.status,
                 isFetching: query.state.isFetching,
+                isPending: query.state.isPending,
+                isLoading: query.state.isLoading,
                 isStale: query.state.isStale,
                 dataUpdatedAt: query.state.dataUpdatedAt,
                 errorUpdatedAt: query.state.errorUpdatedAt,
@@ -321,7 +283,7 @@ function QueryDetails({
             style={{
               fontSize: "12px",
               fontFamily: "monospace",
-              backgroundColor: "transparent"
+              backgroundColor: "transparent",
             }}
           />
         </div>
@@ -329,7 +291,6 @@ function QueryDetails({
     </div>
   );
 }
-
 
 function App() {
   const [tanStackQueryDetected, setTanStackQueryDetected] = useState<boolean | null>(null);
@@ -339,6 +300,8 @@ function App() {
   const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  // Track artificial states triggered by DevTools
+  const [artificialStates, setArtificialStates] = useState<Map<string, "loading" | "error">>(new Map());
 
   // Connection management
   const portRef = useRef<chrome.runtime.Port | null>(null);
@@ -350,7 +313,7 @@ function App() {
     if (!portRef.current) {
       setActionFeedback({
         message: "Not connected to background script",
-        type: "error"
+        type: "error",
       });
       return;
     }
@@ -361,13 +324,13 @@ function App() {
       portRef.current.postMessage({
         type: "QUERY_ACTION",
         action: action,
-        queryKey: queryKey
+        queryKey: queryKey,
       });
     } catch (error) {
       console.error("Failed to send action:", error);
       setActionFeedback({
         message: `Failed to send ${action.toLowerCase()} action`,
-        type: "error"
+        type: "error",
       });
     }
   }, []);
@@ -433,15 +396,32 @@ function App() {
           }
         } else if (message.type === "QUERY_ACTION_RESULT") {
           console.log("Query action result:", message);
-          if (message.success) {
-            setActionFeedback({
-              message: `${message.action.toLowerCase()} completed successfully`,
-              type: "success"
-            });
-          } else {
-            setActionFeedback({
-              message: `${message.action.toLowerCase()} failed: ${message.error || "Unknown error"}`,
-              type: "error"
+
+          // Update artificial states based on action results
+          if (message.success && (message.action === "TRIGGER_LOADING" || message.action === "TRIGGER_ERROR")) {
+            setArtificialStates((prev) => {
+              const newStates = new Map(prev);
+              const queryKeyString = JSON.stringify(message.queryKey);
+
+              if (message.action === "TRIGGER_LOADING") {
+                if (newStates.get(queryKeyString) === "loading") {
+                  // Cancel loading state
+                  newStates.delete(queryKeyString);
+                } else {
+                  // Start loading state
+                  newStates.set(queryKeyString, "loading");
+                }
+              } else if (message.action === "TRIGGER_ERROR") {
+                if (newStates.get(queryKeyString) === "error") {
+                  // Cancel error state
+                  newStates.delete(queryKeyString);
+                } else {
+                  // Start error state
+                  newStates.set(queryKeyString, "error");
+                }
+              }
+
+              return newStates;
             });
           }
         }
@@ -479,7 +459,7 @@ function App() {
 
   // Detect system dark mode preference
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
     // Set initial state
     setIsDarkMode(mediaQuery.matches);
@@ -489,10 +469,10 @@ function App() {
       setIsDarkMode(e.matches);
     };
 
-    mediaQuery.addEventListener('change', handleChange);
+    mediaQuery.addEventListener("change", handleChange);
 
     return () => {
-      mediaQuery.removeEventListener('change', handleChange);
+      mediaQuery.removeEventListener("change", handleChange);
     };
   }, []);
 
@@ -521,55 +501,41 @@ function App() {
       </header>
 
       <main className="flex-1 px-5 flex flex-col min-h-0">
-
-
-      {/* Action Feedback Toast */}
-      {actionFeedback && (
-        <div className="mb-5">
-          <div
-            className={`
-              p-2.5 rounded border flex items-center justify-between
-              ${actionFeedback.type === "success"
-                ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
-                : "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"
-              }
-            `}
-          >
-            <span>
-              {actionFeedback.type === "success" ? "✅" : "❌"} {actionFeedback.message}
-            </span>
-            <button
-              onClick={() => setActionFeedback(null)}
+        {/* Action Feedback Toast */}
+        {actionFeedback && (
+          <div className="mb-5">
+            <div
               className={`
-                bg-transparent border-none text-base cursor-pointer px-1
-                ${actionFeedback.type === "success"
-                  ? "text-green-800 dark:text-green-100"
-                  : "text-red-800 dark:text-red-100"
-                }
-              `}
+              p-2.5 rounded border flex items-center justify-between
+              ${actionFeedback.type === "success" ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700" : "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"}
+            `}
             >
-              ×
-            </button>
+              <span>
+                {actionFeedback.type === "success" ? "✅" : "❌"} {actionFeedback.message}
+              </span>
+              <button
+                onClick={() => setActionFeedback(null)}
+                className={`
+                bg-transparent border-none text-base cursor-pointer px-1
+                ${actionFeedback.type === "success" ? "text-green-800 dark:text-green-100" : "text-red-800 dark:text-red-100"}
+              `}
+              >
+                ×
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
         {tanStackQueryDetected === false && (
           <div className="flex-1 flex items-center justify-center">
             <div className="max-w-lg mx-auto p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-center">
               <div className="text-4xl mb-4">🔌</div>
               <h3 className="text-2xl font-semibold mb-3 text-gray-900 dark:text-gray-100">Connect Your App</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                To use TanStack Query DevTools, add this line to your application:
-              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">To use TanStack Query DevTools, add this line to your application:</p>
               <div className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded p-3 mb-4">
-                <code className="text-sm font-mono text-gray-800 dark:text-gray-200">
-                  window.__TANSTACK_QUERY_CLIENT__ = queryClient
-                </code>
+                <code className="text-sm font-mono text-gray-800 dark:text-gray-200">window.__TANSTACK_QUERY_CLIENT__ = queryClient</code>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Place this code where you create your QueryClient instance, typically in your app setup or main component.
-              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Place this code where you create your QueryClient instance, typically in your app setup or main component.</p>
             </div>
           </div>
         )}
@@ -581,13 +547,7 @@ function App() {
 
               {/* Search bar */}
               <div className="mb-4">
-                <input
-                  type="text"
-                  placeholder="🔍 Search queries..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-                />
+                <input type="text" placeholder="🔍 Search queries..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" />
               </div>
             </div>
 
@@ -600,9 +560,7 @@ function App() {
                 </div>
                 <div className="flex-1 overflow-y-auto min-h-0">
                   {queries.length === 0 ? (
-                    <div className="p-5 text-center text-gray-500 dark:text-gray-400">
-                      No queries found. Make sure window.__TANSTACK_QUERY_CLIENT__ is set in your application.
-                    </div>
+                    <div className="p-5 text-center text-gray-500 dark:text-gray-400">No queries found.</div>
                   ) : (
                     queries
                       .filter((query) => {
@@ -610,26 +568,14 @@ function App() {
                         const queryKeyStr = JSON.stringify(query.queryKey).toLowerCase();
                         return queryKeyStr.includes(searchTerm.toLowerCase());
                       })
-                      .map((query, index) => (
-                        <QueryListItem
-                          key={index}
-                          query={query}
-                          index={index}
-                          isSelected={selectedQueryIndex === index}
-                          onSelect={setSelectedQueryIndex}
-                        />
-                      ))
+                      .map((query, index) => <QueryListItem key={index} query={query} index={index} isSelected={selectedQueryIndex === index} onSelect={setSelectedQueryIndex} />)
                   )}
                 </div>
               </div>
 
               {/* Right column - Query details */}
               <div className="border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 overflow-hidden flex flex-col min-h-0">
-                <QueryDetails
-                  query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null}
-                  onAction={handleQueryAction}
-                  isDarkMode={isDarkMode}
-                />
+                <QueryDetails query={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null} onAction={handleQueryAction} isDarkMode={isDarkMode} artificialStates={artificialStates} />
               </div>
             </div>
           </div>

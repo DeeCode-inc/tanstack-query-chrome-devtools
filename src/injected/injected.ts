@@ -13,14 +13,14 @@ interface TanStackQueryEvent {
 // Action message types
 interface QueryActionMessage {
   type: 'QUERY_ACTION';
-  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET';
+  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET' | 'TRIGGER_LOADING' | 'TRIGGER_ERROR' | 'CANCEL_LOADING' | 'CANCEL_ERROR';
   queryKey: readonly unknown[];
 }
 
 // Action result message
 interface QueryActionResult {
   type: 'QUERY_ACTION_RESULT';
-  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET';
+  action: 'INVALIDATE' | 'REFETCH' | 'REMOVE' | 'RESET' | 'TRIGGER_LOADING' | 'TRIGGER_ERROR' | 'CANCEL_LOADING' | 'CANCEL_ERROR';
   queryKey: readonly unknown[];
   success: boolean;
   error?: string;
@@ -34,9 +34,12 @@ interface QueryData {
     error?: unknown;
     status: 'idle' | 'pending' | 'success' | 'error';
     isFetching: boolean;
+    isPending: boolean;
+    isLoading: boolean;
     isStale: boolean;
     dataUpdatedAt: number;
     errorUpdatedAt: number;
+    fetchStatus: 'idle' | 'fetching' | 'paused';
   };
   meta?: Record<string, unknown>;
   isActive: boolean;
@@ -77,9 +80,12 @@ function getQueryData(): QueryData[] {
         error: query.state.error,
         status: query.state.status,
         isFetching: query.state.fetchStatus === 'fetching',
+        isPending: query.state.status === 'pending',
+        isLoading: query.state.fetchStatus === 'fetching' && query.state.status === 'pending',
         isStale: query.isStale(),
         dataUpdatedAt: query.state.dataUpdatedAt,
-        errorUpdatedAt: query.state.errorUpdatedAt
+        errorUpdatedAt: query.state.errorUpdatedAt,
+        fetchStatus: query.state.fetchStatus
       },
       meta: query.meta || {},
       isActive: query.getObserversCount() > 0,
@@ -132,6 +138,18 @@ function setupQuerySubscription() {
   } catch (error) {
     console.error('TanStack Query DevTools: Error setting up subscription:', error);
   }
+}
+
+// Storage for tracking artificial states triggered by DevTools
+const artificialStates = new Map<string, {
+  type: 'loading' | 'error';
+  controller?: AbortController;
+  originalData?: unknown;
+}>();
+
+// Helper function to create a query key string for tracking
+function getQueryKeyString(queryKey: readonly unknown[]): string {
+  return JSON.stringify(queryKey);
 }
 
 // Enhanced detection that also sets up subscription
@@ -191,6 +209,104 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
         queryClient.resetQueries({ queryKey: action.queryKey });
         console.log('TanStack Query DevTools: Query reset:', action.queryKey);
         break;
+
+      case 'TRIGGER_LOADING': {
+        const keyString = getQueryKeyString(action.queryKey);
+
+        // If already in artificial loading state, this becomes a cancel operation
+        if (artificialStates.has(keyString) && artificialStates.get(keyString)?.type === 'loading') {
+          // Cancel the loading state
+          const state = artificialStates.get(keyString);
+          if (state?.controller) {
+            state.controller.abort();
+          }
+          artificialStates.delete(keyString);
+          console.log('TanStack Query DevTools: Loading state cancelled for:', action.queryKey);
+        } else {
+          // Start artificial loading state
+          const controller = new AbortController();
+          artificialStates.set(keyString, { type: 'loading', controller });
+
+          // Trigger a fetch that will keep loading until cancelled
+          queryClient.fetchQuery({
+            queryKey: action.queryKey,
+            queryFn: () => new Promise((resolve) => {
+              // This promise will only resolve when cancelled
+              controller.signal.addEventListener('abort', () => {
+                // Restore to success state with existing data or default
+                const existingData = queryClient.getQueryData(action.queryKey);
+                resolve(existingData || { message: 'Loading state was cancelled' });
+              });
+
+              // Never reject or resolve naturally - only when cancelled
+            }),
+            staleTime: 0,
+          }).catch(() => {
+            // Handle any errors gracefully
+            artificialStates.delete(keyString);
+          });
+
+          console.log('TanStack Query DevTools: Loading state triggered for:', action.queryKey);
+        }
+        break;
+      }
+
+      case 'TRIGGER_ERROR': {
+        const keyString = getQueryKeyString(action.queryKey);
+
+        // If already in artificial error state, this becomes a cancel operation
+        if (artificialStates.has(keyString) && artificialStates.get(keyString)?.type === 'error') {
+          // Cancel the error state - restore original data
+          const state = artificialStates.get(keyString);
+          if (state?.originalData !== undefined) {
+            queryClient.setQueryData(action.queryKey, state.originalData);
+          }
+          artificialStates.delete(keyString);
+          console.log('TanStack Query DevTools: Error state cancelled for:', action.queryKey);
+        } else {
+          // Store original data before triggering error
+          const originalData = queryClient.getQueryData(action.queryKey);
+          artificialStates.set(keyString, { type: 'error', originalData });
+
+          // Trigger an error state
+          queryClient.fetchQuery({
+            queryKey: action.queryKey,
+            queryFn: () => Promise.reject(new Error('Error state triggered by TanStack Query DevTools for testing purposes')),
+            retry: false,
+            staleTime: 0,
+          }).catch(() => {
+            // Error is expected, this is the desired behavior
+            console.log('TanStack Query DevTools: Error state triggered for:', action.queryKey);
+          });
+        }
+        break;
+      }
+
+      case 'CANCEL_LOADING': {
+        const keyString = getQueryKeyString(action.queryKey);
+        const state = artificialStates.get(keyString);
+
+        if (state?.type === 'loading' && state.controller) {
+          state.controller.abort();
+          artificialStates.delete(keyString);
+          console.log('TanStack Query DevTools: Loading state cancelled for:', action.queryKey);
+        }
+        break;
+      }
+
+      case 'CANCEL_ERROR': {
+        const keyString = getQueryKeyString(action.queryKey);
+        const state = artificialStates.get(keyString);
+
+        if (state?.type === 'error') {
+          if (state.originalData !== undefined) {
+            queryClient.setQueryData(action.queryKey, state.originalData);
+          }
+          artificialStates.delete(keyString);
+          console.log('TanStack Query DevTools: Error state cancelled for:', action.queryKey);
+        }
+        break;
+      }
 
       default:
         throw new Error(`Unknown action: ${action.action}`);
