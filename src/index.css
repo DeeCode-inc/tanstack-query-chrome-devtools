@@ -3,12 +3,114 @@
 /* Custom DevTools-specific styles */
 @layer base {
   body {
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     font-size: 0.875rem;
     line-height: 1.25rem;
   }
 }
 
 @layer components {
-  /* Component-level styles will go here as we migrate */
+  /* === BUTTON DESIGN SYSTEM === */
+  .btn-base {
+    @apply px-3 py-2 text-sm font-medium rounded border transition-colors;
+    @apply disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed;
+    @apply dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600;
+  }
+
+  .btn-primary {
+    @apply px-3 py-2 text-sm font-medium rounded border transition-colors;
+    @apply disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed;
+    @apply dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600;
+    @apply bg-blue-500 text-white border-blue-500 hover:bg-blue-600;
+  }
+
+  .btn-warning {
+    @apply px-3 py-2 text-sm font-medium rounded border transition-colors;
+    @apply disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed;
+    @apply dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600;
+    @apply bg-yellow-500 text-gray-900 border-yellow-500 hover:bg-yellow-600;
+  }
+
+  .btn-secondary {
+    @apply px-3 py-2 text-sm font-medium rounded border transition-colors;
+    @apply disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed;
+    @apply dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600;
+    @apply bg-gray-500 text-white border-gray-500 hover:bg-gray-600;
+  }
+
+  .btn-danger {
+    @apply px-3 py-2 text-sm font-medium rounded border transition-colors;
+    @apply disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed;
+    @apply dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600;
+    @apply bg-red-500 text-white border-red-500 hover:bg-red-600;
+  }
+
+  .btn-accent {
+    @apply px-3 py-2 text-sm font-medium rounded border transition-colors;
+    @apply disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed;
+    @apply dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600;
+    @apply bg-purple-500 text-white border-purple-500 hover:bg-purple-600;
+  }
+
+  .btn-special {
+    @apply px-3 py-2 text-sm font-medium rounded border transition-colors;
+    @apply disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed;
+    @apply dark:disabled:bg-gray-700 dark:disabled:text-gray-400 dark:disabled:border-gray-600;
+    @apply bg-orange-500 text-white border-orange-500 hover:bg-orange-600;
+  }
+
+  /* === STATUS BADGE DESIGN SYSTEM === */
+  .status-badge-base {
+    @apply w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded;
+  }
+
+  .status-fetching {
+    @apply w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded;
+    @apply bg-blue-500;
+  }
+
+  .status-success {
+    @apply w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded;
+    @apply bg-green-500;
+  }
+
+  .status-error {
+    @apply w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded;
+    @apply bg-red-500;
+  }
+
+  .status-warning {
+    @apply w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded;
+    @apply bg-yellow-500;
+  }
+
+  .status-pending {
+    @apply w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded;
+    @apply bg-orange-500;
+  }
+
+  .status-inactive {
+    @apply w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded;
+    @apply bg-gray-400;
+  }
+
+  /* === FORM ELEMENT DESIGN SYSTEM === */
+  .input-base {
+    @apply w-full px-3 py-2 border border-gray-300 rounded text-sm;
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400;
+  }
+
+  /* === TOGGLE GROUP DESIGN SYSTEM === */
+  .toggle-group-base {
+    @apply flex items-center gap-1 mb-4 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg w-fit;
+  }
+
+  .toggle-option-active {
+    @apply px-4 py-2 text-sm font-medium rounded-md transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm;
+  }
+
+  .toggle-option-inactive {
+    @apply px-4 py-2 text-sm font-medium rounded-md transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200;
+  }
 }

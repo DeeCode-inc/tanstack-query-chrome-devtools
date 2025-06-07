@@ -6,7 +6,7 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
     return {
       icon: "🔄",
       text: "Fetching",
-      bgColor: "bg-blue-500",
+      bgColor: "status-fetching",
       textColor: "text-blue-600",
     };
   }
@@ -17,35 +17,35 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
         return {
           icon: "🔄",
           text: "Stale",
-          bgColor: "bg-yellow-500",
+          bgColor: "status-warning",
           textColor: "text-yellow-600",
         };
       }
       return {
         icon: "✅",
         text: "Fresh",
-        bgColor: "bg-green-500",
+        bgColor: "status-success",
         textColor: "text-green-600",
       };
     case "error":
       return {
         icon: "❌",
         text: "Error",
-        bgColor: "bg-red-500",
+        bgColor: "status-error",
         textColor: "text-red-600",
       };
     case "pending":
       return {
         icon: "⏳",
         text: "Pending",
-        bgColor: "bg-orange-500",
+        bgColor: "status-pending",
         textColor: "text-orange-600",
       };
     default:
       return {
         icon: "❓",
         text: query.isActive ? "Unknown" : "Inactive",
-        bgColor: "bg-gray-400",
+        bgColor: "status-inactive",
         textColor: "text-gray-600",
       };
   }
@@ -58,28 +58,28 @@ export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay 
       return {
         icon: "⏳",
         text: "Pending",
-        bgColor: "bg-orange-500",
+        bgColor: "status-pending",
         textColor: "text-orange-600",
       };
     case "success":
       return {
         icon: "✅",
         text: "Success",
-        bgColor: "bg-green-500",
+        bgColor: "status-success",
         textColor: "text-green-600",
       };
     case "error":
       return {
         icon: "❌",
         text: "Error",
-        bgColor: "bg-red-500",
+        bgColor: "status-error",
         textColor: "text-red-600",
       };
     case "paused":
       return {
         icon: "⏸️",
         text: "Paused",
-        bgColor: "bg-yellow-500",
+        bgColor: "status-warning",
         textColor: "text-yellow-600",
       };
     case "idle":
@@ -87,7 +87,7 @@ export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay 
       return {
         icon: "💤",
         text: "Idle",
-        bgColor: "bg-gray-400",
+        bgColor: "status-inactive",
         textColor: "text-gray-600",
       };
   }
