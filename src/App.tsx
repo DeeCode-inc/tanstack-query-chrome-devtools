@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 // Import our extracted components
 import { ActionFeedback } from "./components/status/ActionFeedback";
 import { SearchBar } from "./components/layout/SearchBar";
@@ -9,12 +7,10 @@ import { QueryDetails } from "./components/query/QueryDetails";
 import { MutationListItem } from "./components/mutation/MutationListItem";
 import { MutationDetails } from "./components/mutation/MutationDetails";
 
-// Import our centralized types
-import type { ViewType } from "./types/query";
-
 // Import our custom hooks
 import { useConnection } from "./hooks/useConnection";
 import { useUIState } from "./hooks/useUIState";
+import { useViewState } from "./hooks/useViewState";
 
 
 
@@ -22,12 +18,7 @@ function App() {
   // Use our custom hooks
   const { tanStackQueryDetected, queries, mutations, artificialStates, sendMessage } = useConnection();
   const { isDarkMode, actionFeedback, handleQueryAction, setActionFeedback } = useUIState(sendMessage);
-
-  // Local UI state (view and selection management)
-  const [currentView, setCurrentView] = useState<ViewType>("queries");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(null);
-  const [selectedMutationIndex, setSelectedMutationIndex] = useState<number | null>(null);
+  const { currentView, searchTerm, selectedQueryIndex, selectedMutationIndex, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange } = useViewState();
 
   return (
     <div className="h-screen flex flex-col font-sans text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
@@ -59,14 +50,7 @@ function App() {
               {/* Toggle Group */}
               <ToggleGroup
                 currentView={currentView}
-                onViewChange={(view) => {
-                  setCurrentView(view);
-                  if (view === "queries") {
-                    setSelectedMutationIndex(null);
-                  } else {
-                    setSelectedQueryIndex(null);
-                  }
-                }}
+                onViewChange={handleViewChange}
                 options={[
                   { value: "queries", label: "Queries", count: queries.length },
                   { value: "mutations", label: "Mutations", count: mutations.length },
