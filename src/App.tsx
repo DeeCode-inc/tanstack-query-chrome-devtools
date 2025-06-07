@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
-import type { QueryKey } from "@tanstack/query-core";
+import { useState } from "react";
 
 // Import our extracted components
 import { ActionFeedback } from "./components/status/ActionFeedback";
@@ -13,68 +12,22 @@ import { MutationDetails } from "./components/mutation/MutationDetails";
 // Import our centralized types
 import type { ViewType } from "./types/query";
 
-// Import our custom hook
+// Import our custom hooks
 import { useConnection } from "./hooks/useConnection";
+import { useUIState } from "./hooks/useUIState";
 
 
 
 function App() {
-  // Use our custom connection hook
+  // Use our custom hooks
   const { tanStackQueryDetected, queries, mutations, artificialStates, sendMessage } = useConnection();
+  const { isDarkMode, actionFeedback, handleQueryAction, setActionFeedback } = useUIState(sendMessage);
 
-  // Local UI state
+  // Local UI state (view and selection management)
   const [currentView, setCurrentView] = useState<ViewType>("queries");
   const [searchTerm, setSearchTerm] = useState("");
-  const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(null);
   const [selectedMutationIndex, setSelectedMutationIndex] = useState<number | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-
-  // Handle query actions
-  const handleQueryAction = useCallback(async (action: string, queryKey: QueryKey) => {
-    try {
-      sendMessage({
-        type: "QUERY_ACTION",
-        action: action,
-        queryKey: queryKey,
-      });
-    } catch (error) {
-      console.error("Failed to send action:", error);
-      setActionFeedback({
-        message: `Failed to send ${action.toLowerCase()} action`,
-        type: "error",
-      });
-    }
-  }, [sendMessage]);
-
-  // Clear action feedback after delay
-  useEffect(() => {
-    if (actionFeedback) {
-      const timer = setTimeout(() => {
-        setActionFeedback(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [actionFeedback]);
-
-  // Detect system dark mode preference
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-    // Set initial state
-    setIsDarkMode(mediaQuery.matches);
-
-    // Listen for changes
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches);
-    };
-
-    mediaQuery.addEventListener("change", handleChange);
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleChange);
-    };
-  }, []);
 
   return (
     <div className="h-screen flex flex-col font-sans text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
