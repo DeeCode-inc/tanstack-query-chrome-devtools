@@ -228,4 +228,4 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // Extension lifecycle
 chrome.runtime.onStartup.addListener(() => {});
 
-chrome.runtime.onInstalled.addListener((details) => {});
+chrome.runtime.onInstalled.addListener(() => {});
