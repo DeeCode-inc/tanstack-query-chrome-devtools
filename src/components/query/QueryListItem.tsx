@@ -17,7 +17,7 @@ export function QueryListItem({ query, index, isSelected, onSelect }: QueryListI
     <div
       onClick={() => onSelect(index)}
       className={`
-        card-list-item query-item-responsive
+        card-list-item card-list-item-animated card-selection-animated query-item-responsive
         flex items-center gap-3
         ${isSelected ? "card-selected" : ""}
       `}

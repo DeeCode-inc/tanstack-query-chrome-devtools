@@ -29,15 +29,15 @@ export function QueryActions({ selectedQuery, onAction, actionLoading, setAction
     <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
       <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Actions</h4>
       <div className="grid grid-cols-3 gap-2">
-        <button onClick={() => handleAction("REFETCH")} disabled={actionLoading !== null} className="btn-primary">
+        <button onClick={() => handleAction("REFETCH")} disabled={actionLoading !== null} className="btn-primary btn-animated">
           {actionLoading === "REFETCH" ? "Refreshing..." : "Refresh"}
         </button>
 
-        <button onClick={() => handleAction("INVALIDATE")} disabled={actionLoading !== null} className="btn-warning">
+        <button onClick={() => handleAction("INVALIDATE")} disabled={actionLoading !== null} className="btn-warning btn-animated">
           {actionLoading === "INVALIDATE" ? "Invalidating..." : "Invalidate"}
         </button>
 
-        <button onClick={() => handleAction("RESET")} disabled={actionLoading !== null} className="btn-secondary">
+        <button onClick={() => handleAction("RESET")} disabled={actionLoading !== null} className="btn-secondary btn-animated">
           {actionLoading === "RESET" ? "Resetting..." : "Reset"}
         </button>
 
@@ -48,7 +48,7 @@ export function QueryActions({ selectedQuery, onAction, actionLoading, setAction
             }
           }}
           disabled={actionLoading !== null}
-          className="btn-danger"
+          className="btn-danger btn-animated"
         >
           {actionLoading === "REMOVE" ? "Removing..." : "Remove"}
         </button>
@@ -56,7 +56,7 @@ export function QueryActions({ selectedQuery, onAction, actionLoading, setAction
         <button
           onClick={() => handleAction("TRIGGER_LOADING")}
           disabled={actionLoading !== null}
-          className={isArtificialLoading ? "btn-secondary" : "btn-accent"}
+          className={`${isArtificialLoading ? "btn-secondary" : "btn-accent"} btn-animated`}
         >
           {actionLoading === "TRIGGER_LOADING" ? "Triggering..." : isArtificialLoading ? "Cancel Loading" : "Trigger Loading"}
         </button>
@@ -64,7 +64,7 @@ export function QueryActions({ selectedQuery, onAction, actionLoading, setAction
         <button
           onClick={() => handleAction("TRIGGER_ERROR")}
           disabled={actionLoading !== null}
-          className={isArtificialError ? "btn-secondary" : "btn-special"}
+          className={`${isArtificialError ? "btn-secondary" : "btn-special"} btn-animated`}
         >
           {actionLoading === "TRIGGER_ERROR" ? "Triggering..." : isArtificialError ? "Cancel Error" : "Trigger Error"}
         </button>

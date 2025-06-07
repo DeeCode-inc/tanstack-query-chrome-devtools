@@ -1,0 +1,11 @@
+@layer base {
+  /* Base layer - Foundation styles */
+  body {
+    @apply font-sans;
+  }
+
+  /* Container query foundation */
+  .card-container {
+    container-type: inline-size;
+  }
+}
