@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { QueryKey } from "@tanstack/query-core";
 
 // Import our extracted components
@@ -11,41 +11,29 @@ import { MutationListItem } from "./components/mutation/MutationListItem";
 import { MutationDetails } from "./components/mutation/MutationDetails";
 
 // Import our centralized types
-import type { QueryData, MutationData, ViewType } from "./types/query";
+import type { ViewType } from "./types/query";
+
+// Import our custom hook
+import { useConnection } from "./hooks/useConnection";
 
 
 
 function App() {
-  const [tanStackQueryDetected, setTanStackQueryDetected] = useState<boolean | null>(null);
-  const [queries, setQueries] = useState<QueryData[]>([]);
-  const [mutations, setMutations] = useState<MutationData[]>([]);
+  // Use our custom connection hook
+  const { tanStackQueryDetected, queries, mutations, artificialStates, sendMessage } = useConnection();
+
+  // Local UI state
   const [currentView, setCurrentView] = useState<ViewType>("queries");
   const [searchTerm, setSearchTerm] = useState("");
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(null);
   const [selectedMutationIndex, setSelectedMutationIndex] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  // Track artificial states triggered by DevTools
-  const [artificialStates, setArtificialStates] = useState<Map<string, "loading" | "error">>(new Map());
-
-  // Connection management
-  const portRef = useRef<chrome.runtime.Port | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle query actions
   const handleQueryAction = useCallback(async (action: string, queryKey: QueryKey) => {
-    if (!portRef.current) {
-      setActionFeedback({
-        message: "Not connected to background script",
-        type: "error",
-      });
-      return;
-    }
-
     try {
-      portRef.current.postMessage({
+      sendMessage({
         type: "QUERY_ACTION",
         action: action,
         queryKey: queryKey,
@@ -57,7 +45,7 @@ function App() {
         type: "error",
       });
     }
-  }, []);
+  }, [sendMessage]);
 
   // Clear action feedback after delay
   useEffect(() => {
@@ -68,112 +56,6 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, [actionFeedback]);
-
-  const connectToBackground = useCallback(() => {
-    try {
-      const port = chrome.runtime.connect({ name: "devtools" });
-      portRef.current = port;
-
-      port.onMessage.addListener((message) => {
-        if (message.type === "CONNECTION_ESTABLISHED") {
-          setReconnectAttempts(0);
-
-          // Start heartbeat
-          if (heartbeatIntervalRef.current) {
-            clearInterval(heartbeatIntervalRef.current);
-          }
-          heartbeatIntervalRef.current = setInterval(() => {
-            if (portRef.current) {
-              try {
-                portRef.current.postMessage({ type: "PING", timestamp: Date.now() });
-              } catch (error) {
-                console.warn("Failed to send ping:", error);
-              }
-            }
-          }, 10000); // Ping every 10 seconds
-        } else if (message.type === "PONG") {
-          // Connection is healthy
-        } else if (message.type === "INITIAL_STATE") {
-          setTanStackQueryDetected(message.hasTanStackQuery);
-        } else if (message.type === "QEVENT") {
-          switch (message.subtype) {
-            case "QUERY_CLIENT_DETECTED":
-              setTanStackQueryDetected(true);
-              break;
-            case "QUERY_CLIENT_NOT_FOUND":
-              setTanStackQueryDetected(false);
-              break;
-            case "QUERY_STATE_UPDATE":
-              break;
-            case "QUERY_DATA_UPDATE":
-              if (Array.isArray(message.payload)) {
-                setQueries(message.payload);
-              }
-              break;
-            case "MUTATION_DATA_UPDATE":
-              if (Array.isArray(message.payload)) {
-                setMutations(message.payload);
-              }
-              break;
-          }
-        } else if (message.type === "QUERY_ACTION_RESULT") {
-          // Update artificial states based on action results
-          if (message.success && (message.action === "TRIGGER_LOADING" || message.action === "TRIGGER_ERROR")) {
-            setArtificialStates((prev) => {
-              const newStates = new Map(prev);
-              const queryKeyString = JSON.stringify(message.queryKey);
-
-              if (message.action === "TRIGGER_LOADING") {
-                if (newStates.get(queryKeyString) === "loading") {
-                  // Cancel loading state
-                  newStates.delete(queryKeyString);
-                } else {
-                  // Start loading state
-                  newStates.set(queryKeyString, "loading");
-                }
-              } else if (message.action === "TRIGGER_ERROR") {
-                if (newStates.get(queryKeyString) === "error") {
-                  // Cancel error state
-                  newStates.delete(queryKeyString);
-                } else {
-                  // Start error state
-                  newStates.set(queryKeyString, "error");
-                }
-              }
-
-              return newStates;
-            });
-          }
-        }
-      });
-
-      port.onDisconnect.addListener(() => {
-        portRef.current = null;
-
-        // Clear heartbeat
-        if (heartbeatIntervalRef.current) {
-          clearInterval(heartbeatIntervalRef.current);
-          heartbeatIntervalRef.current = null;
-        }
-
-        // Attempt reconnection with exponential backoff
-        const attempt = reconnectAttempts + 1;
-        setReconnectAttempts(attempt);
-
-        if (attempt <= 5) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10s delay
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connectToBackground();
-          }, delay);
-        } else {
-          console.error("Failed to reconnect after 5 attempts");
-        }
-      });
-    } catch (error) {
-      console.error("Failed to connect to background script:", error);
-    }
-  }, [reconnectAttempts]);
 
   // Detect system dark mode preference
   useEffect(() => {
@@ -193,24 +75,6 @@ function App() {
       mediaQuery.removeEventListener("change", handleChange);
     };
   }, []);
-
-  useEffect(() => {
-    connectToBackground();
-
-    // Cleanup function
-    return () => {
-      if (portRef.current) {
-        portRef.current.disconnect();
-        portRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-      }
-    };
-  }, [connectToBackground]);
 
   return (
     <div className="h-screen flex flex-col font-sans text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
