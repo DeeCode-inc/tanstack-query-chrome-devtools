@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "./styles/cards.css";
+
+/* Modern CSS Architecture with Cascade Layers */
+@layer base, components, cards, responsive, animations;
 
 /* Custom DevTools-specific styles */
 @layer base {
@@ -6,6 +10,45 @@
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     font-size: 0.875rem;
     line-height: 1.25rem;
+  }
+
+  /* Container query support */
+  .container-queries {
+    container-type: inline-size;
+  }
+}
+
+@layer responsive {
+  /* Container queries for responsive components */
+  @container (min-width: 300px) {
+    .query-item-responsive {
+      @apply flex-row;
+    }
+
+    .query-key-responsive {
+      @apply text-sm;
+    }
+  }
+
+  @container (max-width: 299px) {
+    .query-item-responsive {
+      @apply flex-col gap-2;
+    }
+
+    .query-key-responsive {
+      @apply text-xs;
+    }
+  }
+
+  /* Prefer reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .card-interactive {
+      @apply transition-none;
+    }
+
+    .card-interactive:hover {
+      transform: none;
+    }
   }
 }
 

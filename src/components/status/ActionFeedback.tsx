@@ -12,25 +12,30 @@ export function ActionFeedback({ feedback, onClose }: ActionFeedbackProps) {
     <div className="mb-5">
       <div
         className={`
-          p-2.5 rounded border flex items-center justify-between
+          card-base p-3 flex items-center justify-between shadow-md
+          border-l-4 transition-all duration-300 ease-out
           ${
             feedback.type === "success"
-              ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700"
-              : "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"
+              ? "bg-green-50 text-green-800 border-green-500 dark:bg-green-950/50 dark:text-green-100"
+              : "bg-red-50 text-red-800 border-red-500 dark:bg-red-950/50 dark:text-red-100"
           }
         `}
       >
-        <span>
-          {feedback.type === "success" ? "✅" : "❌"} {feedback.message}
+        <span className="flex items-center gap-2">
+          <span className="text-lg">
+            {feedback.type === "success" ? "✅" : "❌"}
+          </span>
+          <span className="font-medium">{feedback.message}</span>
         </span>
         <button
           onClick={onClose}
           className={`
-            bg-transparent border-none text-base cursor-pointer px-1
+            bg-transparent border-none text-lg cursor-pointer px-2 py-1 rounded
+            hover:bg-black/10 dark:hover:bg-white/10 transition-colors
             ${
               feedback.type === "success"
-                ? "text-green-800 dark:text-green-100"
-                : "text-red-800 dark:text-red-100"
+                ? "text-green-700 dark:text-green-200"
+                : "text-red-700 dark:text-red-200"
             }
           `}
         >
