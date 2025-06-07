@@ -1,208 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import JsonView from "@microlink/react-json-view";
-import type { QueryKey, QueryObserverBaseResult } from "@tanstack/query-core";
+import type { QueryKey } from "@tanstack/query-core";
 
-// Query data interface using TanStack Query types
-interface QueryData {
-  queryKey: QueryKey;
-  state: QueryObserverBaseResult<unknown, unknown>;
-  meta?: Record<string, unknown>;
-  isActive: boolean;
-  observersCount: number;
-}
+// Import our extracted components
+import { ActionFeedback } from "./components/status/ActionFeedback";
+import { SearchBar } from "./components/layout/SearchBar";
+import { ToggleGroup } from "./components/layout/ToggleGroup";
+import { QueryListItem } from "./components/query/QueryListItem";
+import { MutationListItem } from "./components/mutation/MutationListItem";
 
-// Mutation data interface
-interface MutationData {
-  mutationId: number;
-  mutationKey?: string;
-  state: "idle" | "pending" | "success" | "error" | "paused";
-  variables?: unknown;
-  context?: unknown;
-  data?: unknown;
-  error?: unknown;
-  submittedAt: number;
-  isPending: boolean;
-}
+// Import our centralized types
+import type { QueryData, MutationData, ViewType } from "./types/query";
 
-// View type for toggle group
-type ViewType = "queries" | "mutations";
+// Import utility functions
+import { getQueryStatusDisplay, getMutationStatusDisplay } from "./utils/status";
+import { formatQueryKeyShort, formatQueryKeyDetailed, getQueryKeyString } from "./utils/formatters";
 
-// Helper function to get status display with state-based colors
-function getStatusDisplay(query: QueryData) {
-  if (query.state.isFetching) {
-    return {
-      icon: "🔄",
-      text: "Fetching",
-      bgColor: "bg-blue-500",
-      textColor: "text-blue-600",
-    };
-  }
-
-  switch (query.state.status) {
-    case "success":
-      if (query.state.isStale) {
-        return {
-          icon: "🔄",
-          text: "Stale",
-          bgColor: "bg-yellow-500",
-          textColor: "text-yellow-600",
-        };
-      }
-      return {
-        icon: "✅",
-        text: "Fresh",
-        bgColor: "bg-green-500",
-        textColor: "text-green-600",
-      };
-    case "error":
-      return {
-        icon: "❌",
-        text: "Error",
-        bgColor: "bg-red-500",
-        textColor: "text-red-600",
-      };
-    case "pending":
-      return {
-        icon: "⏳",
-        text: "Pending",
-        bgColor: "bg-orange-500",
-        textColor: "text-orange-600",
-      };
-    default:
-      return {
-        icon: "❓",
-        text: query.isActive ? "Unknown" : "Inactive",
-        bgColor: "bg-gray-400",
-        textColor: "text-gray-600",
-      };
-  }
-}
-
-// Helper function to get mutation status display
-function getMutationStatusDisplay(mutation: MutationData) {
-  switch (mutation.state) {
-    case "pending":
-      return {
-        icon: "⏳",
-        text: "Pending",
-        bgColor: "bg-orange-500",
-        textColor: "text-orange-600",
-      };
-    case "success":
-      return {
-        icon: "✅",
-        text: "Success",
-        bgColor: "bg-green-500",
-        textColor: "text-green-600",
-      };
-    case "error":
-      return {
-        icon: "❌",
-        text: "Error",
-        bgColor: "bg-red-500",
-        textColor: "text-red-600",
-      };
-    case "paused":
-      return {
-        icon: "⏸️",
-        text: "Paused",
-        bgColor: "bg-yellow-500",
-        textColor: "text-yellow-600",
-      };
-    case "idle":
-    default:
-      return {
-        icon: "💤",
-        text: "Idle",
-        bgColor: "bg-gray-400",
-        textColor: "text-gray-600",
-      };
-  }
-}
-
-// Helper function to format query key (single line for list)
-function formatQueryKeyShort(queryKey: readonly unknown[]): string {
-  try {
-    return JSON.stringify(queryKey).replace(/"/g, "");
-  } catch {
-    return String(queryKey);
-  }
-}
-
-// Helper function to format query key (multi-line for details)
-function formatQueryKeyDetailed(queryKey: readonly unknown[]): string {
-  try {
-    return JSON.stringify(queryKey, null, 2);
-  } catch {
-    return String(queryKey);
-  }
-}
-
-// QueryListItem component for left column
-function QueryListItem({ query, index, isSelected, onSelect }: { query: QueryData; index: number; isSelected: boolean; onSelect: (index: number) => void }) {
-  const status = getStatusDisplay(query);
-
-  return (
-    <div
-      onClick={() => onSelect(index)}
-      className={`
-        p-3 flex items-center gap-3 cursor-pointer border-b border-gray-200 dark:border-gray-600
-        transition-colors duration-200 ease-in-out
-        ${isSelected ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500" : "hover:bg-gray-50 dark:hover:bg-gray-700"}
-      `}
-    >
-      {/* Observer count square */}
-      <div
-        className={`
-          w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded
-          ${status.bgColor}
-        `}
-      >
-        {query.observersCount}
-      </div>
-
-      {/* Query key - single line with truncation */}
-      <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{formatQueryKeyShort(query.queryKey)}</div>
-    </div>
-  );
-}
-
-// MutationListItem component for left column
-function MutationListItem({ mutation, index, isSelected, onSelect }: { mutation: MutationData; index: number; isSelected: boolean; onSelect: (index: number) => void }) {
-  const status = getMutationStatusDisplay(mutation);
-
-  return (
-    <div
-      onClick={() => onSelect(index)}
-      className={`
-        p-3 flex items-center gap-3 cursor-pointer border-b border-gray-200 dark:border-gray-600
-        transition-colors duration-200 ease-in-out
-        ${isSelected ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500" : "hover:bg-gray-50 dark:hover:bg-gray-700"}
-      `}
-    >
-      {/* Status indicator */}
-      <div
-        className={`
-          w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded
-          ${status.bgColor}
-        `}
-      >
-        {status.icon}
-      </div>
-
-      {/* Mutation info - single line with truncation */}
-      <div className="flex-1">
-        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{mutation.mutationKey || `Mutation #${mutation.mutationId}`}</div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{new Date(mutation.submittedAt).toLocaleTimeString()}</div>
-      </div>
-    </div>
-  );
-}
-
-// Helper function to create a query key string for tracking
-function getQueryKeyString(queryKey: readonly unknown[]): string {
-  return JSON.stringify(queryKey);
-}
 
 // QueryDetails component for right column
 function QueryDetails({ query, onAction, isDarkMode, artificialStates }: { query: QueryData | null; onAction: (action: string, queryKey: QueryKey) => void; isDarkMode: boolean; artificialStates: Map<string, "loading" | "error"> }) {
@@ -230,7 +43,7 @@ function QueryDetails({ query, onAction, isDarkMode, artificialStates }: { query
     );
   }
 
-  const status = getStatusDisplay(query);
+  const status = getQueryStatusDisplay(query);
   const lastUpdated = Math.max(query.state.dataUpdatedAt, query.state.errorUpdatedAt);
 
   // Check artificial states for this query
@@ -726,29 +539,7 @@ function App() {
 
       <main className="flex-1 px-5 flex flex-col min-h-0">
         {/* Action Feedback Toast */}
-        {actionFeedback && (
-          <div className="mb-5">
-            <div
-              className={`
-              p-2.5 rounded border flex items-center justify-between
-              ${actionFeedback.type === "success" ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-700" : "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100 dark:border-red-700"}
-            `}
-            >
-              <span>
-                {actionFeedback.type === "success" ? "✅" : "❌"} {actionFeedback.message}
-              </span>
-              <button
-                onClick={() => setActionFeedback(null)}
-                className={`
-                bg-transparent border-none text-base cursor-pointer px-1
-                ${actionFeedback.type === "success" ? "text-green-800 dark:text-green-100" : "text-red-800 dark:text-red-100"}
-              `}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
+        <ActionFeedback feedback={actionFeedback} onClose={() => setActionFeedback(null)} />
 
         {tanStackQueryDetected === false && (
           <div className="flex-1 flex items-center justify-center">
@@ -768,31 +559,28 @@ function App() {
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex-shrink-0">
               {/* Toggle Group */}
-              <div className="flex items-center gap-1 mb-4 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg w-fit">
-                <button
-                  onClick={() => {
-                    setCurrentView("queries");
+              <ToggleGroup
+                currentView={currentView}
+                onViewChange={(view) => {
+                  setCurrentView(view);
+                  if (view === "queries") {
                     setSelectedMutationIndex(null);
-                  }}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${currentView === "queries" ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"}`}
-                >
-                  Queries ({queries.length})
-                </button>
-                <button
-                  onClick={() => {
-                    setCurrentView("mutations");
+                  } else {
                     setSelectedQueryIndex(null);
-                  }}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${currentView === "mutations" ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"}`}
-                >
-                  Mutations ({mutations.length})
-                </button>
-              </div>
+                  }
+                }}
+                options={[
+                  { value: "queries", label: "Queries", count: queries.length },
+                  { value: "mutations", label: "Mutations", count: mutations.length },
+                ]}
+              />
 
               {/* Search bar */}
-              <div className="mb-4">
-                <input type="text" placeholder={`🔍 Search ${currentView}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" />
-              </div>
+              <SearchBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                placeholder={`🔍 Search ${currentView}...`}
+              />
             </div>
 
             {/* Two-column layout - constrained height */}
