@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { QueryListItem } from "../query/QueryListItem";
 import { MutationListItem } from "../mutation/MutationListItem";
 import { SkeletonQueryItem } from "../skeleton/SkeletonQueryItem";
@@ -29,6 +30,27 @@ export function ListView({
   isDarkMode,
   isLoading = false,
 }: ListViewProps) {
+  // State for expanded query items
+  const [expandedQueryItems, setExpandedQueryItems] = useState<number[]>([]);
+  const [expandedMutationItems, setExpandedMutationItems] = useState<number[]>([]);
+
+  // Handle query expand/collapse
+  const handleToggleQueryExpand = (index: number) => {
+    setExpandedQueryItems(prev =>
+      prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    );
+  };
+
+  // Handle mutation expand/collapse
+  const handleToggleMutationExpand = (index: number) => {
+    setExpandedMutationItems(prev =>
+      prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    );
+  };
   // Show skeleton during initial loading
   if (isLoading && queries.length === 0 && mutations.length === 0) {
     const skeletonCount = 3; // Show 3 skeleton items
@@ -92,6 +114,8 @@ export function ListView({
                       onSelect={onSelectQuery}
                       staggerIndex={index}
                       enableCelebration={true}
+                      isExpanded={expandedQueryItems.includes(originalIndex)}
+                      onToggleExpand={handleToggleQueryExpand}
                     />
                   );
                 })
@@ -105,16 +129,21 @@ export function ListView({
                 const mutationStr = (mutation.mutationKey || `Mutation #${mutation.mutationId}`).toLowerCase();
                 return mutationStr.includes(searchTerm.toLowerCase());
               })
-              .map((mutation, index) => (
-                <MutationListItem
-                  key={index}
-                  mutation={mutation}
-                  index={index}
-                  isSelected={selectedMutationIndex === index}
-                  onSelect={onSelectMutation}
-                  staggerIndex={index}
-                />
-              ))
+              .map((mutation, index) => {
+                const originalIndex = mutations.indexOf(mutation);
+                return (
+                  <MutationListItem
+                    key={index}
+                    mutation={mutation}
+                    index={originalIndex}
+                    isSelected={selectedMutationIndex === originalIndex}
+                    onSelect={onSelectMutation}
+                    staggerIndex={index}
+                    isExpanded={expandedMutationItems.includes(originalIndex)}
+                    onToggleExpand={handleToggleMutationExpand}
+                  />
+                );
+              })
           )}
         </div>
       </div>

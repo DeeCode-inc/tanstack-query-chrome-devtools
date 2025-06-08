@@ -33,4 +33,84 @@
     @apply hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150;
     @apply cursor-pointer;
   }
+
+  /* === PHASE 7A: EXPANDABLE CARDS === */
+
+  /* Expandable card container with smooth height transitions */
+  .card-expandable {
+    @apply transition-all duration-300 ease-out;
+    @apply overflow-hidden;
+  }
+
+  /* Expanded state with enhanced visual feedback */
+  .card-expanded {
+    @apply bg-gray-50 dark:bg-gray-800;
+    @apply border-gray-300 dark:border-gray-600;
+    @apply shadow-md;
+  }
+
+  /* Preview content area with proper spacing and typography */
+  .card-preview-content {
+    @apply mt-3 pt-3 border-t border-gray-200 dark:border-gray-600;
+    @apply text-sm text-gray-600 dark:text-gray-300;
+    @apply bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 mx-1;
+    animation: fadeInDown 0.2s ease-out;
+  }
+
+  /* Custom animation for preview content */
+  @keyframes fadeInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Expand/collapse icon styling */
+  .card-expand-icon {
+    @apply w-4 h-4 text-gray-400 dark:text-gray-500;
+    @apply transition-transform duration-200 ease-out;
+    @apply hover:text-gray-600 dark:hover:text-gray-300;
+  }
+
+  /* Rotated state for expanded icon */
+  .card-expand-icon-expanded {
+    @apply rotate-180;
+  }
+
+  /* Preview section headers */
+  .card-preview-header {
+    @apply text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide;
+    @apply mb-2;
+  }
+
+  /* Preview data styling */
+  .card-preview-data {
+    @apply font-mono text-xs text-gray-700 dark:text-gray-300;
+    @apply bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700;
+    @apply p-2 max-h-24 overflow-y-auto;
+  }
+
+  /* Preview metadata styling */
+  .card-preview-meta {
+    @apply flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400;
+    @apply mb-2;
+  }
+
+  /* Interactive hover area for expand toggle */
+  .card-expand-trigger {
+    @apply flex items-center gap-2 min-w-0 flex-1;
+    @apply hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-sm px-1 py-0.5 -mx-1 -my-0.5;
+    @apply transition-colors duration-150;
+  }
+
+  /* Expand button styling */
+  .card-expand-button {
+    @apply p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600;
+    @apply transition-colors duration-150 flex-shrink-0;
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500/20;
+  }
 }
