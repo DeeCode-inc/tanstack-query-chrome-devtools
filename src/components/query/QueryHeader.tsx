@@ -1,6 +1,7 @@
 import type { QueryData } from "../../types/query";
 import { getQueryStatusDisplay } from "../../utils/status";
 import { formatQueryKeyDetailed } from "../../utils/formatters";
+import { StatusText } from "../status/StatusText";
 
 interface QueryHeaderProps {
   selectedQuery: QueryData;
@@ -24,7 +25,7 @@ export function QueryHeader({ selectedQuery }: QueryHeaderProps) {
         {/* Status badge */}
         <div className="flex-shrink-0">
           <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status:</div>
-          <div className={`px-3 py-1 rounded text-white text-sm font-medium ${status.bgColor}`}>{status.text}</div>
+          <StatusText status={status} enableCelebration={true} />
         </div>
       </div>
 

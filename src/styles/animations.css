@@ -374,6 +374,185 @@
     }
   }
 
+  /* State Change Animations - Phase 6D */
+
+  /* Base transition class for all status changes */
+  .status-transition {
+    transition: all 400ms cubic-bezier(0.4, 0.0, 0.2, 1);
+    will-change: background-color, color, transform, box-shadow;
+  }
+
+  /* State-specific transition animations */
+  .status-to-fetching {
+    animation: statusToFetching 500ms ease-out forwards;
+  }
+
+  .status-to-success {
+    animation: statusToSuccess 600ms ease-out forwards;
+  }
+
+  .status-to-stale {
+    animation: statusToStale 400ms ease-out forwards;
+  }
+
+  .status-to-error {
+    animation: statusToError 500ms ease-out forwards;
+  }
+
+  .status-to-pending {
+    animation: statusToPending 400ms ease-out forwards;
+  }
+
+  /* Multi-stage transition effects */
+  .status-celebrate {
+    animation: statusCelebrate 800ms cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+  }
+
+  .status-attention {
+    animation: statusAttention 600ms ease-out forwards;
+  }
+
+  .status-fade-gentle {
+    animation: statusFadeGentle 1200ms ease-in-out forwards;
+  }
+
+  /* Container animations for state changes */
+  .query-item-status-change {
+    animation: queryItemStatusChange 300ms ease-out forwards;
+  }
+
+  /* State Transition Keyframes - Phase 6D */
+  @keyframes statusToFetching {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes statusToSuccess {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(var(--color-green-500) / 0.4);
+    }
+    30% {
+      transform: scale(1.2);
+      box-shadow: 0 0 0 8px rgb(var(--color-green-500) / 0.2);
+    }
+    60% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 12px rgb(var(--color-green-500) / 0);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(var(--color-green-500) / 0);
+    }
+  }
+
+  @keyframes statusToStale {
+    0% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(0.98);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes statusToError {
+    0%, 100% {
+      transform: translateX(0) scale(1);
+    }
+    10%, 30%, 50%, 70%, 90% {
+      transform: translateX(-2px) scale(1.05);
+    }
+    20%, 40%, 60%, 80% {
+      transform: translateX(2px) scale(1.05);
+    }
+  }
+
+  @keyframes statusToPending {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.1);
+    }
+  }
+
+  @keyframes statusCelebrate {
+    0% {
+      transform: scale(1);
+    }
+    20% {
+      transform: scale(1.3) rotate(5deg);
+    }
+    40% {
+      transform: scale(1.1) rotate(-3deg);
+    }
+    60% {
+      transform: scale(1.2) rotate(2deg);
+    }
+    80% {
+      transform: scale(0.95) rotate(-1deg);
+    }
+    100% {
+      transform: scale(1) rotate(0deg);
+    }
+  }
+
+  @keyframes statusAttention {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(var(--color-red-500) / 0.4);
+    }
+    50% {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 6px rgb(var(--color-red-500) / 0.2);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(var(--color-red-500) / 0);
+    }
+  }
+
+  @keyframes statusFadeGentle {
+    0% {
+      filter: brightness(1);
+    }
+    25% {
+      filter: brightness(0.8);
+    }
+    75% {
+      filter: brightness(0.9);
+    }
+    100% {
+      filter: brightness(1);
+    }
+  }
+
+  @keyframes queryItemStatusChange {
+    0% {
+      background-color: transparent;
+    }
+    50% {
+      background-color: rgb(var(--color-blue-50) / 0.3);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
   /* Accessibility: Respect reduced motion preference */
   @media (prefers-reduced-motion: reduce) {
     .card-interactive-enhanced,
@@ -402,7 +581,17 @@
     .loading-initial,
     .loading-refresh,
     .loading-background,
-    .skeleton-to-content {
+    .skeleton-to-content,
+    .status-transition,
+    .status-to-fetching,
+    .status-to-success,
+    .status-to-stale,
+    .status-to-error,
+    .status-to-pending,
+    .status-celebrate,
+    .status-attention,
+    .status-fade-gentle,
+    .query-item-status-change {
       animation: none !important;
       transition: none !important;
     }

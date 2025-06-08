@@ -81,16 +81,20 @@ export function ListView({
                   const queryKeyStr = JSON.stringify(query.queryKey).toLowerCase();
                   return queryKeyStr.includes(searchTerm.toLowerCase());
                 })
-                .map((query, index) => (
-                  <QueryListItem
-                    key={index}
-                    query={query}
-                    index={index}
-                    isSelected={selectedQueryIndex === index}
-                    onSelect={onSelectQuery}
-                    staggerIndex={index}
-                  />
-                ))
+                .map((query, index) => {
+                  const originalIndex = queries.indexOf(query);
+                  return (
+                    <QueryListItem
+                      key={`${query.queryKey}-${index}`}
+                      query={query}
+                      index={originalIndex}
+                      isSelected={selectedQueryIndex === originalIndex}
+                      onSelect={onSelectQuery}
+                      staggerIndex={index}
+                      enableCelebration={true}
+                    />
+                  );
+                })
             )
           ) : mutations.length === 0 ? (
             <div className="p-5 text-center text-gray-500 dark:text-gray-400">No mutations found.</div>
