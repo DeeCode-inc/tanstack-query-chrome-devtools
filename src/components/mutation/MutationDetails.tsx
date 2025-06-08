@@ -3,6 +3,7 @@ import { MutationHeader } from "./MutationHeader";
 import { MutationVariables } from "./MutationVariables";
 import { MutationExplorer } from "./MutationExplorer";
 import { DataExplorer } from "../common/DataExplorer";
+import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
 
 interface MutationDetailsProps {
   selectedMutation: MutationData | null;
@@ -10,10 +11,15 @@ interface MutationDetailsProps {
 }
 
 export function MutationDetails({ selectedMutation, isDarkMode }: MutationDetailsProps) {
+  const { animationClass } = useDetailsAnimation({
+    selectedItem: selectedMutation,
+    getItemKey: (mutation: MutationData) => mutation.mutationId.toString(),
+  });
+
   if (!selectedMutation) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-        <div className="text-center">
+        <div className="text-center enter-animation-scale">
           <div className="text-2xl mb-2">👈</div>
           <p>Select a mutation from the list to view details</p>
         </div>
@@ -22,7 +28,7 @@ export function MutationDetails({ selectedMutation, isDarkMode }: MutationDetail
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className={`h-full overflow-y-auto ${animationClass}`}>
       <MutationHeader selectedMutation={selectedMutation} />
 
       <MutationVariables variables={selectedMutation.variables} isDarkMode={isDarkMode} />

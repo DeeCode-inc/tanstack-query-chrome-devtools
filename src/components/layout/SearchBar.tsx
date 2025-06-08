@@ -7,7 +7,7 @@ interface SearchBarProps {
 
 export function SearchBar({ searchTerm, onSearchChange, placeholder, className = "" }: SearchBarProps) {
   return (
-    <div className={`mb-4 ${className}`}>
+    <div className={`mb-4 enter-animation-scale ${className}`}>
       <input
         type="text"
         placeholder={placeholder}

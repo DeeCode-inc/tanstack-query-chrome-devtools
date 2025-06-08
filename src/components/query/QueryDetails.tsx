@@ -6,6 +6,7 @@ import { QueryHeader } from "./QueryHeader";
 import { QueryActions } from "./QueryActions";
 import { QueryExplorer } from "./QueryExplorer";
 import { DataExplorer } from "../common/DataExplorer";
+import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
 
 interface QueryDetailsProps {
   selectedQuery: QueryData | null;
@@ -17,10 +18,15 @@ interface QueryDetailsProps {
 export function QueryDetails({ selectedQuery, onAction, isDarkMode, artificialStates }: QueryDetailsProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const { animationClass } = useDetailsAnimation({
+    selectedItem: selectedQuery,
+    getItemKey: (query: QueryData) => JSON.stringify(query.queryKey),
+  });
+
   if (!selectedQuery) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-        <div className="text-center">
+        <div className="text-center enter-animation-scale">
           <div className="text-2xl mb-2">👈</div>
           <p>Select a query from the list to view details</p>
         </div>
@@ -29,7 +35,7 @@ export function QueryDetails({ selectedQuery, onAction, isDarkMode, artificialSt
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className={`h-full overflow-y-auto ${animationClass}`}>
       <QueryHeader selectedQuery={selectedQuery} />
 
       <QueryActions

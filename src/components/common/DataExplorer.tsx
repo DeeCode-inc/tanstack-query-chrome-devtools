@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import JsonView from "@microlink/react-json-view";
 
 interface DataExplorerProps {
@@ -9,10 +10,23 @@ interface DataExplorerProps {
 }
 
 export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "No data available" }: DataExplorerProps) {
+  const [isContentEntering, setIsContentEntering] = useState(false);
+  const [hasDataLoaded, setHasDataLoaded] = useState(false);
+
+  useEffect(() => {
+    // Only trigger content animation on initial data load, not on subsequent updates
+    if ((data !== undefined || error !== undefined) && !hasDataLoaded) {
+      setIsContentEntering(true);
+      setHasDataLoaded(true);
+      const timer = setTimeout(() => setIsContentEntering(false), 450); // Match content-enter animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [data, error, hasDataLoaded]);
+
   return (
     <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
       <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">{title}</h4>
-      <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
+      <div className={`bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 ${isContentEntering ? "content-enter" : ""}`}>
         {data !== undefined && data !== null ? (
           <JsonView
             src={data}

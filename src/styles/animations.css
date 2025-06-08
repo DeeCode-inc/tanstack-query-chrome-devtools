@@ -74,6 +74,54 @@
     opacity: 1 !important;
   }
 
+  /* Enter/Exit Transition Classes */
+  .enter-animation {
+    animation: fadeInUp 300ms ease-out forwards;
+    will-change: transform, opacity;
+  }
+
+  .enter-animation-scale {
+    animation: fadeInScale 300ms ease-out forwards;
+    will-change: transform, opacity;
+  }
+
+  .enter-animation-slide {
+    animation: slideInRight 300ms ease-out forwards;
+    will-change: transform, opacity;
+  }
+
+  .exit-animation {
+    animation: fadeOutDown 200ms ease-in forwards;
+    will-change: transform, opacity;
+  }
+
+  .exit-animation-slide {
+    animation: slideOutRight 200ms ease-in forwards;
+    will-change: transform, opacity;
+  }
+
+  /* Component-specific enter/exit classes */
+  .details-enter {
+    animation: fadeInUp 400ms ease-out forwards;
+    animation-delay: 50ms;
+    opacity: 0;
+  }
+
+  .toast-enter {
+    animation: slideInRight 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    opacity: 0;
+  }
+
+  .toast-exit {
+    animation: slideOutRight 200ms ease-in forwards;
+  }
+
+  .content-enter {
+    animation: fadeInScale 350ms ease-out forwards;
+    animation-delay: 100ms;
+    opacity: 0;
+  }
+
   /* Keyframe Definitions */
   @keyframes list-item-enter {
     0% {
@@ -83,6 +131,61 @@
     100% {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes fadeInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeInScale {
+    0% {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slideInRight {
+    0% {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fadeOutDown {
+    0% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes slideOutRight {
+    0% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(20px);
     }
   }
 
@@ -125,12 +228,24 @@
     .card-list-item-animated,
     .btn-animated,
     .status-badge-animated,
-    .list-item-stagger {
+    .list-item-stagger,
+    .enter-animation,
+    .enter-animation-scale,
+    .enter-animation-slide,
+    .exit-animation,
+    .exit-animation-slide,
+    .details-enter,
+    .toast-enter,
+    .toast-exit,
+    .content-enter {
       animation: none !important;
       transition: none !important;
     }
 
-    .list-item-stagger {
+    .list-item-stagger,
+    .details-enter,
+    .toast-enter,
+    .content-enter {
       opacity: 1 !important; /* Show items immediately when motion is reduced */
     }
 
