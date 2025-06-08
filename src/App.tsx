@@ -12,6 +12,7 @@ import { MutationDetails } from "./components/mutation/MutationDetails";
 import { useConnection } from "./hooks/useConnection";
 import { useUIState } from "./hooks/useUIState";
 import { useViewState } from "./hooks/useViewState";
+import { useLoadingStates } from "./hooks/useLoadingStates";
 
 
 
@@ -20,6 +21,11 @@ function App() {
   const { tanStackQueryDetected, queries, mutations, artificialStates, sendMessage } = useConnection();
   const { isDarkMode, actionFeedback, handleQueryAction, setActionFeedback } = useUIState(sendMessage);
   const { currentView, searchTerm, selectedQueryIndex, selectedMutationIndex, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange } = useViewState();
+  const { isInitialLoading } = useLoadingStates({
+    queries,
+    mutations,
+    tanStackQueryDetected: tanStackQueryDetected === true
+  });
 
   return (
     <div className="h-screen flex flex-col font-sans text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
@@ -65,6 +71,8 @@ function App() {
                   selectedMutationIndex={selectedMutationIndex}
                   onSelectQuery={setSelectedQueryIndex}
                   onSelectMutation={setSelectedMutationIndex}
+                  isDarkMode={isDarkMode}
+                  isLoading={isInitialLoading}
                 />
               }
               detailView={
