@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { StatusBadge } from "../status/StatusBadge";
 import { getMutationStatusDisplay } from "../../utils/status";
 import type { MutationData } from "../../types/query";
@@ -7,18 +8,35 @@ interface MutationListItemProps {
   index: number;
   isSelected: boolean;
   onSelect: (index: number) => void;
+  staggerIndex?: number;
 }
 
-export function MutationListItem({ mutation, index, isSelected, onSelect }: MutationListItemProps) {
+export function MutationListItem({ mutation, index, isSelected, onSelect, staggerIndex }: MutationListItemProps) {
   const status = getMutationStatusDisplay(mutation);
+  const [staggerAnimationComplete, setStaggerAnimationComplete] = useState(false);
+
+  // Apply stagger animation if staggerIndex is provided
+  const staggerStyle = staggerIndex !== undefined ? {
+    '--stagger-index': staggerIndex
+  } as React.CSSProperties : {};
+
+  // Handle animation end to remove stagger class
+  const handleAnimationEnd = (event: React.AnimationEvent) => {
+    if (event.animationName === 'list-item-enter') {
+      setStaggerAnimationComplete(true);
+    }
+  };
 
   return (
     <div
       onClick={() => onSelect(index)}
+      style={staggerStyle}
+      onAnimationEnd={handleAnimationEnd}
       className={`
         card-list-item card-list-item-animated card-selection-animated query-item-responsive
         flex items-center gap-3
         ${isSelected ? "card-selected" : ""}
+        ${staggerIndex !== undefined && !staggerAnimationComplete ? "list-item-stagger" : ""}
       `}
     >
       {/* Status indicator */}

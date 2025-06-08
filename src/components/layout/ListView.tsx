@@ -49,6 +49,7 @@ export function ListView({
                     index={index}
                     isSelected={selectedQueryIndex === index}
                     onSelect={onSelectQuery}
+                    staggerIndex={index}
                   />
                 ))
             )
@@ -68,6 +69,7 @@ export function ListView({
                   index={index}
                   isSelected={selectedMutationIndex === index}
                   onSelect={onSelectMutation}
+                  staggerIndex={index}
                 />
               ))
           )}
