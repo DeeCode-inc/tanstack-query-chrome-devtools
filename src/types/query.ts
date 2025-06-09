@@ -22,6 +22,8 @@ export interface MutationData {
 
 export type ViewType = "queries" | "mutations";
 
+export type LayoutMode = "list" | "grid";
+
 export interface StatusDisplay {
   icon: string;
   text: string;

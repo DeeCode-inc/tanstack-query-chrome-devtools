@@ -2,8 +2,10 @@
 import { ActionFeedback } from "./components/status/ActionFeedback";
 import { SearchBar } from "./components/layout/SearchBar";
 import { ToggleGroup } from "./components/layout/ToggleGroup";
+import { LayoutToggle } from "./components/layout/LayoutToggle";
 import { EmptyState } from "./components/layout/EmptyState";
 import { ListView } from "./components/layout/ListView";
+import { GridView } from "./components/layout/GridView";
 import { MainLayout } from "./components/layout/MainLayout";
 import { QueryDetails } from "./components/query/QueryDetails";
 import { MutationDetails } from "./components/mutation/MutationDetails";
@@ -20,7 +22,7 @@ function App() {
   // Use our custom hooks
   const { tanStackQueryDetected, queries, mutations, artificialStates, sendMessage } = useConnection();
   const { isDarkMode, actionFeedback, handleQueryAction, setActionFeedback } = useUIState(sendMessage);
-  const { currentView, searchTerm, selectedQueryIndex, selectedMutationIndex, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange } = useViewState();
+  const { currentView, layoutMode, searchTerm, selectedQueryIndex, selectedMutationIndex, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange, handleLayoutChange } = useViewState();
   const { isInitialLoading } = useLoadingStates({
     queries,
     mutations,
@@ -42,15 +44,22 @@ function App() {
         {tanStackQueryDetected === true && (
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex-shrink-0">
-              {/* Toggle Group */}
-              <ToggleGroup
-                currentView={currentView}
-                onViewChange={handleViewChange}
-                options={[
-                  { value: "queries", label: "Queries", count: queries.length },
-                  { value: "mutations", label: "Mutations", count: mutations.length },
-                ]}
-              />
+              {/* Toggle Groups */}
+              <div className="flex items-center gap-4 mb-4">
+                <ToggleGroup
+                  currentView={currentView}
+                  onViewChange={handleViewChange}
+                  options={[
+                    { value: "queries", label: "Queries", count: queries.length },
+                    { value: "mutations", label: "Mutations", count: mutations.length },
+                  ]}
+                />
+
+                <LayoutToggle
+                  layoutMode={layoutMode}
+                  onLayoutChange={handleLayoutChange}
+                />
+              </div>
 
               {/* Search bar */}
               <SearchBar
@@ -62,18 +71,33 @@ function App() {
 
             <MainLayout
               listView={
-                <ListView
-                  currentView={currentView}
-                  searchTerm={searchTerm}
-                  queries={queries}
-                  mutations={mutations}
-                  selectedQueryIndex={selectedQueryIndex}
-                  selectedMutationIndex={selectedMutationIndex}
-                  onSelectQuery={setSelectedQueryIndex}
-                  onSelectMutation={setSelectedMutationIndex}
-                  isDarkMode={isDarkMode}
-                  isLoading={isInitialLoading}
-                />
+                layoutMode === "list" ? (
+                  <ListView
+                    currentView={currentView}
+                    searchTerm={searchTerm}
+                    queries={queries}
+                    mutations={mutations}
+                    selectedQueryIndex={selectedQueryIndex}
+                    selectedMutationIndex={selectedMutationIndex}
+                    onSelectQuery={setSelectedQueryIndex}
+                    onSelectMutation={setSelectedMutationIndex}
+                    isDarkMode={isDarkMode}
+                    isLoading={isInitialLoading}
+                  />
+                ) : (
+                  <GridView
+                    currentView={currentView}
+                    searchTerm={searchTerm}
+                    queries={queries}
+                    mutations={mutations}
+                    selectedQueryIndex={selectedQueryIndex}
+                    selectedMutationIndex={selectedMutationIndex}
+                    onSelectQuery={setSelectedQueryIndex}
+                    onSelectMutation={setSelectedMutationIndex}
+                    isDarkMode={isDarkMode}
+                    isLoading={isInitialLoading}
+                  />
+                )
               }
               detailView={
                 currentView === "queries" ? (

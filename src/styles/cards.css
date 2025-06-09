@@ -113,4 +113,115 @@
     @apply transition-colors duration-150 flex-shrink-0;
     @apply focus:outline-none focus:ring-2 focus:ring-blue-500/20;
   }
+
+  /* === PHASE 7C: CARD DECK LAYOUTS === */
+
+  /* Grid layout container with adaptive columns */
+  .card-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    container-type: inline-size;
+    @apply p-4;
+  }
+
+  /* Responsive grid adjustments using container queries */
+  @container (min-width: 600px) {
+    .card-grid-container {
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+  }
+
+  @container (min-width: 900px) {
+    .card-grid-container {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+  }
+
+  /* Individual grid item cards */
+  .card-grid-item {
+    @apply bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700;
+    @apply shadow-sm hover:shadow-md transition-all duration-200 ease-out;
+    @apply hover:border-gray-300 dark:hover:border-gray-600;
+    @apply cursor-pointer;
+    @apply flex flex-col;
+    min-height: 120px;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Grid item expanded state */
+  .card-grid-item-expanded {
+    @apply bg-gray-50 dark:bg-gray-800;
+    @apply border-gray-300 dark:border-gray-600;
+    @apply shadow-md;
+    @apply transform scale-[1.02];
+    @apply shadow-lg;
+  }
+
+  /* Grid item selected state */
+  .card-grid-item-selected {
+    @apply bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-700;
+    @apply ring-2 ring-blue-500/20 dark:ring-blue-400/30;
+    @apply transform scale-[1.01];
+  }
+
+  /* Grid item header area */
+  .card-grid-header {
+    @apply p-4 flex-shrink-0;
+    @apply border-b border-gray-100 dark:border-gray-700;
+  }
+
+  /* Grid item content area */
+  .card-grid-content {
+    @apply p-4 flex-1 flex flex-col;
+  }
+
+  /* Grid item footer area */
+  .card-grid-footer {
+    @apply p-4 pt-2 flex-shrink-0;
+    @apply border-t border-gray-100 dark:border-gray-700;
+    @apply bg-gray-50 dark:bg-gray-800/50;
+  }
+
+  /* Grid-specific preview content */
+  .card-grid-preview {
+    @apply mt-2 p-3 rounded-md;
+    @apply bg-gray-50 dark:bg-gray-800/50;
+    @apply border border-gray-200 dark:border-gray-600;
+    @apply text-sm text-gray-600 dark:text-gray-300;
+    animation: fadeInDown 0.2s ease-out;
+  }
+
+  /* Compact grid item variant for dense layouts */
+  .card-grid-item-compact {
+    @apply bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700;
+    @apply shadow-sm hover:shadow-md transition-all duration-200 ease-out;
+    @apply hover:border-gray-300 dark:hover:border-gray-600;
+    @apply cursor-pointer;
+    @apply flex flex-col;
+    min-height: 100px;
+    @apply text-sm;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Grid responsive typography */
+  @container (max-width: 320px) {
+    .card-grid-item {
+      @apply text-sm;
+    }
+
+    .card-grid-header,
+    .card-grid-content,
+    .card-grid-footer {
+      @apply p-3;
+    }
+  }
+
+  @container (min-width: 400px) {
+    .card-grid-item {
+      min-height: 140px;
+    }
+  }
 }
