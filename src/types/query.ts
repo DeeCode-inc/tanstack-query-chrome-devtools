@@ -35,3 +35,22 @@ export interface ActionFeedback {
   message: string;
   type: "success" | "error";
 }
+
+// Multi-selection interfaces for Phase 7D
+export interface MultiSelectionState {
+  selectedIndices: Set<number>;
+  lastSelectedIndex: number | null;
+  selectionMode: 'single' | 'multi' | 'range';
+}
+
+export interface InteractionState {
+  hoveredIndex: number | null;
+  hoveredDuration: number;
+  focusedIndex: number | null;
+  contextMenuIndex: number | null;
+}
+
+export interface BulkActionOptions {
+  action: 'invalidate' | 'refetch' | 'remove' | 'reset';
+  targetIndices: number[];
+}

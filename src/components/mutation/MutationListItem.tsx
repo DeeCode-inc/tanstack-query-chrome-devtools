@@ -20,9 +20,37 @@ interface MutationListItemProps {
   staggerIndex?: number;
   isExpanded?: boolean;
   onToggleExpand?: (index: number) => void;
+  // Multi-selection props
+  isMultiSelected?: boolean;
+  isRangeSelected?: boolean;
+  onMultiSelect?: (index: number, event?: React.MouseEvent) => void;
+  // Keyboard navigation props
+  isFocused?: boolean;
+  isKeyboardFocused?: boolean;
+  tabIndex?: number;
+  onFocus?: () => void;
+  onMouseEnter?: () => void;
+  itemRef?: (element: HTMLElement | null) => void;
 }
 
-export function MutationListItem({ mutation, index, isSelected, onSelect, staggerIndex, isExpanded = false, onToggleExpand }: MutationListItemProps) {
+export function MutationListItem({
+  mutation,
+  index,
+  isSelected,
+  onSelect,
+  staggerIndex,
+  isExpanded = false,
+  onToggleExpand,
+  isMultiSelected = false,
+  isRangeSelected = false,
+  onMultiSelect,
+  isFocused = false,
+  isKeyboardFocused = false,
+  tabIndex = -1,
+  onFocus,
+  onMouseEnter,
+  itemRef,
+}: MutationListItemProps) {
   const status = getMutationStatusDisplay(mutation);
   const [staggerAnimationComplete, setStaggerAnimationComplete] = useState(false);
 
@@ -46,8 +74,14 @@ export function MutationListItem({ mutation, index, isSelected, onSelect, stagge
     }
   };
 
-  // Handle main card click (single click to expand, double click to select)
+  // Handle main card click with multi-selection support
   const handleCardClick = (event: React.MouseEvent) => {
+    // Check for multi-selection modifiers first
+    if (onMultiSelect && (event.ctrlKey || event.metaKey || event.shiftKey)) {
+      onMultiSelect(index, event);
+      return;
+    }
+
     if (event.detail === 1) {
       // Single click - toggle expand
       if (onToggleExpand) {
@@ -78,12 +112,20 @@ export function MutationListItem({ mutation, index, isSelected, onSelect, stagge
 
   return (
     <div
+      ref={itemRef}
       style={staggerStyle}
       onAnimationEnd={handleAnimationEnd}
+      onFocus={onFocus}
+      onMouseEnter={onMouseEnter}
+      tabIndex={tabIndex}
       className={`
         card-list-item card-list-item-animated card-selection-animated card-expandable
         ${isSelected ? "card-selected" : ""}
+        ${isMultiSelected ? "card-multi-selected" : ""}
+        ${isRangeSelected ? "card-range-selected" : ""}
         ${isExpanded ? "card-expanded" : ""}
+        ${isFocused ? "card-focused" : ""}
+        ${isKeyboardFocused ? "card-keyboard-focused" : ""}
         ${staggerIndex !== undefined && !staggerAnimationComplete ? "list-item-stagger" : ""}
       `}
     >

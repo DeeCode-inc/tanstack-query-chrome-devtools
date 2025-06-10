@@ -224,4 +224,118 @@
       min-height: 140px;
     }
   }
+
+  /* === PHASE 7D: INTERACTIVE CARD STATES === */
+
+  /* Multi-selection styles */
+  .card-multi-selected {
+    @apply bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-600;
+    @apply ring-1 ring-blue-400/30 dark:ring-blue-500/30;
+  }
+
+  .card-range-selected {
+    @apply bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700;
+    @apply ring-1 ring-blue-300/20 dark:ring-blue-600/20;
+  }
+
+  /* Multi-selection indicator component */
+  .multi-selection-indicator {
+    @apply bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-700;
+    @apply rounded-lg p-3 mb-4 shadow-sm;
+    @apply transition-all duration-200 ease-out;
+    animation: slideInDown 300ms ease-out forwards;
+  }
+
+  .multi-selection-header {
+    @apply flex items-center justify-between mb-3;
+  }
+
+  .multi-selection-info {
+    @apply flex items-center gap-2;
+  }
+
+  .multi-selection-clear {
+    @apply p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800;
+    @apply text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200;
+    @apply transition-colors duration-150;
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500/20;
+  }
+
+  .multi-selection-actions {
+    @apply flex items-center gap-2 flex-wrap;
+  }
+
+  /* Focus management styles */
+  .card-focused {
+    @apply ring-2 ring-blue-500/50 dark:ring-blue-400/50;
+    @apply ring-offset-2 ring-offset-white dark:ring-offset-gray-800;
+  }
+
+  .card-keyboard-focused {
+    @apply ring-2 ring-blue-600 dark:ring-blue-400;
+    @apply ring-offset-2 ring-offset-white dark:ring-offset-gray-800;
+    @apply outline-none;
+  }
+
+  /* Drag and drop styles (for future implementation) */
+  .card-dragging {
+    @apply opacity-50 transform rotate-3 scale-105;
+    @apply shadow-lg z-50;
+    @apply transition-none;
+  }
+
+  .card-drag-preview {
+    @apply bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600;
+    @apply shadow-xl p-2 text-sm;
+    @apply pointer-events-none;
+  }
+
+  .drop-zone {
+    @apply bg-blue-50 dark:bg-blue-950/20 border-2 border-dashed border-blue-300 dark:border-blue-600;
+    @apply rounded-lg p-4 text-center text-blue-600 dark:text-blue-400;
+    @apply transition-all duration-200;
+  }
+
+  .drop-zone-active {
+    @apply bg-blue-100 dark:bg-blue-900/30 border-blue-400 dark:border-blue-500;
+    @apply text-blue-700 dark:text-blue-300;
+  }
+
+  /* Multi-selection animations */
+  @keyframes slideInDown {
+    0% {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes selectionRipple {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(var(--color-blue-500) / 0.4);
+    }
+    50% {
+      transform: scale(1.02);
+      box-shadow: 0 0 0 6px rgb(var(--color-blue-500) / 0.1);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(var(--color-blue-500) / 0);
+    }
+  }
+
+  /* Animation classes for multi-selection */
+  .card-multi-select-animation {
+    animation: selectionRipple 400ms ease-out forwards;
+  }
+
+  /* Staggered selection animations for bulk operations */
+  .card-bulk-action-animation {
+    animation: selectionRipple 300ms ease-out forwards;
+    animation-delay: calc(var(--selection-index, 0) * 50ms);
+  }
 }
