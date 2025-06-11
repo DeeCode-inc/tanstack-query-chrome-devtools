@@ -125,22 +125,14 @@
 
   /* Skeleton Component Classes */
   .skeleton-base {
-    background: linear-gradient(90deg,
-      rgb(var(--color-gray-200)) 25%,
-      rgb(var(--color-gray-100)) 50%,
-      rgb(var(--color-gray-200)) 75%
-    );
+    background: linear-gradient(90deg, rgb(var(--color-gray-200)) 25%, rgb(var(--color-gray-100)) 50%, rgb(var(--color-gray-200)) 75%);
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite linear;
     @apply rounded;
   }
 
   .skeleton-base-dark {
-    background: linear-gradient(90deg,
-      rgb(var(--color-gray-700)) 25%,
-      rgb(var(--color-gray-600)) 50%,
-      rgb(var(--color-gray-700)) 75%
-    );
+    background: linear-gradient(90deg, rgb(var(--color-gray-700)) 25%, rgb(var(--color-gray-600)) 50%, rgb(var(--color-gray-700)) 75%);
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite linear;
     @apply rounded;
@@ -183,7 +175,7 @@
   }
 
   .loading-dots::after {
-    content: '';
+    content: "";
     display: inline-block;
     width: 4px;
     height: 4px;
@@ -194,7 +186,7 @@
   }
 
   .loading-dots::before {
-    content: '';
+    content: "";
     display: inline-block;
     width: 4px;
     height: 4px;
@@ -298,7 +290,8 @@
   }
 
   @keyframes selection-pulse {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 0 0 rgb(var(--color-blue-500) / 0.4);
     }
     50% {
@@ -307,7 +300,8 @@
   }
 
   @keyframes pulse-blue {
-    0%, 100% {
+    0%,
+    100% {
       background-color: rgb(var(--color-blue-100));
       color: rgb(var(--color-blue-800));
     }
@@ -318,7 +312,11 @@
   }
 
   @keyframes bounce-error {
-    0%, 20%, 50%, 80%, 100% {
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
       transform: translateY(0);
     }
     40% {
@@ -340,7 +338,8 @@
   }
 
   @keyframes skeleton-pulse {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
     }
     50% {
@@ -349,7 +348,9 @@
   }
 
   @keyframes loading-dots {
-    0%, 80%, 100% {
+    0%,
+    80%,
+    100% {
       transform: scale(0);
       opacity: 0.5;
     }
@@ -378,7 +379,7 @@
 
   /* Base transition class for all status changes */
   .status-transition {
-    transition: all 400ms cubic-bezier(0.4, 0.0, 0.2, 1);
+    transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
     will-change: background-color, color, transform, box-shadow;
   }
 
@@ -423,7 +424,8 @@
 
   /* State Transition Keyframes - Phase 6D */
   @keyframes statusToFetching {
-    0%, 100% {
+    0%,
+    100% {
       transform: scale(1);
       opacity: 1;
     }
@@ -436,15 +438,11 @@
   @keyframes statusToSuccess {
     0% {
       transform: scale(1);
-      box-shadow: 0 0 0 0 rgb(var(--color-green-500) / 0.4);
+      box-shadow: 0 0 0 0 rgb(var(--color-green-500) / 0.3);
     }
-    30% {
-      transform: scale(1.2);
-      box-shadow: 0 0 0 8px rgb(var(--color-green-500) / 0.2);
-    }
-    60% {
-      transform: scale(0.95);
-      box-shadow: 0 0 0 12px rgb(var(--color-green-500) / 0);
+    50% {
+      transform: scale(1.05);
+      box-shadow: 0 0 0 4px rgb(var(--color-green-500) / 0.1);
     }
     100% {
       transform: scale(1);
@@ -468,19 +466,28 @@
   }
 
   @keyframes statusToError {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateX(0) scale(1);
     }
-    10%, 30%, 50%, 70%, 90% {
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
       transform: translateX(-2px) scale(1.05);
     }
-    20%, 40%, 60%, 80% {
+    20%,
+    40%,
+    60%,
+    80% {
       transform: translateX(2px) scale(1.05);
     }
   }
 
   @keyframes statusToPending {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
       transform: scale(1);
     }
