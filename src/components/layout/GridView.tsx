@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { QueryGridItem } from "../query/QueryGridItem";
 import { MutationGridItem } from "../mutation/MutationGridItem";
-import { SkeletonQueryItem } from "../skeleton/SkeletonQueryItem";
-import { SkeletonMutationItem } from "../skeleton/SkeletonMutationItem";
 import type { QueryData, MutationData, ViewType } from "../../types/query";
 
 interface GridViewProps {
@@ -14,11 +12,9 @@ interface GridViewProps {
   selectedMutationIndex: number | null;
   onSelectQuery: (index: number | null) => void;
   onSelectMutation: (index: number | null) => void;
-  isDarkMode: boolean;
-  isLoading?: boolean;
 }
 
-export function GridView({ currentView, searchTerm, queries, mutations, selectedQueryIndex, selectedMutationIndex, onSelectQuery, onSelectMutation, isDarkMode, isLoading = false }: GridViewProps) {
+export function GridView({ currentView, searchTerm, queries, mutations, selectedQueryIndex, selectedMutationIndex, onSelectQuery, onSelectMutation }: GridViewProps) {
   // State for expanded grid items
   const [expandedQueryItems, setExpandedQueryItems] = useState<number[]>([]);
   const [expandedMutationItems, setExpandedMutationItems] = useState<number[]>([]);
@@ -32,21 +28,6 @@ export function GridView({ currentView, searchTerm, queries, mutations, selected
   const handleToggleMutationExpand = (index: number) => {
     setExpandedMutationItems((prev) => (prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]));
   };
-
-  // Show skeleton during initial loading
-  if (isLoading && queries.length === 0 && mutations.length === 0) {
-    const skeletonCount = 6; // Show more skeleton items for grid
-    return (
-      <div className="card-container flex flex-col min-h-0">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 flex-shrink-0">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{currentView === "queries" ? "Query Grid" : "Mutation Grid"}</h4>
-        </div>
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="card-grid-container">{Array.from({ length: skeletonCount }).map((_, index) => (currentView === "queries" ? <SkeletonQueryItem key={`skeleton-query-${index}`} isDarkMode={isDarkMode} staggerIndex={index} /> : <SkeletonMutationItem key={`skeleton-mutation-${index}`} isDarkMode={isDarkMode} staggerIndex={index} />))}</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="card-container flex flex-col min-h-0">

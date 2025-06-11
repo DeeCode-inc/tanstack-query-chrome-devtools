@@ -14,45 +14,12 @@ import { MutationDetails } from "./components/mutation/MutationDetails";
 import { useConnection } from "./hooks/useConnection";
 import { useUIState } from "./hooks/useUIState";
 import { useViewState } from "./hooks/useViewState";
-import { useLoadingStates } from "./hooks/useLoadingStates";
-import type { BulkActionOptions } from "./types/query";
 
 function App() {
   // Use our custom hooks
   const { tanStackQueryDetected, queries, mutations, artificialStates, sendMessage } = useConnection();
   const { isDarkMode, actionFeedback, handleQueryAction, setActionFeedback } = useUIState(sendMessage);
-  const { currentView, layoutMode, searchTerm, selectedQueryIndex, selectedMutationIndex, queryMultiSelection, mutationMultiSelection, queryKeyboardNavigation, mutationKeyboardNavigation, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange, handleLayoutChange } = useViewState();
-  const { isInitialLoading } = useLoadingStates({
-    queries,
-    mutations,
-    tanStackQueryDetected: tanStackQueryDetected === true,
-  });
-
-  // Handle bulk actions
-  const handleBulkAction = async (action: BulkActionOptions) => {
-    try {
-      // For now, simulate bulk actions - in a real implementation, these would call the extension API
-      const itemCount = action.targetIndices.length;
-      const itemType = currentView === "queries" ? "queries" : "mutations";
-
-      setActionFeedback({
-        message: `${action.action} applied to ${itemCount} ${itemType}`,
-        type: "success",
-      });
-
-      // Clear selection after successful action
-      if (currentView === "queries") {
-        queryMultiSelection.clearSelection();
-      } else {
-        mutationMultiSelection.clearSelection();
-      }
-    } catch {
-      setActionFeedback({
-        message: `Failed to ${action.action} selected items`,
-        type: "error",
-      });
-    }
-  };
+  const { currentView, layoutMode, searchTerm, selectedQueryIndex, selectedMutationIndex, queryKeyboardNavigation, mutationKeyboardNavigation, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange, handleLayoutChange } = useViewState();
 
   return (
     <div className="h-screen flex flex-col font-sans text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
@@ -87,7 +54,7 @@ function App() {
               <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} placeholder={`🔍 Search ${currentView}...`} />
             </div>
 
-            <MainLayout listView={layoutMode === "list" ? <ListView currentView={currentView} searchTerm={searchTerm} queries={queries} mutations={mutations} selectedQueryIndex={selectedQueryIndex} selectedMutationIndex={selectedMutationIndex} onSelectQuery={setSelectedQueryIndex} onSelectMutation={setSelectedMutationIndex} isDarkMode={isDarkMode} isLoading={isInitialLoading} queryMultiSelection={queryMultiSelection} mutationMultiSelection={mutationMultiSelection} onBulkAction={handleBulkAction} queryKeyboardNavigation={queryKeyboardNavigation} mutationKeyboardNavigation={mutationKeyboardNavigation} /> : <GridView currentView={currentView} searchTerm={searchTerm} queries={queries} mutations={mutations} selectedQueryIndex={selectedQueryIndex} selectedMutationIndex={selectedMutationIndex} onSelectQuery={setSelectedQueryIndex} onSelectMutation={setSelectedMutationIndex} isDarkMode={isDarkMode} isLoading={isInitialLoading} />} detailView={currentView === "queries" ? <QueryDetails selectedQuery={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null} onAction={handleQueryAction} isDarkMode={isDarkMode} artificialStates={artificialStates} /> : <MutationDetails selectedMutation={selectedMutationIndex !== null ? mutations[selectedMutationIndex] : null} isDarkMode={isDarkMode} />} />
+            <MainLayout listView={layoutMode === "list" ? <ListView currentView={currentView} searchTerm={searchTerm} queries={queries} mutations={mutations} selectedQueryIndex={selectedQueryIndex} selectedMutationIndex={selectedMutationIndex} onSelectQuery={setSelectedQueryIndex} onSelectMutation={setSelectedMutationIndex} queryKeyboardNavigation={queryKeyboardNavigation} mutationKeyboardNavigation={mutationKeyboardNavigation} /> : <GridView currentView={currentView} searchTerm={searchTerm} queries={queries} mutations={mutations} selectedQueryIndex={selectedQueryIndex} selectedMutationIndex={selectedMutationIndex} onSelectQuery={setSelectedQueryIndex} onSelectMutation={setSelectedMutationIndex} />} detailView={currentView === "queries" ? <QueryDetails selectedQuery={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null} onAction={handleQueryAction} isDarkMode={isDarkMode} artificialStates={artificialStates} /> : <MutationDetails selectedMutation={selectedMutationIndex !== null ? mutations[selectedMutationIndex] : null} isDarkMode={isDarkMode} />} />
           </div>
         )}
       </main>

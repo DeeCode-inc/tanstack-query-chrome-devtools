@@ -8,15 +8,7 @@ interface UseKeyboardNavigationOptions {
   onEscape?: () => void;
   onEnter?: (index: number) => void;
   onSpace?: (index: number) => void;
-  onSelectAll?: () => void;
-  onClearSelection?: () => void;
   enableWrapAround?: boolean;
-  multiSelectionHook?: {
-    handleItemClick: (index: number, event?: React.MouseEvent) => void;
-    clearSelection: () => void;
-    selectAll: (maxIndex: number) => void;
-    isSelected: (index: number) => boolean;
-  };
 }
 
 interface UseKeyboardNavigationReturn {
@@ -47,10 +39,7 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
     onEscape,
     onEnter,
     onSpace,
-    onSelectAll,
-    onClearSelection,
     enableWrapAround = true,
-    multiSelectionHook,
   } = options;
 
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -76,8 +65,7 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (!enabled || currentItemCount === 0) return;
 
-    const { key, ctrlKey, metaKey, shiftKey } = event;
-    const isCtrlOrCmd = ctrlKey || metaKey;
+    const { key } = event;
 
     // Set keyboard navigation flag
     isKeyboardNavigating.current = true;
@@ -159,15 +147,6 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
         if (focusedIndex !== null) {
           if (onSpace) {
             onSpace(focusedIndex);
-          } else if (multiSelectionHook) {
-            // Create synthetic event for multi-selection
-            const syntheticEvent = {
-              preventDefault: () => {},
-              ctrlKey: isCtrlOrCmd,
-              metaKey: isCtrlOrCmd,
-              shiftKey,
-            } as React.MouseEvent;
-            multiSelectionHook.handleItemClick(focusedIndex, syntheticEvent);
           } else if (onItemSelect) {
             onItemSelect(focusedIndex);
           }
@@ -180,27 +159,9 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
         if (onEscape) {
           onEscape();
         } else {
-          // Default behavior: clear selection and reset focus
-          if (multiSelectionHook) {
-            multiSelectionHook.clearSelection();
-          }
-          if (onClearSelection) {
-            onClearSelection();
-          }
+          // Default behavior: reset focus
           setFocusedIndex(null);
           setKeyboardFocused(false);
-        }
-        break;
-      }
-
-      case 'a': {
-        if (isCtrlOrCmd) {
-          event.preventDefault();
-          if (onSelectAll) {
-            onSelectAll();
-          } else if (multiSelectionHook) {
-            multiSelectionHook.selectAll(currentItemCount - 1);
-          }
         }
         break;
       }
@@ -225,10 +186,7 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
     onEscape,
     onEnter,
     onSpace,
-    onSelectAll,
-    onClearSelection,
     enableWrapAround,
-    multiSelectionHook,
   ]);
 
   // Reset focus

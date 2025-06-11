@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import JsonView from "@microlink/react-json-view";
-import { SkeletonDataExplorer } from "../skeleton/SkeletonDataExplorer";
 
 interface DataExplorerProps {
   data?: unknown;
@@ -8,10 +7,9 @@ interface DataExplorerProps {
   isDarkMode: boolean;
   title: string;
   emptyMessage?: string;
-  isLoading?: boolean;
 }
 
-export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "No data available", isLoading = false }: DataExplorerProps) {
+export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "No data available" }: DataExplorerProps) {
   const [isContentEntering, setIsContentEntering] = useState(false);
   const [hasDataLoaded, setHasDataLoaded] = useState(false);
 
@@ -24,11 +22,6 @@ export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "N
       return () => clearTimeout(timer);
     }
   }, [data, error, hasDataLoaded]);
-
-  // Show skeleton during loading state
-  if (isLoading && data === undefined && error === undefined) {
-    return <SkeletonDataExplorer isDarkMode={isDarkMode} title={title} />;
-  }
 
   return (
     <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
