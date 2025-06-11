@@ -34,3 +34,10 @@ export interface ActionFeedback {
   message: string;
   type: "success" | "error";
 }
+
+export interface QueryActionMessage {
+  type: "QUERY_ACTION";
+  action: "REFETCH" | "INVALIDATE" | "RESET" | "REMOVE" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "SET_QUERY_DATA";
+  queryHash: string;
+  newData?: unknown;
+}

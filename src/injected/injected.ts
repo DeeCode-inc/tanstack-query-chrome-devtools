@@ -11,14 +11,15 @@ interface TanStackQueryEvent {
 // Action message types
 interface QueryActionMessage {
   type: "QUERY_ACTION";
-  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR";
+  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR" | "SET_QUERY_DATA";
   queryHash: string;
+  newData?: unknown;
 }
 
 // Action result message
 interface QueryActionResult {
   type: "QUERY_ACTION_RESULT";
-  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR";
+  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR" | "SET_QUERY_DATA";
   queryHash: string;
   success: boolean;
   error?: string;
@@ -376,6 +377,22 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
               });
             });
         }
+        break;
+      }
+
+      case "SET_QUERY_DATA": {
+        if (!action.newData) {
+          return {
+            type: "QUERY_ACTION_RESULT",
+            action: action.action,
+            queryHash: action.queryHash,
+            success: false,
+            error: "No data provided for SET_QUERY_DATA action",
+          };
+        }
+
+        // Update query data using queryClient.setQueryData
+        queryClient.setQueryData(activeQuery.queryKey, action.newData);
         break;
       }
 

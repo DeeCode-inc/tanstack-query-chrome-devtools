@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import JsonView from "@microlink/react-json-view";
+import JsonView, { type InteractionProps } from "@microlink/react-json-view";
 
 interface DataExplorerProps {
   data?: unknown;
@@ -7,9 +7,10 @@ interface DataExplorerProps {
   isDarkMode: boolean;
   title: string;
   emptyMessage?: string;
+  onEdit?: (edit: InteractionProps) => void;
 }
 
-export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "No data available" }: DataExplorerProps) {
+export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "No data available", onEdit }: DataExplorerProps) {
   const [isContentEntering, setIsContentEntering] = useState(false);
   const [hasDataLoaded, setHasDataLoaded] = useState(false);
 
@@ -34,6 +35,9 @@ export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "N
             displayDataTypes={false}
             displayObjectSize={true}
             enableClipboard={true}
+            onEdit={onEdit}
+            onAdd={onEdit}
+            onDelete={onEdit}
             theme={isDarkMode ? "monokai" : "rjv-default"}
             style={{
               fontSize: "12px",

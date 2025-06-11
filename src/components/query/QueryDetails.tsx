@@ -5,10 +5,11 @@ import { QueryActions } from "./QueryActions";
 import { QueryExplorer } from "./QueryExplorer";
 import { DataExplorer } from "../common/DataExplorer";
 import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
+import type { InteractionProps } from "@microlink/react-json-view";
 
 interface QueryDetailsProps {
   selectedQuery: QueryData | null;
-  onAction: (action: string, queryHash: string) => void;
+  onAction: (action: string, queryHash: string, newValue?: unknown) => void;
   isDarkMode: boolean;
   artificialStates: Map<string, "loading" | "error">;
 }
@@ -20,6 +21,13 @@ export function QueryDetails({ selectedQuery, onAction, isDarkMode, artificialSt
     selectedItem: selectedQuery,
     getItemKey: (query: QueryData) => JSON.stringify(query.queryKey),
   });
+
+  const handleDataEdit = (edit: InteractionProps) => {
+    if (selectedQuery) {
+      // Call action with new data from edit
+      onAction("SET_QUERY_DATA", selectedQuery.queryHash, edit.updated_src);
+    }
+  };
 
   if (!selectedQuery) {
     return (
@@ -36,21 +44,9 @@ export function QueryDetails({ selectedQuery, onAction, isDarkMode, artificialSt
     <div className={`h-full overflow-y-auto ${animationClass}`}>
       <QueryHeader selectedQuery={selectedQuery} />
 
-      <QueryActions
-        selectedQuery={selectedQuery}
-        onAction={onAction}
-        actionLoading={actionLoading}
-        setActionLoading={setActionLoading}
-        artificialStates={artificialStates}
-      />
+      <QueryActions selectedQuery={selectedQuery} onAction={onAction} actionLoading={actionLoading} setActionLoading={setActionLoading} artificialStates={artificialStates} />
 
-      <DataExplorer
-        data={selectedQuery.state.data}
-        error={selectedQuery.state.error}
-        isDarkMode={isDarkMode}
-        title="Data Explorer"
-        emptyMessage="No data available"
-      />
+      <DataExplorer data={selectedQuery.state.data} error={selectedQuery.state.error} isDarkMode={isDarkMode} title="Data Explorer" emptyMessage="No data available" onEdit={handleDataEdit} />
 
       <QueryExplorer selectedQuery={selectedQuery} isDarkMode={isDarkMode} />
     </div>

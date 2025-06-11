@@ -6,7 +6,7 @@ interface UseUIStateReturn {
   actionFeedback: { message: string; type: "success" | "error" } | null;
 
   // Actions
-  handleQueryAction: (action: string, queryHash: string) => Promise<void>;
+  handleQueryAction: (action: string, queryHash: string, newValue?: unknown) => Promise<void>;
   setActionFeedback: (feedback: { message: string; type: "success" | "error" } | null) => void;
 }
 
@@ -16,21 +16,31 @@ export const useUIState = (sendMessage: (message: unknown) => void): UseUIStateR
   const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // Handle query actions
-  const handleQueryAction = useCallback(async (action: string, queryHash: string) => {
-    try {
-      sendMessage({
-        type: "QUERY_ACTION",
-        action: action,
-        queryHash: queryHash,
-      });
-    } catch (error) {
-      console.error("Failed to send action:", error);
-      setActionFeedback({
-        message: `Failed to send ${action.toLowerCase()} action`,
-        type: "error",
-      });
-    }
-  }, [sendMessage]);
+  const handleQueryAction = useCallback(
+    async (action: string, queryHash: string, newValue?: unknown) => {
+      try {
+        const message: Record<string, unknown> = {
+          type: "QUERY_ACTION",
+          action: action,
+          queryHash: queryHash,
+        };
+
+        // Add newValue for SET_QUERY_DATA action
+        if (action === "SET_QUERY_DATA" && newValue !== undefined) {
+          message.newData = newValue;
+        }
+
+        sendMessage(message);
+      } catch (error) {
+        console.error("Failed to send action:", error);
+        setActionFeedback({
+          message: `Failed to send ${action.toLowerCase()} action`,
+          type: "error",
+        });
+      }
+    },
+    [sendMessage]
+  );
 
   // Clear action feedback after delay
   useEffect(() => {
