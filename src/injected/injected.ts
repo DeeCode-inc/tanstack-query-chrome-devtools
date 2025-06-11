@@ -1,5 +1,5 @@
 // Injected script - runs in the webpage context for deeper TanStack Query integration
-import type { Query, Mutation } from "@tanstack/query-core";
+import type { Query, Mutation, QueryState } from "@tanstack/query-core";
 
 // Message types for communication
 interface TanStackQueryEvent {
@@ -12,14 +12,14 @@ interface TanStackQueryEvent {
 interface QueryActionMessage {
   type: "QUERY_ACTION";
   action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR";
-  queryKey: readonly unknown[];
+  queryHash: string;
 }
 
 // Action result message
 interface QueryActionResult {
   type: "QUERY_ACTION_RESULT";
   action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR";
-  queryKey: readonly unknown[];
+  queryHash: string;
   success: boolean;
   error?: string;
 }
@@ -27,6 +27,7 @@ interface QueryActionResult {
 // Query data interface
 interface QueryData {
   queryKey: readonly unknown[];
+  queryHash: string;
   state: {
     data?: unknown;
     error?: unknown;
@@ -86,6 +87,7 @@ function getQueryData(): QueryData[] {
     return queries.map(
       (query: Query): QueryData => ({
         queryKey: query.queryKey,
+        queryHash: query.queryHash,
         state: {
           data: query.state.data,
           error: query.state.error,
@@ -216,21 +218,6 @@ function setupMutationSubscription() {
   }
 }
 
-// Storage for tracking artificial states triggered by DevTools
-const artificialStates = new Map<
-  string,
-  {
-    type: "loading" | "error";
-    controller?: AbortController;
-    originalData?: unknown;
-  }
->();
-
-// Helper function to create a query key string for tracking
-function getQueryKeyString(queryKey: readonly unknown[]): string {
-  return JSON.stringify(queryKey);
-}
-
 // Enhanced detection that also sets up subscription
 function performEnhancedDetection() {
   const detected = detectTanStackQuery();
@@ -260,122 +247,134 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
     return {
       type: "QUERY_ACTION_RESULT",
       action: action.action,
-      queryKey: action.queryKey,
+      queryHash: action.queryHash,
       success: false,
       error: "QueryClient not found",
     };
   }
 
   try {
+    // Find the active query using queryHash
+    const activeQuery = queryClient
+      .getQueryCache()
+      .getAll()
+      .find((query) => query.queryHash === action.queryHash);
+
+    if (!activeQuery) {
+      return {
+        type: "QUERY_ACTION_RESULT",
+        action: action.action,
+        queryHash: action.queryHash,
+        success: false,
+        error: "Query not found",
+      };
+    }
+
     switch (action.action) {
       case "INVALIDATE":
-        await queryClient.invalidateQueries({ queryKey: action.queryKey });
+        await queryClient.invalidateQueries(activeQuery);
         break;
 
       case "REFETCH":
-        await queryClient.refetchQueries({ queryKey: action.queryKey });
+        await queryClient.refetchQueries(activeQuery);
         break;
 
       case "REMOVE":
-        queryClient.removeQueries({ queryKey: action.queryKey });
+        queryClient.removeQueries(activeQuery);
         break;
 
       case "RESET":
-        queryClient.resetQueries({ queryKey: action.queryKey });
+        queryClient.resetQueries(activeQuery);
         break;
 
       case "TRIGGER_LOADING": {
-        const keyString = getQueryKeyString(action.queryKey);
+        // Check if already in artificial loading state by checking fetchMeta
+        if (activeQuery.state.fetchMeta && "__previousQueryOptions" in activeQuery.state.fetchMeta) {
+          // Cancel the loading state - restore previous state
+          const previousState = activeQuery.state;
+          const previousOptions = activeQuery.state.fetchMeta.__previousQueryOptions;
 
-        // If already in artificial loading state, this becomes a cancel operation
-        if (artificialStates.has(keyString) && artificialStates.get(keyString)?.type === "loading") {
-          // Cancel the loading state
-          const state = artificialStates.get(keyString);
-          if (state?.controller) {
-            state.controller.abort();
+          activeQuery.cancel({ silent: true });
+          activeQuery.setState({
+            ...previousState,
+            fetchStatus: "idle",
+            fetchMeta: null,
+          });
+
+          if (previousOptions) {
+            activeQuery.fetch(previousOptions);
           }
-          artificialStates.delete(keyString);
         } else {
           // Start artificial loading state
-          const controller = new AbortController();
-          artificialStates.set(keyString, { type: "loading", controller });
+          const __previousQueryOptions = activeQuery.options;
 
-          // Trigger a fetch that will keep loading until cancelled
-          queryClient
-            .fetchQuery({
-              queryKey: action.queryKey,
-              queryFn: () =>
-                new Promise((resolve) => {
-                  // This promise will only resolve when cancelled
-                  controller.signal.addEventListener("abort", () => {
-                    // Restore to success state with existing data or default
-                    const existingData = queryClient.getQueryData(action.queryKey);
-                    resolve(existingData || { message: "Loading state was cancelled" });
-                  });
+          // Trigger a fetch with never-resolving promise
+          activeQuery.fetch({
+            ...__previousQueryOptions,
+            queryFn: () => {
+              return new Promise(() => {
+                // Never resolve
+              });
+            },
+            gcTime: -1,
+          });
 
-                  // Never reject or resolve naturally - only when cancelled
-                }),
-              staleTime: 0,
-            })
-            .catch(() => {
-              // Handle any errors gracefully
-              artificialStates.delete(keyString);
-            });
+          // Force the state to pending
+          activeQuery.setState({
+            data: undefined,
+            status: "pending",
+            fetchMeta: {
+              ...activeQuery.state.fetchMeta,
+              __previousQueryOptions,
+            } as QueryState["fetchMeta"],
+          });
         }
         break;
       }
 
       case "TRIGGER_ERROR": {
-        const keyString = getQueryKeyString(action.queryKey);
+        // Check if already in artificial error state by checking fetchMeta
+        if (activeQuery.state.fetchMeta && "__previousQueryState" in activeQuery.state.fetchMeta) {
+          // Cancel the error state - restore previous state
+          const previousState = activeQuery.state.fetchMeta.__previousQueryState;
 
-        // If already in artificial error state, this becomes a cancel operation
-        if (artificialStates.has(keyString) && artificialStates.get(keyString)?.type === "error") {
-          // Cancel the error state - restore original data
-          const state = artificialStates.get(keyString);
-          if (state?.originalData !== undefined) {
-            queryClient.setQueryData(action.queryKey, state.originalData);
+          if (previousState) {
+            activeQuery.setState({
+              ...previousState,
+              fetchMeta: null,
+            });
           }
-          artificialStates.delete(keyString);
         } else {
-          // Store original data before triggering error
-          const originalData = queryClient.getQueryData(action.queryKey);
-          artificialStates.set(keyString, { type: "error", originalData });
+          // Start artificial error state
+          // Store the current state before triggering error
+          const currentState = {
+            data: activeQuery.state.data,
+            error: activeQuery.state.error,
+            status: activeQuery.state.status,
+            dataUpdatedAt: activeQuery.state.dataUpdatedAt,
+            errorUpdatedAt: activeQuery.state.errorUpdatedAt,
+            fetchStatus: activeQuery.state.fetchStatus,
+          };
 
           // Trigger an error state
           queryClient
             .fetchQuery({
-              queryKey: action.queryKey,
+              queryKey: activeQuery.queryKey,
               queryFn: () => Promise.reject(new Error("Error state triggered by TanStack Query DevTools for testing purposes")),
               retry: false,
               staleTime: 0,
             })
             .catch(() => {
               // Error is expected, this is the desired behavior
+              // After error is set, store the previous state in fetchMeta for restoration
+              activeQuery.setState({
+                ...activeQuery.state,
+                fetchMeta: {
+                  ...activeQuery.state.fetchMeta,
+                  __previousQueryState: currentState,
+                } as QueryState["fetchMeta"],
+              });
             });
-        }
-        break;
-      }
-
-      case "CANCEL_LOADING": {
-        const keyString = getQueryKeyString(action.queryKey);
-        const state = artificialStates.get(keyString);
-
-        if (state?.type === "loading" && state.controller) {
-          state.controller.abort();
-          artificialStates.delete(keyString);
-        }
-        break;
-      }
-
-      case "CANCEL_ERROR": {
-        const keyString = getQueryKeyString(action.queryKey);
-        const state = artificialStates.get(keyString);
-
-        if (state?.type === "error") {
-          if (state.originalData !== undefined) {
-            queryClient.setQueryData(action.queryKey, state.originalData);
-          }
-          artificialStates.delete(keyString);
         }
         break;
       }
@@ -387,7 +386,7 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
     return {
       type: "QUERY_ACTION_RESULT",
       action: action.action,
-      queryKey: action.queryKey,
+      queryHash: action.queryHash,
       success: true,
     };
   } catch (error) {
@@ -397,7 +396,7 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
     return {
       type: "QUERY_ACTION_RESULT",
       action: action.action,
-      queryKey: action.queryKey,
+      queryHash: action.queryHash,
       success: false,
       error: errorMessage,
     };
@@ -434,7 +433,6 @@ window.addEventListener("message", async (event) => {
     if (detectTanStackQuery()) {
       sendQueryDataUpdate();
       sendMutationDataUpdate();
-    } else {
     }
   }
 });

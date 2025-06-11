@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import type { QueryKey } from "@tanstack/query-core";
 
 interface UseUIStateReturn {
   // State
@@ -7,7 +6,7 @@ interface UseUIStateReturn {
   actionFeedback: { message: string; type: "success" | "error" } | null;
 
   // Actions
-  handleQueryAction: (action: string, queryKey: QueryKey) => Promise<void>;
+  handleQueryAction: (action: string, queryHash: string) => Promise<void>;
   setActionFeedback: (feedback: { message: string; type: "success" | "error" } | null) => void;
 }
 
@@ -17,12 +16,12 @@ export const useUIState = (sendMessage: (message: unknown) => void): UseUIStateR
   const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // Handle query actions
-  const handleQueryAction = useCallback(async (action: string, queryKey: QueryKey) => {
+  const handleQueryAction = useCallback(async (action: string, queryHash: string) => {
     try {
       sendMessage({
         type: "QUERY_ACTION",
         action: action,
-        queryKey: queryKey,
+        queryHash: queryHash,
       });
     } catch (error) {
       console.error("Failed to send action:", error);

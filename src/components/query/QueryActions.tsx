@@ -1,10 +1,9 @@
-import type { QueryKey } from "@tanstack/query-core";
 import type { QueryData } from "../../types/query";
-import { formatQueryKeyShort, getQueryKeyString } from "../../utils/formatters";
+import { formatQueryKeyShort } from "../../utils/formatters";
 
 interface QueryActionsProps {
   selectedQuery: QueryData;
-  onAction: (action: string, queryKey: QueryKey) => void;
+  onAction: (action: string, queryHash: string) => void;
   actionLoading: string | null;
   setActionLoading: (action: string | null) => void;
   artificialStates: Map<string, "loading" | "error">;
@@ -14,16 +13,15 @@ export function QueryActions({ selectedQuery, onAction, actionLoading, setAction
   const handleAction = async (action: string) => {
     setActionLoading(action);
     try {
-      await onAction(action, selectedQuery.queryKey);
+      await onAction(action, selectedQuery.queryHash);
     } finally {
       setActionLoading(null);
     }
   };
 
   // Check artificial states for this query
-  const queryKeyString = getQueryKeyString(selectedQuery.queryKey);
-  const isArtificialLoading = artificialStates.get(queryKeyString) === "loading";
-  const isArtificialError = artificialStates.get(queryKeyString) === "error";
+  const isArtificialLoading = artificialStates.get(selectedQuery.queryHash) === "loading";
+  const isArtificialError = artificialStates.get(selectedQuery.queryHash) === "error";
 
   return (
     <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">

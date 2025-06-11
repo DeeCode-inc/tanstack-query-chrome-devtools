@@ -1,6 +1,4 @@
 import { useState } from "react";
-import type { QueryKey } from "@tanstack/query-core";
-
 import type { QueryData } from "../../types/query";
 import { QueryHeader } from "./QueryHeader";
 import { QueryActions } from "./QueryActions";
@@ -10,7 +8,7 @@ import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
 
 interface QueryDetailsProps {
   selectedQuery: QueryData | null;
-  onAction: (action: string, queryKey: QueryKey) => void;
+  onAction: (action: string, queryHash: string) => void;
   isDarkMode: boolean;
   artificialStates: Map<string, "loading" | "error">;
 }

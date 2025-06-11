@@ -2,10 +2,8 @@
 import { ActionFeedback } from "./components/status/ActionFeedback";
 import { SearchBar } from "./components/layout/SearchBar";
 import { ToggleGroup } from "./components/layout/ToggleGroup";
-import { LayoutToggle } from "./components/layout/LayoutToggle";
 import { EmptyState } from "./components/layout/EmptyState";
 import { ListView } from "./components/layout/ListView";
-import { GridView } from "./components/layout/GridView";
 import { MainLayout } from "./components/layout/MainLayout";
 import { QueryDetails } from "./components/query/QueryDetails";
 import { MutationDetails } from "./components/mutation/MutationDetails";
@@ -19,7 +17,7 @@ function App() {
   // Use our custom hooks
   const { tanStackQueryDetected, queries, mutations, artificialStates, sendMessage } = useConnection();
   const { isDarkMode, actionFeedback, handleQueryAction, setActionFeedback } = useUIState(sendMessage);
-  const { currentView, layoutMode, searchTerm, selectedQueryIndex, selectedMutationIndex, queryKeyboardNavigation, mutationKeyboardNavigation, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange, handleLayoutChange } = useViewState();
+  const { currentView, searchTerm, selectedQueryIndex, selectedMutationIndex, queryKeyboardNavigation, mutationKeyboardNavigation, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange } = useViewState();
 
   return (
     <div className="h-screen flex flex-col font-sans text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
@@ -46,15 +44,13 @@ function App() {
                     { value: "mutations", label: "Mutations", count: mutations.length },
                   ]}
                 />
-
-                <LayoutToggle layoutMode={layoutMode} onLayoutChange={handleLayoutChange} />
               </div>
 
               {/* Search bar */}
               <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} placeholder={`🔍 Search ${currentView}...`} />
             </div>
 
-            <MainLayout listView={layoutMode === "list" ? <ListView currentView={currentView} searchTerm={searchTerm} queries={queries} mutations={mutations} selectedQueryIndex={selectedQueryIndex} selectedMutationIndex={selectedMutationIndex} onSelectQuery={setSelectedQueryIndex} onSelectMutation={setSelectedMutationIndex} queryKeyboardNavigation={queryKeyboardNavigation} mutationKeyboardNavigation={mutationKeyboardNavigation} /> : <GridView currentView={currentView} searchTerm={searchTerm} queries={queries} mutations={mutations} selectedQueryIndex={selectedQueryIndex} selectedMutationIndex={selectedMutationIndex} onSelectQuery={setSelectedQueryIndex} onSelectMutation={setSelectedMutationIndex} />} detailView={currentView === "queries" ? <QueryDetails selectedQuery={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null} onAction={handleQueryAction} isDarkMode={isDarkMode} artificialStates={artificialStates} /> : <MutationDetails selectedMutation={selectedMutationIndex !== null ? mutations[selectedMutationIndex] : null} isDarkMode={isDarkMode} />} />
+            <MainLayout listView={<ListView currentView={currentView} searchTerm={searchTerm} queries={queries} mutations={mutations} selectedQueryIndex={selectedQueryIndex} selectedMutationIndex={selectedMutationIndex} onSelectQuery={setSelectedQueryIndex} onSelectMutation={setSelectedMutationIndex} queryKeyboardNavigation={queryKeyboardNavigation} mutationKeyboardNavigation={mutationKeyboardNavigation} />} detailView={currentView === "queries" ? <QueryDetails selectedQuery={selectedQueryIndex !== null ? queries[selectedQueryIndex] : null} onAction={handleQueryAction} isDarkMode={isDarkMode} artificialStates={artificialStates} /> : <MutationDetails selectedMutation={selectedMutationIndex !== null ? mutations[selectedMutationIndex] : null} isDarkMode={isDarkMode} />} />
           </div>
         )}
       </main>

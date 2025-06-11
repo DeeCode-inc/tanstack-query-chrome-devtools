@@ -2,6 +2,7 @@ import type { QueryKey, QueryObserverBaseResult } from "@tanstack/query-core";
 
 export interface QueryData {
   queryKey: QueryKey;
+  queryHash: string;
   state: QueryObserverBaseResult<unknown, unknown>;
   meta?: Record<string, unknown>;
   isActive: boolean;
@@ -21,8 +22,6 @@ export interface MutationData {
 }
 
 export type ViewType = "queries" | "mutations";
-
-export type LayoutMode = "list" | "grid";
 
 export interface StatusDisplay {
   icon: string;

@@ -96,23 +96,23 @@ export const useConnection = (): UseConnectionReturn => {
           if (message.success && (message.action === "TRIGGER_LOADING" || message.action === "TRIGGER_ERROR")) {
             setArtificialStates((prev) => {
               const newStates = new Map(prev);
-              const queryKeyString = JSON.stringify(message.queryKey);
+              const queryHash = message.queryHash;
 
               if (message.action === "TRIGGER_LOADING") {
-                if (newStates.get(queryKeyString) === "loading") {
+                if (newStates.get(queryHash) === "loading") {
                   // Cancel loading state
-                  newStates.delete(queryKeyString);
+                  newStates.delete(queryHash);
                 } else {
                   // Start loading state
-                  newStates.set(queryKeyString, "loading");
+                  newStates.set(queryHash, "loading");
                 }
               } else if (message.action === "TRIGGER_ERROR") {
-                if (newStates.get(queryKeyString) === "error") {
+                if (newStates.get(queryHash) === "error") {
                   // Cancel error state
-                  newStates.delete(queryKeyString);
+                  newStates.delete(queryHash);
                 } else {
                   // Start error state
-                  newStates.set(queryKeyString, "error");
+                  newStates.set(queryHash, "error");
                 }
               }
 

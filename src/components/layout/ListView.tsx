@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { QueryListItem } from "../query/QueryListItem";
 import { MutationListItem } from "../mutation/MutationListItem";
 import type { QueryData, MutationData, ViewType } from "../../types/query";
@@ -19,19 +19,6 @@ interface ListViewProps {
 }
 
 export function ListView({ currentView, searchTerm, queries, mutations, selectedQueryIndex, selectedMutationIndex, onSelectQuery, onSelectMutation, queryKeyboardNavigation, mutationKeyboardNavigation }: ListViewProps) {
-  // State for expanded query items
-  const [expandedQueryItems, setExpandedQueryItems] = useState<number[]>([]);
-  const [expandedMutationItems, setExpandedMutationItems] = useState<number[]>([]);
-
-  // Handle query expand/collapse
-  const handleToggleQueryExpand = (index: number) => {
-    setExpandedQueryItems((prev) => (prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]));
-  };
-
-  // Handle mutation expand/collapse
-  const handleToggleMutationExpand = (index: number) => {
-    setExpandedMutationItems((prev) => (prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]));
-  };
 
   // Get current keyboard navigation state
   const currentKeyboardNavigation = currentView === "queries" ? queryKeyboardNavigation : mutationKeyboardNavigation;
@@ -84,8 +71,6 @@ export function ListView({ currentView, searchTerm, queries, mutations, selected
                     onSelect={onSelectQuery}
                     staggerIndex={index}
                     enableCelebration={true}
-                    isExpanded={expandedQueryItems.includes(originalIndex)}
-                    onToggleExpand={handleToggleQueryExpand}
                     // Keyboard navigation props
                     isFocused={queryKeyboardNavigation?.focusedIndex === index}
                     isKeyboardFocused={queryKeyboardNavigation?.keyboardFocused && queryKeyboardNavigation?.focusedIndex === index}
@@ -108,8 +93,6 @@ export function ListView({ currentView, searchTerm, queries, mutations, selected
                   isSelected={selectedMutationIndex === originalIndex}
                   onSelect={onSelectMutation}
                   staggerIndex={index}
-                  isExpanded={expandedMutationItems.includes(originalIndex)}
-                  onToggleExpand={handleToggleMutationExpand}
                   // Keyboard navigation props
                   isFocused={mutationKeyboardNavigation?.focusedIndex === index}
                   isKeyboardFocused={mutationKeyboardNavigation?.keyboardFocused && mutationKeyboardNavigation?.focusedIndex === index}
