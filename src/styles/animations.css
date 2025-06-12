@@ -53,11 +53,11 @@
     @apply transition-all duration-300 ease-out;
   }
 
-  .status-badge-animated.status-fetching {
+  .status-badge-animated.status-blue {
     animation: pulse-blue 2s ease-in-out infinite;
   }
 
-  .status-badge-animated.status-error {
+  .status-badge-animated.status-red {
     animation: bounce-error 0.6s ease-out;
   }
 

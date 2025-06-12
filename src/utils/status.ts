@@ -6,7 +6,7 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
     return {
       icon: "RotateCw",
       text: "Fetching",
-      bgColor: "status-fetching",
+      bgColor: "status status-blue",
       textColor: "text-blue-600",
     };
   }
@@ -17,28 +17,28 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
         return {
           icon: "Clock",
           text: "Stale",
-          bgColor: "status-warning",
+          bgColor: "status status-yellow",
           textColor: "text-yellow-600",
         };
       }
       return {
         icon: "CheckCircle",
         text: "Fresh",
-        bgColor: "status-success",
+        bgColor: "status status-green",
         textColor: "text-green-600",
       };
     case "error":
       return {
         icon: "XCircle",
         text: "Error",
-        bgColor: "status-error",
+        bgColor: "status status-red",
         textColor: "text-red-600",
       };
     case "pending":
       return {
         icon: "Clock",
         text: "Pending",
-        bgColor: "status-pending",
+        bgColor: "status status-purple",
         textColor: "text-orange-600",
       };
     default:
@@ -46,14 +46,14 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
         return {
           icon: "Moon",
           text: "Inactive",
-          bgColor: "status-inactive",
+          bgColor: "status status-gray",
           textColor: "text-gray-500",
         };
       }
       return {
         icon: "HelpCircle",
         text: "Unknown",
-        bgColor: "status-inactive",
+        bgColor: "status status-gray",
         textColor: "text-gray-600",
       };
   }
@@ -66,28 +66,28 @@ export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay 
       return {
         icon: "Clock",
         text: "Pending",
-        bgColor: "status-pending",
+        bgColor: "status status-purple",
         textColor: "text-orange-600",
       };
     case "success":
       return {
         icon: "CheckCircle",
         text: "Success",
-        bgColor: "status-success",
+        bgColor: "status status-green",
         textColor: "text-green-600",
       };
     case "error":
       return {
         icon: "XCircle",
         text: "Error",
-        bgColor: "status-error",
+        bgColor: "status status-red",
         textColor: "text-red-600",
       };
     case "paused":
       return {
         icon: "Pause",
         text: "Paused",
-        bgColor: "status-warning",
+        bgColor: "status status-yellow",
         textColor: "text-yellow-600",
       };
     case "idle":
@@ -95,7 +95,7 @@ export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay 
       return {
         icon: "Moon",
         text: "Idle",
-        bgColor: "status-inactive",
+        bgColor: "status status-gray",
         textColor: "text-gray-600",
       };
   }

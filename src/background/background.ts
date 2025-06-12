@@ -3,27 +3,6 @@
 // Track which tabs have TanStack Query detected
 const tabsWithTanStackQuery = new Set<number>();
 
-// Keep-alive mechanism to prevent Chrome from terminating the service worker
-// Chrome terminates inactive service workers after ~30 seconds
-let keepAliveInterval: NodeJS.Timeout | null = null;
-
-function startKeepAlive() {
-  if (keepAliveInterval) return;
-
-  keepAliveInterval = setInterval(() => {
-    // Minimal activity to prevent Chrome timeout
-    // Using setBadgeText as it's lightweight and doesn't affect users
-    chrome.action.setBadgeText({ text: "" });
-  }, 25000); // Every 25 seconds (before 30s timeout)
-}
-
-function stopKeepAlive() {
-  if (keepAliveInterval) {
-    clearInterval(keepAliveInterval);
-    keepAliveInterval = null;
-  }
-}
-
 // Connection health tracking
 interface ConnectionInfo {
   port: chrome.runtime.Port;
@@ -59,11 +38,18 @@ chrome.runtime.onConnect.addListener(async (port) => {
     const connectionId = `devtools-${Date.now()}`;
     devtoolsPort = port;
 
-    // Start keep-alive when DevTools connects
-    startKeepAlive();
-
     // Get current tab ID asynchronously
     const currentTabId = await getCurrentTabId();
+
+    if (currentTabId) {
+      chrome.tabs
+        .sendMessage(currentTabId, {
+          type: "REQUEST_IMMEDIATE_UPDATE",
+        })
+        .catch((error: unknown) => {
+          console.warn("Failed to request immediate update:", error);
+        });
+    }
 
     // Track this connection
     activeConnections.set(connectionId, {
@@ -102,11 +88,6 @@ chrome.runtime.onConnect.addListener(async (port) => {
     port.onDisconnect.addListener(() => {
       devtoolsPort = null;
       activeConnections.delete(connectionId);
-
-      // Stop keep-alive if no active connections
-      if (activeConnections.size === 0) {
-        stopKeepAlive();
-      }
     });
 
     port.onMessage.addListener(async (message) => {

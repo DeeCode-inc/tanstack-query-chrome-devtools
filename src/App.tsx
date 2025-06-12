@@ -16,27 +16,25 @@ function App() {
   // Use our custom hooks
   const { tanStackQueryDetected, queries, mutations, artificialStates, sendMessage } = useConnection();
   const { isDarkMode, handleQueryAction } = useUIState(sendMessage);
-  const { currentView, searchTerm, selectedQueryIndex, selectedMutationIndex, queryKeyboardNavigation, mutationKeyboardNavigation, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange, } = useViewState();
+  const { currentView, searchTerm, selectedQueryIndex, selectedMutationIndex, queryKeyboardNavigation, mutationKeyboardNavigation, setSearchTerm, setSelectedQueryIndex, setSelectedMutationIndex, handleViewChange } = useViewState();
 
   return (
     <div className="h-screen flex flex-col font-sans text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
       <header className="p-5 pb-0 flex-shrink-0">
-        <div className="flex items-center justify-start gap-x-5 mb-5">
-          <img src="/icon-48.png" alt="TanStack Query DevTools" className="w-5 h-5" />
-          {tanStackQueryDetected === true && (
-            <>
-              <ToggleGroup
-                currentView={currentView}
-                onViewChange={handleViewChange}
-                options={[
-                  { value: "queries", label: "Queries", count: queries.length },
-                  { value: "mutations", label: "Mutations", count: mutations.length },
-                ]}
-              />
-              <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} placeholder={`Search ${currentView}...`} />
-            </>
-          )}
-        </div>
+        {tanStackQueryDetected === true && (
+          <div className="flex items-center justify-start gap-x-5 mb-5">
+            <img src="/icon-48.png" alt="TanStack Query DevTools" className="w-5 h-5" />
+            <ToggleGroup
+              currentView={currentView}
+              onViewChange={handleViewChange}
+              options={[
+                { value: "queries", label: "Queries", count: queries.length },
+                { value: "mutations", label: "Mutations", count: mutations.length },
+              ]}
+            />
+            <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} placeholder={`Search ${currentView}...`} />
+          </div>
+        )}
       </header>
 
       <main className="flex-1 p-5 pt-0 flex flex-col min-h-0">
