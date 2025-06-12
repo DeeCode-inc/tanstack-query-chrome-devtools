@@ -42,9 +42,17 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
         textColor: "text-orange-600",
       };
     default:
+      if (!query.isActive) {
+        return {
+          icon: "Moon",
+          text: "Inactive",
+          bgColor: "status-inactive",
+          textColor: "text-gray-500",
+        };
+      }
       return {
         icon: "HelpCircle",
-        text: query.isActive ? "Unknown" : "Inactive",
+        text: "Unknown",
         bgColor: "status-inactive",
         textColor: "text-gray-600",
       };

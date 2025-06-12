@@ -23,19 +23,22 @@ export function QueryActions({ selectedQuery, onAction, actionLoading, setAction
   const isArtificialLoading = artificialStates.get(selectedQuery.queryHash) === "loading";
   const isArtificialError = artificialStates.get(selectedQuery.queryHash) === "error";
 
+  // Disable all buttons when any action is loading or when artificial loading is active
+  const shouldDisableButtons = actionLoading !== null || isArtificialLoading;
+
   return (
     <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
       <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Actions</h4>
       <div className="grid grid-cols-3 gap-2">
-        <button onClick={() => handleAction("REFETCH")} disabled={actionLoading !== null} className="btn-primary btn-animated">
+        <button onClick={() => handleAction("REFETCH")} disabled={shouldDisableButtons} className="btn-refetch btn-animated">
           {actionLoading === "REFETCH" ? "Refreshing..." : "Refresh"}
         </button>
 
-        <button onClick={() => handleAction("INVALIDATE")} disabled={actionLoading !== null} className="btn-warning btn-animated">
+        <button onClick={() => handleAction("INVALIDATE")} disabled={shouldDisableButtons} className="btn-invalidate btn-animated">
           {actionLoading === "INVALIDATE" ? "Invalidating..." : "Invalidate"}
         </button>
 
-        <button onClick={() => handleAction("RESET")} disabled={actionLoading !== null} className="btn-secondary btn-animated">
+        <button onClick={() => handleAction("RESET")} disabled={shouldDisableButtons} className="btn-reset btn-animated">
           {actionLoading === "RESET" ? "Resetting..." : "Reset"}
         </button>
 
@@ -45,24 +48,24 @@ export function QueryActions({ selectedQuery, onAction, actionLoading, setAction
               handleAction("REMOVE");
             }
           }}
-          disabled={actionLoading !== null}
-          className="btn-danger btn-animated"
+          disabled={shouldDisableButtons}
+          className="btn-remove btn-animated"
         >
           {actionLoading === "REMOVE" ? "Removing..." : "Remove"}
         </button>
 
         <button
           onClick={() => handleAction("TRIGGER_LOADING")}
-          disabled={actionLoading !== null}
-          className={`${isArtificialLoading ? "btn-secondary" : "btn-accent"} btn-animated`}
+          disabled={shouldDisableButtons}
+          className={`${isArtificialLoading ? "btn-reset" : "btn-trigger-loading"} btn-animated`}
         >
           {actionLoading === "TRIGGER_LOADING" ? "Triggering..." : isArtificialLoading ? "Cancel Loading" : "Trigger Loading"}
         </button>
 
         <button
           onClick={() => handleAction("TRIGGER_ERROR")}
-          disabled={actionLoading !== null}
-          className={`${isArtificialError ? "btn-secondary" : "btn-special"} btn-animated`}
+          disabled={shouldDisableButtons}
+          className={`${isArtificialError ? "btn-reset" : "btn-trigger-error"} btn-animated`}
         >
           {actionLoading === "TRIGGER_ERROR" ? "Triggering..." : isArtificialError ? "Cancel Error" : "Trigger Error"}
         </button>

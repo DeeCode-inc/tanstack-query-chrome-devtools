@@ -37,14 +37,25 @@ export function ListView({ currentView, searchTerm, queries, mutations, selected
     }
   });
 
-  // Update keyboard navigation item count when filtered data changes
+  // Sort queries so inactive ones go to the end
+  const sortedData = currentView === "queries"
+    ? [...filteredData].sort((a, b) => {
+        const aQuery = a as QueryData;
+        const bQuery = b as QueryData;
+        if (!aQuery.isActive && bQuery.isActive) return 1;
+        if (aQuery.isActive && !bQuery.isActive) return -1;
+        return 0;
+      })
+    : filteredData;
+
+  // Update keyboard navigation item count when sorted data changes
   useEffect(() => {
     if (currentView === "queries" && queryKeyboardNavigation) {
-      queryKeyboardNavigation.updateItemCount(filteredData.length);
+      queryKeyboardNavigation.updateItemCount(sortedData.length);
     } else if (currentView === "mutations" && mutationKeyboardNavigation) {
-      mutationKeyboardNavigation.updateItemCount(filteredData.length);
+      mutationKeyboardNavigation.updateItemCount(sortedData.length);
     }
-  }, [currentView, filteredData.length, queryKeyboardNavigation, mutationKeyboardNavigation]);
+  }, [currentView, sortedData.length, queryKeyboardNavigation, mutationKeyboardNavigation]);
 
   return (
     <div className="card-container flex flex-col min-h-0" onKeyDown={currentKeyboardNavigation?.handleKeyDown} tabIndex={0}>
@@ -58,7 +69,7 @@ export function ListView({ currentView, searchTerm, queries, mutations, selected
             queries.length === 0 ? (
               <div className="p-5 text-center text-gray-500 dark:text-gray-400">No queries found.</div>
             ) : (
-              filteredData.map((item, index) => {
+              sortedData.map((item, index) => {
                 const query = item as QueryData;
                 const originalIndex = queries.indexOf(query);
                 return (
