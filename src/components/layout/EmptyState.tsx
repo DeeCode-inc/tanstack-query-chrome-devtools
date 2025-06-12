@@ -4,7 +4,13 @@ export function EmptyState() {
   return (
     <div className="flex-1 flex items-center justify-center">
       <div className="max-w-lg mx-auto p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-center enter-animation">
-        <div className="text-4xl mb-4">🔌</div>
+        <div className="mb-4">
+          <img
+            src="/icon-48.png"
+            alt="TanStack Query DevTools"
+            className="w-12 h-12 mx-auto"
+          />
+        </div>
         <h3 className="text-2xl font-semibold mb-3 text-gray-900 dark:text-gray-100">Connect Your App</h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">To use TanStack Query DevTools, add this line to your application:</p>
         <div className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded p-3 mb-4">

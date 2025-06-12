@@ -15,8 +15,3 @@ export function formatQueryKeyDetailed(queryKey: readonly unknown[]): string {
     return String(queryKey);
   }
 }
-
-// Helper function to create a query key string for tracking
-export function getQueryKeyString(queryKey: readonly unknown[]): string {
-  return JSON.stringify(queryKey);
-}

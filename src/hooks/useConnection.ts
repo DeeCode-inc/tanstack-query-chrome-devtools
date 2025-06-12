@@ -6,15 +6,10 @@ interface UseConnectionReturn {
   tanStackQueryDetected: boolean | null;
   queries: QueryData[];
   mutations: MutationData[];
-  reconnectAttempts: number;
   artificialStates: Map<string, "loading" | "error">;
 
   // Actions
   sendMessage: (message: unknown) => void;
-  setArtificialStates: React.Dispatch<React.SetStateAction<Map<string, "loading" | "error">>>;
-
-  // Connection status (derived)
-  isConnected: boolean;
 }
 
 export const useConnection = (): UseConnectionReturn => {
@@ -173,14 +168,9 @@ export const useConnection = (): UseConnectionReturn => {
     tanStackQueryDetected,
     queries,
     mutations,
-    reconnectAttempts,
     artificialStates,
 
     // Actions
     sendMessage,
-    setArtificialStates,
-
-    // Connection status (derived)
-    isConnected: portRef.current !== null,
   };
 };

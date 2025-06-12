@@ -1,9 +1,9 @@
+import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
 import type { MutationData } from "../../types/query";
+import { DataExplorer } from "../common/DataExplorer";
+import { MutationExplorer } from "./MutationExplorer";
 import { MutationHeader } from "./MutationHeader";
 import { MutationVariables } from "./MutationVariables";
-import { MutationExplorer } from "./MutationExplorer";
-import { DataExplorer } from "../common/DataExplorer";
-import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
 
 interface MutationDetailsProps {
   selectedMutation: MutationData | null;
@@ -20,7 +20,6 @@ export function MutationDetails({ selectedMutation, isDarkMode }: MutationDetail
     return (
       <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
         <div className="text-center enter-animation-scale">
-          <div className="text-2xl mb-2">👈</div>
           <p>Select a mutation from the list to view details</p>
         </div>
       </div>
@@ -33,13 +32,7 @@ export function MutationDetails({ selectedMutation, isDarkMode }: MutationDetail
 
       <MutationVariables variables={selectedMutation.variables} isDarkMode={isDarkMode} />
 
-      <DataExplorer
-        data={selectedMutation.data}
-        error={selectedMutation.error}
-        isDarkMode={isDarkMode}
-        title="Data Explorer"
-        emptyMessage="No data available"
-      />
+      <DataExplorer data={selectedMutation.data} error={selectedMutation.error} isDarkMode={isDarkMode} title="Data Explorer" emptyMessage="No data available" />
 
       <MutationExplorer selectedMutation={selectedMutation} isDarkMode={isDarkMode} />
     </div>

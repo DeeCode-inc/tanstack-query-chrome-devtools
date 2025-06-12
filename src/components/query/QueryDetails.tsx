@@ -1,11 +1,11 @@
+import type { InteractionProps } from "@microlink/react-json-view";
 import { useState } from "react";
+import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
 import type { QueryData } from "../../types/query";
-import { QueryHeader } from "./QueryHeader";
+import { DataExplorer } from "../common/DataExplorer";
 import { QueryActions } from "./QueryActions";
 import { QueryExplorer } from "./QueryExplorer";
-import { DataExplorer } from "../common/DataExplorer";
-import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
-import type { InteractionProps } from "@microlink/react-json-view";
+import { QueryHeader } from "./QueryHeader";
 
 interface QueryDetailsProps {
   selectedQuery: QueryData | null;
@@ -33,7 +33,6 @@ export function QueryDetails({ selectedQuery, onAction, isDarkMode, artificialSt
     return (
       <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
         <div className="text-center enter-animation-scale">
-          <div className="text-2xl mb-2">👈</div>
           <p>Select a query from the list to view details</p>
         </div>
       </div>

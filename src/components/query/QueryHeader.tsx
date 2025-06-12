@@ -25,7 +25,7 @@ export function QueryHeader({ selectedQuery }: QueryHeaderProps) {
         {/* Status badge */}
         <div className="flex-shrink-0">
           <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status:</div>
-          <StatusText status={status} enableCelebration={true} />
+          <StatusText status={status} />
         </div>
       </div>
 

@@ -1,25 +1,18 @@
 import { useStatusTransition } from "../../hooks/useStatusTransition";
+import { IconRenderer } from "../common/IconRenderer";
 import type { StatusDisplay } from "../../types/query";
 
 interface StatusBadgeProps {
   status: StatusDisplay;
   count?: number;
   className?: string;
-  enableCelebration?: boolean;
   transitionDuration?: number;
 }
 
-export function StatusBadge({
-  status,
-  count,
-  className = "",
-  enableCelebration = false,
-  transitionDuration = 500
-}: StatusBadgeProps) {
+export function StatusBadge({ status, count, className = "", transitionDuration = 500 }: StatusBadgeProps) {
   const { transitionClass, handleTransitionEnd } = useStatusTransition({
     currentStatus: status,
     transitionDuration,
-    enableCelebration
   });
 
   return (
@@ -30,9 +23,7 @@ export function StatusBadge({
       `}
       onAnimationEnd={handleTransitionEnd}
     >
-      {count !== undefined ? count : status.icon}
+      {count !== undefined ? count : <IconRenderer iconName={status.icon} className="w-4 h-4" />}
     </div>
   );
 }
-
-export default StatusBadge;

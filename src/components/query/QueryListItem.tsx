@@ -11,7 +11,6 @@ interface QueryListItemProps {
   isSelected: boolean;
   onSelect: (index: number) => void;
   staggerIndex?: number;
-  enableCelebration?: boolean;
   // Keyboard navigation props
   isFocused?: boolean;
   isKeyboardFocused?: boolean;
@@ -21,7 +20,7 @@ interface QueryListItemProps {
   itemRef?: (element: HTMLElement | null) => void;
 }
 
-export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex, enableCelebration = true, isFocused = false, isKeyboardFocused = false, tabIndex = -1, onFocus, onMouseEnter, itemRef }: QueryListItemProps) {
+export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex, isFocused = false, isKeyboardFocused = false, tabIndex = -1, onFocus, onMouseEnter, itemRef }: QueryListItemProps) {
   const status = getQueryStatusDisplay(query);
   const [staggerAnimationComplete, setStaggerAnimationComplete] = useState(false);
 
@@ -29,7 +28,6 @@ export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex
   const { containerClass, handleTransitionEnd: handleStatusTransitionEnd } = useStatusTransition({
     currentStatus: status,
     transitionDuration: 300,
-    enableCelebration,
   });
 
   // Apply stagger animation if staggerIndex is provided
@@ -75,7 +73,7 @@ export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex
       {/* Simple card content */}
       <div className="flex items-center gap-3 query-item-responsive">
         {/* Observer count badge with state transition animations */}
-        <StatusBadge status={status} count={query.observersCount} enableCelebration={enableCelebration} transitionDuration={500} />
+        <StatusBadge status={status} count={query.observersCount} transitionDuration={500} />
 
         {/* Query key */}
         <div className="flex-1 font-mono query-key-responsive text-gray-700 dark:text-gray-300 truncate">{formatQueryKeyShort(query.queryKey)}</div>
@@ -83,5 +81,3 @@ export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex
     </div>
   );
 }
-
-export default QueryListItem;

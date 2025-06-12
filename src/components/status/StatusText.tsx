@@ -4,20 +4,13 @@ import type { StatusDisplay } from "../../types/query";
 interface StatusTextProps {
   status: StatusDisplay;
   className?: string;
-  enableCelebration?: boolean;
   transitionDuration?: number;
 }
 
-export function StatusText({
-  status,
-  className = "",
-  enableCelebration = false,
-  transitionDuration = 500
-}: StatusTextProps) {
+export function StatusText({ status, className = "", transitionDuration = 500 }: StatusTextProps) {
   const { transitionClass, handleTransitionEnd } = useStatusTransition({
     currentStatus: status,
     transitionDuration,
-    enableCelebration
   });
 
   return (
@@ -32,5 +25,3 @@ export function StatusText({
     </div>
   );
 }
-
-export default StatusText;

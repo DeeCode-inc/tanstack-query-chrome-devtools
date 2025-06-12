@@ -28,7 +28,6 @@ export function useDetailsAnimation<T>({ selectedItem, getItemKey }: UseDetailsA
   }, [selectedItem, lastItemKey, getItemKey]);
 
   return {
-    isEntering,
-    animationClass: isEntering ? "details-enter" : ""
+    animationClass: isEntering ? "details-enter" : "",
   };
 }

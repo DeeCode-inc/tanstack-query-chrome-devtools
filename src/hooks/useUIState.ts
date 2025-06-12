@@ -1,19 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 
 interface UseUIStateReturn {
-  // State
   isDarkMode: boolean;
-  actionFeedback: { message: string; type: "success" | "error" } | null;
 
-  // Actions
   handleQueryAction: (action: string, queryHash: string, newValue?: unknown) => Promise<void>;
-  setActionFeedback: (feedback: { message: string; type: "success" | "error" } | null) => void;
 }
 
 export const useUIState = (sendMessage: (message: unknown) => void): UseUIStateReturn => {
   // UI State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  const [actionFeedback, setActionFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // Handle query actions
   const handleQueryAction = useCallback(
@@ -33,24 +28,10 @@ export const useUIState = (sendMessage: (message: unknown) => void): UseUIStateR
         sendMessage(message);
       } catch (error) {
         console.error("Failed to send action:", error);
-        setActionFeedback({
-          message: `Failed to send ${action.toLowerCase()} action`,
-          type: "error",
-        });
       }
     },
     [sendMessage]
   );
-
-  // Clear action feedback after delay
-  useEffect(() => {
-    if (actionFeedback) {
-      const timer = setTimeout(() => {
-        setActionFeedback(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [actionFeedback]);
 
   // Detect system dark mode preference
   useEffect(() => {
@@ -72,12 +53,7 @@ export const useUIState = (sendMessage: (message: unknown) => void): UseUIStateR
   }, []);
 
   return {
-    // State
     isDarkMode,
-    actionFeedback,
-
-    // Actions
     handleQueryAction,
-    setActionFeedback,
   };
 };

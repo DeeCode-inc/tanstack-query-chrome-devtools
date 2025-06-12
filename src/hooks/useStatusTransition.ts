@@ -4,7 +4,6 @@ import type { StatusDisplay } from "../types/query";
 interface UseStatusTransitionOptions {
   currentStatus: StatusDisplay;
   transitionDuration?: number;
-  enableCelebration?: boolean;
 }
 
 interface StatusTransitionReturn {
@@ -14,11 +13,7 @@ interface StatusTransitionReturn {
   handleTransitionEnd: () => void;
 }
 
-export function useStatusTransition({
-  currentStatus,
-  transitionDuration = 500,
-  enableCelebration = false
-}: UseStatusTransitionOptions): StatusTransitionReturn {
+export function useStatusTransition({ currentStatus, transitionDuration = 500 }: UseStatusTransitionOptions): StatusTransitionReturn {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionClass, setTransitionClass] = useState("");
   const [containerClass, setContainerClass] = useState("");
@@ -46,7 +41,7 @@ export function useStatusTransition({
           animationClass = "status-to-fetching";
           break;
         case "Fresh":
-          animationClass = enableCelebration ? "status-celebrate" : "status-to-success";
+          animationClass = "status-to-success";
           break;
         case "Stale":
           animationClass = "status-fade-gentle";
@@ -64,12 +59,7 @@ export function useStatusTransition({
       setTransitionClass(animationClass);
 
       // Special handling for specific transitions
-      if (lastStatusText === "Fetching" && currentStatusText === "Fresh") {
-        // Fetching → Success: Add celebration if enabled
-        if (enableCelebration) {
-          setTransitionClass("status-celebrate");
-        }
-      } else if (lastStatusText === "Fresh" && currentStatusText === "Stale") {
+      if (lastStatusText === "Fresh" && currentStatusText === "Stale") {
         // Fresh → Stale: Gentle fade transition
         setTransitionClass("status-fade-gentle");
       } else if (currentStatusText === "Error") {
@@ -83,12 +73,12 @@ export function useStatusTransition({
     }
 
     setLastStatusText(currentStatusText);
-  }, [currentStatus.text, lastStatusText, transitionDuration, enableCelebration, handleTransitionEnd]);
+  }, [currentStatus.text, lastStatusText, transitionDuration, handleTransitionEnd]);
 
   return {
     isTransitioning,
     transitionClass,
     containerClass,
-    handleTransitionEnd
+    handleTransitionEnd,
   };
 }

@@ -1,13 +1,8 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from "react";
 
 interface UseKeyboardNavigationOptions {
   enabled?: boolean;
   itemCount: number;
-  onItemSelect?: (index: number) => void;
-  onItemActivate?: (index: number) => void;
-  onEscape?: () => void;
-  onEnter?: (index: number) => void;
-  onSpace?: (index: number) => void;
   enableWrapAround?: boolean;
 }
 
@@ -19,12 +14,12 @@ interface UseKeyboardNavigationReturn {
   resetFocus: () => void;
   focusFirst: () => void;
   focusLast: () => void;
-  moveFocus: (direction: 'up' | 'down') => void;
+  moveFocus: (direction: "up" | "down") => void;
   updateItemCount: (count: number) => void;
   getItemProps: (index: number) => {
     tabIndex: number;
-    'data-focused': boolean;
-    'data-keyboard-focused': boolean;
+    "data-focused": boolean;
+    "data-keyboard-focused": boolean;
     onFocus: () => void;
     onMouseEnter: () => void;
     ref: (element: HTMLElement | null) => void;
@@ -32,15 +27,7 @@ interface UseKeyboardNavigationReturn {
 }
 
 export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): UseKeyboardNavigationReturn {
-  const {
-    enabled = true,
-    onItemSelect,
-    onItemActivate,
-    onEscape,
-    onEnter,
-    onSpace,
-    enableWrapAround = true,
-  } = options;
+  const { enabled = true, enableWrapAround = true } = options;
 
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [keyboardFocused, setKeyboardFocused] = useState(false);
@@ -62,132 +49,89 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
   }, [currentItemCount, focusedIndex]);
 
   // Handle keyboard navigation
-  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-    if (!enabled || currentItemCount === 0) return;
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (!enabled || currentItemCount === 0) return;
 
-    const { key } = event;
+      const { key } = event;
 
-    // Set keyboard navigation flag
-    isKeyboardNavigating.current = true;
-    setKeyboardFocused(true);
+      // Set keyboard navigation flag
+      isKeyboardNavigating.current = true;
+      setKeyboardFocused(true);
 
-    switch (key) {
-      case 'ArrowDown': {
-        event.preventDefault();
-        const currentIndex = focusedIndex ?? -1;
-        const nextIndex = currentIndex + 1;
+      switch (key) {
+        case "ArrowDown": {
+          event.preventDefault();
+          const currentIndex = focusedIndex ?? -1;
+          const nextIndex = currentIndex + 1;
 
-        if (nextIndex < currentItemCount) {
-          setFocusedIndex(nextIndex);
-          // Focus the actual DOM element
-          const element = itemRefs.current.get(nextIndex);
-          element?.focus();
-        } else if (enableWrapAround && currentItemCount > 0) {
-          setFocusedIndex(0);
-          const element = itemRefs.current.get(0);
-          element?.focus();
-        }
-        break;
-      }
-
-      case 'ArrowUp': {
-        event.preventDefault();
-        const currentIndex = focusedIndex ?? currentItemCount;
-        const nextIndex = currentIndex - 1;
-
-        if (nextIndex >= 0) {
-          setFocusedIndex(nextIndex);
-          // Focus the actual DOM element
-          const element = itemRefs.current.get(nextIndex);
-          element?.focus();
-        } else if (enableWrapAround && currentItemCount > 0) {
-          const lastIndex = currentItemCount - 1;
-          setFocusedIndex(lastIndex);
-          const element = itemRefs.current.get(lastIndex);
-          element?.focus();
-        }
-        break;
-      }
-
-      case 'Home': {
-        event.preventDefault();
-        if (currentItemCount > 0) {
-          setFocusedIndex(0);
-          const element = itemRefs.current.get(0);
-          element?.focus();
-        }
-        break;
-      }
-
-      case 'End': {
-        event.preventDefault();
-        if (currentItemCount > 0) {
-          const lastIndex = currentItemCount - 1;
-          setFocusedIndex(lastIndex);
-          const element = itemRefs.current.get(lastIndex);
-          element?.focus();
-        }
-        break;
-      }
-
-      case 'Enter': {
-        event.preventDefault();
-        if (focusedIndex !== null) {
-          if (onEnter) {
-            onEnter(focusedIndex);
-          } else if (onItemActivate) {
-            onItemActivate(focusedIndex);
+          if (nextIndex < currentItemCount) {
+            setFocusedIndex(nextIndex);
+            // Focus the actual DOM element
+            const element = itemRefs.current.get(nextIndex);
+            element?.focus();
+          } else if (enableWrapAround && currentItemCount > 0) {
+            setFocusedIndex(0);
+            const element = itemRefs.current.get(0);
+            element?.focus();
           }
+          break;
         }
-        break;
-      }
 
-      case ' ': {
-        event.preventDefault();
-        if (focusedIndex !== null) {
-          if (onSpace) {
-            onSpace(focusedIndex);
-          } else if (onItemSelect) {
-            onItemSelect(focusedIndex);
+        case "ArrowUp": {
+          event.preventDefault();
+          const currentIndex = focusedIndex ?? currentItemCount;
+          const nextIndex = currentIndex - 1;
+
+          if (nextIndex >= 0) {
+            setFocusedIndex(nextIndex);
+            // Focus the actual DOM element
+            const element = itemRefs.current.get(nextIndex);
+            element?.focus();
+          } else if (enableWrapAround && currentItemCount > 0) {
+            const lastIndex = currentItemCount - 1;
+            setFocusedIndex(lastIndex);
+            const element = itemRefs.current.get(lastIndex);
+            element?.focus();
           }
+          break;
         }
-        break;
-      }
 
-      case 'Escape': {
-        event.preventDefault();
-        if (onEscape) {
-          onEscape();
-        } else {
-          // Default behavior: reset focus
-          setFocusedIndex(null);
+        case "Home": {
+          event.preventDefault();
+          if (currentItemCount > 0) {
+            setFocusedIndex(0);
+            const element = itemRefs.current.get(0);
+            element?.focus();
+          }
+          break;
+        }
+
+        case "End": {
+          event.preventDefault();
+          if (currentItemCount > 0) {
+            const lastIndex = currentItemCount - 1;
+            setFocusedIndex(lastIndex);
+            const element = itemRefs.current.get(lastIndex);
+            element?.focus();
+          }
+          break;
+        }
+
+        case "Tab": {
+          // Allow normal tab behavior but reset keyboard navigation state
           setKeyboardFocused(false);
+          isKeyboardNavigating.current = false;
+          break;
         }
-        break;
-      }
 
-      case 'Tab': {
-        // Allow normal tab behavior but reset keyboard navigation state
-        setKeyboardFocused(false);
-        isKeyboardNavigating.current = false;
-        break;
+        default:
+          // For other keys, don't interfere
+          break;
       }
-
-      default:
-        // For other keys, don't interfere
-        break;
-    }
-  }, [
-    enabled,
-    currentItemCount,
-    focusedIndex,
-    onItemSelect,
-    onItemActivate,
-    onEscape,
-    onEnter,
-    onSpace,
-    enableWrapAround,
-  ]);
+    },
+    [enabled, currentItemCount, focusedIndex, enableWrapAround]
+  );
 
   // Reset focus
   const resetFocus = useCallback(() => {
@@ -218,44 +162,50 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
   }, [currentItemCount]);
 
   // Move focus in direction
-  const moveFocus = useCallback((direction: 'up' | 'down') => {
-    const currentIndex = focusedIndex ?? (direction === 'down' ? -1 : currentItemCount);
-    const nextIndex = direction === 'down' ? currentIndex + 1 : currentIndex - 1;
+  const moveFocus = useCallback(
+    (direction: "up" | "down") => {
+      const currentIndex = focusedIndex ?? (direction === "down" ? -1 : currentItemCount);
+      const nextIndex = direction === "down" ? currentIndex + 1 : currentIndex - 1;
 
-    if (nextIndex >= 0 && nextIndex < currentItemCount) {
-      setFocusedIndex(nextIndex);
-      setKeyboardFocused(true);
-      const element = itemRefs.current.get(nextIndex);
-      element?.focus();
-    }
-  }, [focusedIndex, currentItemCount]);
+      if (nextIndex >= 0 && nextIndex < currentItemCount) {
+        setFocusedIndex(nextIndex);
+        setKeyboardFocused(true);
+        const element = itemRefs.current.get(nextIndex);
+        element?.focus();
+      }
+    },
+    [focusedIndex, currentItemCount]
+  );
 
   // Get props for individual items
-  const getItemProps = useCallback((index: number) => {
-    return {
-      tabIndex: focusedIndex === index ? 0 : -1,
-      'data-focused': focusedIndex === index,
-      'data-keyboard-focused': keyboardFocused && focusedIndex === index,
-      onFocus: () => {
-        if (!isKeyboardNavigating.current) {
-          setFocusedIndex(index);
-          setKeyboardFocused(false);
-        }
-      },
-      onMouseEnter: () => {
-        if (!isKeyboardNavigating.current) {
-          setKeyboardFocused(false);
-        }
-      },
-      ref: (element: HTMLElement | null) => {
-        if (element) {
-          itemRefs.current.set(index, element);
-        } else {
-          itemRefs.current.delete(index);
-        }
-      },
-    };
-  }, [focusedIndex, keyboardFocused]);
+  const getItemProps = useCallback(
+    (index: number) => {
+      return {
+        tabIndex: focusedIndex === index ? 0 : -1,
+        "data-focused": focusedIndex === index,
+        "data-keyboard-focused": keyboardFocused && focusedIndex === index,
+        onFocus: () => {
+          if (!isKeyboardNavigating.current) {
+            setFocusedIndex(index);
+            setKeyboardFocused(false);
+          }
+        },
+        onMouseEnter: () => {
+          if (!isKeyboardNavigating.current) {
+            setKeyboardFocused(false);
+          }
+        },
+        ref: (element: HTMLElement | null) => {
+          if (element) {
+            itemRefs.current.set(index, element);
+          } else {
+            itemRefs.current.delete(index);
+          }
+        },
+      };
+    },
+    [focusedIndex, keyboardFocused]
+  );
 
   return {
     focusedIndex,

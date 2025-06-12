@@ -14,7 +14,6 @@ interface UseViewStateReturn {
   mutationKeyboardNavigation: ReturnType<typeof useKeyboardNavigation>;
 
   // Actions
-  setCurrentView: (view: ViewType) => void;
   setSearchTerm: (term: string) => void;
   setSelectedQueryIndex: (index: number | null) => void;
   setSelectedMutationIndex: (index: number | null) => void;
@@ -32,16 +31,12 @@ export const useViewState = (): UseViewStateReturn => {
   const queryKeyboardNavigation = useKeyboardNavigation({
     enabled: currentView === "queries",
     itemCount: 0, // Item count will be updated by the component with filtered data
-    onItemSelect: setSelectedQueryIndex,
-    onItemActivate: setSelectedQueryIndex,
     enableWrapAround: true,
   });
 
   const mutationKeyboardNavigation = useKeyboardNavigation({
     enabled: currentView === "mutations",
     itemCount: 0, // Item count will be updated by the component with filtered data
-    onItemSelect: setSelectedMutationIndex,
-    onItemActivate: setSelectedMutationIndex,
     enableWrapAround: true,
   });
 
@@ -67,7 +62,6 @@ export const useViewState = (): UseViewStateReturn => {
     mutationKeyboardNavigation,
 
     // Actions
-    setCurrentView,
     setSearchTerm,
     setSelectedQueryIndex,
     setSelectedMutationIndex,

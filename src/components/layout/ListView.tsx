@@ -19,7 +19,6 @@ interface ListViewProps {
 }
 
 export function ListView({ currentView, searchTerm, queries, mutations, selectedQueryIndex, selectedMutationIndex, onSelectQuery, onSelectMutation, queryKeyboardNavigation, mutationKeyboardNavigation }: ListViewProps) {
-
   // Get current keyboard navigation state
   const currentKeyboardNavigation = currentView === "queries" ? queryKeyboardNavigation : mutationKeyboardNavigation;
   const currentData = currentView === "queries" ? queries : mutations;
@@ -70,7 +69,6 @@ export function ListView({ currentView, searchTerm, queries, mutations, selected
                     isSelected={selectedQueryIndex === originalIndex}
                     onSelect={onSelectQuery}
                     staggerIndex={index}
-                    enableCelebration={true}
                     // Keyboard navigation props
                     isFocused={queryKeyboardNavigation?.focusedIndex === index}
                     isKeyboardFocused={queryKeyboardNavigation?.keyboardFocused && queryKeyboardNavigation?.focusedIndex === index}
