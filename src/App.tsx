@@ -23,7 +23,7 @@ function App() {
       <header className="p-4 pb-0 flex-shrink-0">
         {tanStackQueryDetected === true && (
           <div className="flex items-center justify-start gap-x-4 mb-4">
-            <img src="/icon-48.png" alt="TanStack Query DevTools" className="w-5 h-5" />
+            <img src="/icon-48.png" alt="TanStack Query DevTools" className="w-6 h-6" />
             <ToggleGroup
               currentView={currentView}
               onViewChange={handleViewChange}
