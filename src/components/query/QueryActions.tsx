@@ -1,5 +1,6 @@
 import type { QueryData } from "../../types/query";
 import { formatQueryKeyShort } from "../../utils/formatters";
+import { buttonVariants } from "../../lib/variants";
 
 interface QueryActionsProps {
   selectedQuery: QueryData;
@@ -30,15 +31,15 @@ export function QueryActions({ selectedQuery, onAction, actionLoading, setAction
     <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
       <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">Actions</h4>
       <div className="grid grid-cols-3 gap-2">
-        <button onClick={() => handleAction("REFETCH")} disabled={shouldDisableButtons} className="btn btn-blue btn-animated">
+        <button onClick={() => handleAction("REFETCH")} disabled={shouldDisableButtons} className={buttonVariants({ variant: "blue" })}>
           {actionLoading === "REFETCH" ? "Refreshing..." : "Refresh"}
         </button>
 
-        <button onClick={() => handleAction("INVALIDATE")} disabled={shouldDisableButtons} className="btn btn-orange btn-animated">
+        <button onClick={() => handleAction("INVALIDATE")} disabled={shouldDisableButtons} className={buttonVariants({ variant: "orange" })}>
           {actionLoading === "INVALIDATE" ? "Invalidating..." : "Invalidate"}
         </button>
 
-        <button onClick={() => handleAction("RESET")} disabled={shouldDisableButtons} className="btn btn-gray btn-animated">
+        <button onClick={() => handleAction("RESET")} disabled={shouldDisableButtons} className={buttonVariants({ variant: "gray" })}>
           {actionLoading === "RESET" ? "Resetting..." : "Reset"}
         </button>
 
@@ -49,16 +50,23 @@ export function QueryActions({ selectedQuery, onAction, actionLoading, setAction
             }
           }}
           disabled={shouldDisableButtons}
-          className="btn btn-pink btn-animated"
+          className={buttonVariants({ variant: "pink" })}
         >
           {actionLoading === "REMOVE" ? "Removing..." : "Remove"}
         </button>
 
-        <button onClick={() => handleAction("TRIGGER_LOADING")} className={`btn ${isArtificialLoading ? "btn-gray" : "btn-green"} btn-animated`}>
+        <button
+          onClick={() => handleAction("TRIGGER_LOADING")}
+          className={buttonVariants({ variant: isArtificialLoading ? "gray" : "green" })}
+        >
           {actionLoading === "TRIGGER_LOADING" ? "Triggering..." : isArtificialLoading ? "Cancel Loading" : "Trigger Loading"}
         </button>
 
-        <button onClick={() => handleAction("TRIGGER_ERROR")} disabled={shouldDisableButtons} className={`btn ${isArtificialError ? "btn-gray" : "btn-red"} btn-animated`}>
+        <button
+          onClick={() => handleAction("TRIGGER_ERROR")}
+          disabled={shouldDisableButtons}
+          className={buttonVariants({ variant: isArtificialError ? "gray" : "red" })}
+        >
           {actionLoading === "TRIGGER_ERROR" ? "Triggering..." : isArtificialError ? "Cancel Error" : "Trigger Error"}
         </button>
       </div>

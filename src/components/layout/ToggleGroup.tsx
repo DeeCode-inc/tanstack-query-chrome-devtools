@@ -1,4 +1,5 @@
 import type { ViewType } from "../../types/query";
+import { toggleOptionVariants } from "../../lib/variants";
 
 interface ToggleOption {
   value: ViewType;
@@ -17,7 +18,11 @@ export function ToggleGroup({ currentView, onViewChange, options, className = ""
   return (
     <div className={`toggle-group-base ${className}`}>
       {options.map((option) => (
-        <button key={option.value} onClick={() => onViewChange(option.value)} className={currentView === option.value ? "toggle-option-active" : "toggle-option-inactive"}>
+        <button
+          key={option.value}
+          onClick={() => onViewChange(option.value)}
+          className={toggleOptionVariants({ state: currentView === option.value ? "active" : "inactive" })}
+        >
           {option.label} ({option.count})
         </button>
       ))}

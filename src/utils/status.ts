@@ -2,22 +2,23 @@ import type { QueryData, MutationData, StatusDisplay } from "../types/query";
 
 // Helper function to get status display with state-based colors
 export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
-  // Check for inactive status first, regardless of other states
-  if (!query.isActive) {
-    return {
-      icon: "Moon",
-      text: "Inactive",
-      bgColor: "status status-gray",
-      textColor: "text-gray-500",
-    };
-  }
-
   if (query.state.isFetching) {
     return {
       icon: "RotateCw",
       text: "Fetching",
       bgColor: "status status-blue",
       textColor: "text-blue-600",
+      variant: "blue",
+    };
+  }
+
+  if (!query.isActive) {
+    return {
+      icon: "Moon",
+      text: "Inactive",
+      bgColor: "status status-gray",
+      textColor: "text-gray-500",
+      variant: "gray",
     };
   }
 
@@ -29,6 +30,7 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
           text: "Stale",
           bgColor: "status status-yellow",
           textColor: "text-yellow-600",
+          variant: "yellow",
         };
       }
       return {
@@ -36,6 +38,7 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
         text: "Fresh",
         bgColor: "status status-green",
         textColor: "text-green-600",
+        variant: "green",
       };
     case "error":
       return {
@@ -43,13 +46,15 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
         text: "Error",
         bgColor: "status status-red",
         textColor: "text-red-600",
+        variant: "red",
       };
     case "pending":
       return {
-        icon: "Clock",
-        text: "Pending",
-        bgColor: "status status-purple",
-        textColor: "text-orange-600",
+        icon: "Moon",
+        text: "Disabled",
+        bgColor: "status status-gray",
+        textColor: "text-gray-500",
+        variant: "gray",
       };
     default:
       return {
@@ -57,6 +62,7 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
         text: "Unknown",
         bgColor: "status status-gray",
         textColor: "text-gray-600",
+        variant: "gray",
       };
   }
 }
@@ -70,6 +76,7 @@ export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay 
         text: "Pending",
         bgColor: "status status-purple",
         textColor: "text-orange-600",
+        variant: "purple",
       };
     case "success":
       return {
@@ -77,6 +84,7 @@ export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay 
         text: "Success",
         bgColor: "status status-green",
         textColor: "text-green-600",
+        variant: "green",
       };
     case "error":
       return {
@@ -84,6 +92,7 @@ export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay 
         text: "Error",
         bgColor: "status status-red",
         textColor: "text-red-600",
+        variant: "red",
       };
     case "paused":
       return {
@@ -91,6 +100,7 @@ export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay 
         text: "Paused",
         bgColor: "status status-yellow",
         textColor: "text-yellow-600",
+        variant: "yellow",
       };
     case "idle":
     default:
@@ -99,6 +109,7 @@ export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay 
         text: "Idle",
         bgColor: "status status-gray",
         textColor: "text-gray-600",
+        variant: "gray",
       };
   }
 }

@@ -30,4 +30,5 @@ export interface StatusDisplay {
   text: string;
   bgColor: string;
   textColor: string;
+  variant: "blue" | "green" | "red" | "yellow" | "purple" | "gray";
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { StatusBadge } from "../status/StatusBadge";
+import { Chip } from "../common/Chip";
 import { getQueryStatusDisplay } from "../../utils/status";
 import { formatQueryKeyShort } from "../../utils/formatters";
 import { useStatusTransition } from "../../hooks/useStatusTransition";
@@ -77,6 +78,13 @@ export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex
 
         {/* Query key */}
         <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 break-all">{formatQueryKeyShort(query.queryKey)}</div>
+
+        {/* Disabled chip for pending queries */}
+        {query.state.status === "pending" && (
+          <Chip variant="disabled" size="sm">
+            Disabled
+          </Chip>
+        )}
       </div>
     </div>
   );

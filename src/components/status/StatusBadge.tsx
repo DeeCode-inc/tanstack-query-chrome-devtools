@@ -1,5 +1,6 @@
 import { useStatusTransition } from "../../hooks/useStatusTransition";
 import { IconRenderer } from "../common/IconRenderer";
+import { statusBadgeVariants } from "../../lib/variants";
 import type { StatusDisplay } from "../../types/query";
 
 interface StatusBadgeProps {
@@ -18,8 +19,8 @@ export function StatusBadge({ status, count, className = "", transitionDuration 
   return (
     <div
       className={`
-        w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded
-        status-badge-animated status-transition ${status.bgColor} ${transitionClass} ${className}
+        flex items-center justify-center text-white text-xs font-bold rounded
+        ${statusBadgeVariants({ status: status.variant })} ${transitionClass} ${className}
       `}
       onAnimationEnd={handleTransitionEnd}
     >
