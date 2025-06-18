@@ -2,6 +2,16 @@ import type { QueryData, MutationData, StatusDisplay } from "../types/query";
 
 // Helper function to get status display with state-based colors
 export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
+  // Check for inactive status first, regardless of other states
+  if (!query.isActive) {
+    return {
+      icon: "Moon",
+      text: "Inactive",
+      bgColor: "status status-gray",
+      textColor: "text-gray-500",
+    };
+  }
+
   if (query.state.isFetching) {
     return {
       icon: "RotateCw",
@@ -42,14 +52,6 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
         textColor: "text-orange-600",
       };
     default:
-      if (!query.isActive) {
-        return {
-          icon: "Moon",
-          text: "Inactive",
-          bgColor: "status status-gray",
-          textColor: "text-gray-500",
-        };
-      }
       return {
         icon: "HelpCircle",
         text: "Unknown",

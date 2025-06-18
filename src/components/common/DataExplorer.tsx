@@ -31,7 +31,7 @@ export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "N
         {data !== undefined && data !== null ? (
           <JsonView
             src={data}
-            collapsed={2}
+            collapsed={1}
             displayDataTypes={false}
             displayObjectSize={true}
             enableClipboard={true}
