@@ -76,7 +76,7 @@ export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex
         <StatusBadge status={status} count={query.observersCount} transitionDuration={500} />
 
         {/* Query key */}
-        <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{formatQueryKeyShort(query.queryKey)}</div>
+        <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 break-all">{formatQueryKeyShort(query.queryKey)}</div>
       </div>
     </div>
   );

@@ -16,8 +16,9 @@
 
   /* Selection states with blue theming */
   .card-selected {
-    @apply bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-700;
-    @apply ring-2 ring-blue-500/20 dark:ring-blue-400/30;
+    @apply bg-blue-100 dark:bg-blue-900/50 border-blue-300 dark:border-blue-600;
+    @apply ring-2 ring-blue-500/40 dark:ring-blue-400/50;
+    @apply border-l-4 border-l-blue-500 dark:border-l-blue-400;
   }
 
   /* Container query-enabled containers */

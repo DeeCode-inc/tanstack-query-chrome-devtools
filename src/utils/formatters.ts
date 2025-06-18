@@ -1,7 +1,7 @@
 // Helper function to format query key (single line for list)
 export function formatQueryKeyShort(queryKey: readonly unknown[]): string {
   try {
-    return JSON.stringify(queryKey).replace(/"/g, "");
+    return JSON.stringify(queryKey);
   } catch {
     return String(queryKey);
   }

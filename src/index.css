@@ -5,4 +5,4 @@
 @import "./styles/animations.css";
 
 /* Modern CSS Architecture with Cascade Layers */
-@layer base, responsive, components, cards, animations;
+@layer base, components, cards, animations;
