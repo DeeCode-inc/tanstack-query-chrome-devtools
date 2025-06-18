@@ -71,12 +71,12 @@ export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex
       `}
     >
       {/* Simple card content */}
-      <div className="flex items-center gap-3 query-item-responsive">
+      <div className="flex items-center gap-3">
         {/* Observer count badge with state transition animations */}
         <StatusBadge status={status} count={query.observersCount} transitionDuration={500} />
 
         {/* Query key */}
-        <div className="flex-1 font-mono query-key-responsive text-gray-700 dark:text-gray-300 truncate">{formatQueryKeyShort(query.queryKey)}</div>
+        <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{formatQueryKeyShort(query.queryKey)}</div>
       </div>
     </div>
   );

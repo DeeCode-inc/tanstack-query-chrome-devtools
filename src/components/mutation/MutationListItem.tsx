@@ -59,13 +59,13 @@ export function MutationListItem({ mutation, index, isSelected, onSelect, stagge
       `}
     >
       {/* Simple card content */}
-      <div onClick={handleCardClick} className="flex items-center gap-3 query-item-responsive">
+      <div onClick={handleCardClick} className="flex items-center gap-3">
         {/* Status indicator */}
         <StatusBadge status={status} />
 
         {/* Mutation info */}
         <div className="flex-1">
-          <div className="font-mono query-key-responsive text-gray-700 dark:text-gray-300 truncate">{mutation.mutationKey || `Mutation #${mutation.mutationId}`}</div>
+          <div className="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{mutation.mutationKey || `Mutation #${mutation.mutationId}`}</div>
           <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{new Date(mutation.submittedAt).toLocaleTimeString()}</div>
         </div>
       </div>
