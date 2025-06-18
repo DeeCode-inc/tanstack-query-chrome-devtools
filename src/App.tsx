@@ -20,9 +20,9 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col font-sans text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
-      <header className="p-5 pb-0 flex-shrink-0">
+      <header className="p-4 pb-0 flex-shrink-0">
         {tanStackQueryDetected === true && (
-          <div className="flex items-center justify-start gap-x-5 mb-5">
+          <div className="flex items-center justify-start gap-x-4 mb-4">
             <img src="/icon-48.png" alt="TanStack Query DevTools" className="w-5 h-5" />
             <ToggleGroup
               currentView={currentView}
@@ -37,7 +37,7 @@ function App() {
         )}
       </header>
 
-      <main className="flex-1 p-5 pt-0 flex flex-col min-h-0">
+      <main className="flex-1 p-4 pt-0 flex flex-col min-h-0">
         {tanStackQueryDetected === false && <EmptyState />}
 
         {tanStackQueryDetected === true && (
