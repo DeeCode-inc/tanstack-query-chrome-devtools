@@ -1,54 +1,79 @@
-# React + TypeScript + Vite
+# TanStack Query Chrome DevTools
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A professional Chrome DevTools extension for debugging TanStack Query applications across all frameworks.
 
-Currently, two official plugins are available:
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Available-blue?style=flat-square&logo=google-chrome)](https://chromewebstore.google.com/detail/tanstack-query-devtools/annajfchloimdhceglpgglpeepfghfai)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Features
 
-## Expanding the ESLint configuration
+### 🔍 Advanced Debugging Capabilities
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Real-time Query Inspection** - Live monitoring of all queries and mutations with instant state updates
+- **Interactive Data Editing** - Edit query data directly in DevTools using professional JsonView interface
+- **State Manipulation** - Trigger loading and error states for comprehensive UI testing
+- **Complete Cache Management** - Invalidate, refetch, reset, and remove queries with one-click actions
+- **Mutation Tracking** - Monitor mutations with variables, status, and result inspection
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+![TanStack Query DevTools Screenshot](store-assets/screenshots/screenshot-1280x800.png)
+
+## Quick Start
+
+1. **Install** the extension from [Chrome Web Store](https://chromewebstore.google.com/detail/tanstack-query-devtools/annajfchloimdhceglpgglpeepfghfai)
+2. **Setup your application** to expose the query client globally:
+
+   ```typescript
+   // Add this line where you create your query client
+   window.__TANSTACK_QUERY_CLIENT__ = queryClient;
+   ```
+
+3. **For TypeScript projects**, create a `global.d.ts` file in your project root:
+
+   ```typescript
+   interface Window {
+     __TANSTACK_QUERY_CLIENT__: import("@tanstack/query-core").QueryClient;
+   }
+   ```
+
+4. **Open** Chrome DevTools (F12) in your application
+5. **Navigate** to the "TanStack Query" tab
+6. **Start debugging** with real-time query inspection!
+
+## 🏗️ Technical Architecture
+
+### Multi-Context Extension Pattern
+
+```
+Web Application (TanStack Query)
+    ↓ Detection & State Extraction
+Injected Script (Application Context)
+    ↓ Message Passing
+Content Script (Bridge)
+    ↓ Chrome APIs
+Background Service Worker
+    ↓ DevTools Connection
+React DevTools Panel
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🔧 Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Local Development Setup
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+# Install dependencies
+npm install
+
+# Build extension
+npm run build
+
+# Load extension in Chrome
+# 1. Open chrome://extensions/
+# 2. Enable "Developer mode"
+# 3. Click "Load unpacked"
+# 4. Select the `dist` folder
 ```
+
+## 🔗 Links
+
+- [Chrome Web Store](https://chromewebstore.google.com/detail/tanstack-query-devtools/annajfchloimdhceglpgglpeepfghfai)
+- [TanStack Query Documentation](https://tanstack.com/query)
+- [Chrome Extension Development](https://developer.chrome.com/docs/extensions/)
