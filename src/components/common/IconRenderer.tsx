@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, HelpCircle, Moon, Pause, RotateCw, XCircle, type LucideProps } from "lucide-react";
+import { CheckCircle, ChevronDown, Clock, HelpCircle, Moon, Pause, RotateCw, XCircle, type LucideProps } from "lucide-react";
 import type { IconName } from "../../types/query";
 
 const iconMap: Record<IconName, React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>> = {
@@ -9,6 +9,7 @@ const iconMap: Record<IconName, React.ForwardRefExoticComponent<Omit<LucideProps
   HelpCircle,
   Pause,
   Moon,
+  ChevronDown,
 } as const;
 
 interface IconRendererProps {

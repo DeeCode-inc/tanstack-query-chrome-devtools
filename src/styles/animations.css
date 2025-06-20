@@ -1,4 +1,53 @@
 @layer animations {
+  /* Reusable Collapsible Component Animation */
+  .collapsible-container {
+    /* Container base styles are handled by className prop */
+  }
+
+  .collapsible-trigger {
+    /* Button base styles are handled by Tailwind classes */
+  }
+
+  .collapsible-content {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease-out;
+    overflow: hidden;
+  }
+
+  .collapsible-content.expanded {
+    grid-template-rows: 1fr;
+  }
+
+  .collapsible-inner {
+    min-height: 0; /* Critical for CSS Grid animation */
+    overflow: hidden;
+  }
+
+  .collapsible-icon {
+    transition: transform 0.3s ease;
+  }
+
+  .collapsible-icon.expanded {
+    transform: rotate(180deg);
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .collapsible-content {
+      transition: none;
+      grid-template-rows: 1fr;
+    }
+
+    .collapsible-icon {
+      transition: none;
+    }
+
+    .collapsible-icon.expanded {
+      transform: none;
+    }
+  }
+
   /* Animations layer - Micro-interactions and animations */
 
   /* Enhanced Card Interactions */

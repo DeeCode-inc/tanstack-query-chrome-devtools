@@ -23,7 +23,7 @@ export interface MutationData {
 
 export type ViewType = "queries" | "mutations";
 
-export type IconName = "CheckCircle" | "XCircle" | "Clock" | "RotateCw" | "HelpCircle" | "Pause" | "Moon";
+export type IconName = "CheckCircle" | "XCircle" | "Clock" | "RotateCw" | "HelpCircle" | "Pause" | "Moon" | "ChevronDown";
 
 export interface StatusDisplay {
   icon: IconName;
