@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && cp manifest.json dist/ && cp -r public dist/",
-    "build:extension": "npm run build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -16,14 +15,14 @@
     "@types/chrome": "^0.0.326",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.514.0",
+    "lucide-react": "^0.522.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
     "@tailwindcss/vite": "^4.1.8",
-    "@types/node": "^22.15.29",
+    "@types/node": "^24.0.3",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react-swc": "^3.9.0",

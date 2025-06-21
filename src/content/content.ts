@@ -72,7 +72,7 @@ window.addEventListener("message", (event) => {
 // Inject the injected script into the page context
 function injectScript() {
   const script = document.createElement("script");
-  script.src = chrome.runtime.getURL("injected/injected.js");
+  script.src = chrome.runtime.getURL("injected.js");
   script.onload = () => {
     script.remove();
   };

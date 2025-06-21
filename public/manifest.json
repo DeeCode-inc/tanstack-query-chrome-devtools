@@ -4,20 +4,20 @@
   "version": "0.4.0",
   "description": "Chrome DevTools extension for debugging TanStack Query applications. Inspect queries, mutations, and cache state in real-time.",
   "permissions": ["activeTab"],
-  "devtools_page": "src/devtools/devtools.html",
+  "devtools_page": "devtools.html",
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "js": ["content.js"],
       "run_at": "document_start"
     }
   ],
   "background": {
-    "service_worker": "background/background.js"
+    "service_worker": "background.js"
   },
   "web_accessible_resources": [
     {
-      "resources": ["injected/injected.js"],
+      "resources": ["injected.js"],
       "matches": ["<all_urls>"]
     }
   ],
