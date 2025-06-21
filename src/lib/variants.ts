@@ -27,7 +27,7 @@ export const buttonVariants = cva(
       variant: "gray",
       size: "md",
     },
-  }
+  },
 );
 
 /**
@@ -57,7 +57,7 @@ export const statusBadgeVariants = cva(
       status: "gray",
       size: "md",
     },
-  }
+  },
 );
 
 /**
@@ -77,7 +77,7 @@ export const toggleOptionVariants = cva(
     defaultVariants: {
       state: "inactive",
     },
-  }
+  },
 );
 
 /**
@@ -104,7 +104,7 @@ export const inputVariants = cva(
       size: "md",
       state: "default",
     },
-  }
+  },
 );
 
 /**
@@ -118,11 +118,14 @@ export const chipVariants = cva(
     variants: {
       variant: {
         gray: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600",
-        disabled: "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",
+        disabled:
+          "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",
         blue: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700",
-        green: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700",
+        green:
+          "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700",
         red: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700",
-        yellow: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700",
+        yellow:
+          "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700",
       },
       size: {
         sm: "px-2 py-0.5",
@@ -134,7 +137,7 @@ export const chipVariants = cva(
       variant: "gray",
       size: "md",
     },
-  }
+  },
 );
 
 // Export TypeScript types for component props

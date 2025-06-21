@@ -26,7 +26,9 @@ interface UseKeyboardNavigationReturn {
   };
 }
 
-export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): UseKeyboardNavigationReturn {
+export function useKeyboardNavigation(
+  options: UseKeyboardNavigationOptions,
+): UseKeyboardNavigationReturn {
   const { enabled = true, enableWrapAround = true } = options;
 
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -130,7 +132,7 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
           break;
       }
     },
-    [enabled, currentItemCount, focusedIndex, enableWrapAround]
+    [enabled, currentItemCount, focusedIndex, enableWrapAround],
   );
 
   // Reset focus
@@ -164,8 +166,10 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
   // Move focus in direction
   const moveFocus = useCallback(
     (direction: "up" | "down") => {
-      const currentIndex = focusedIndex ?? (direction === "down" ? -1 : currentItemCount);
-      const nextIndex = direction === "down" ? currentIndex + 1 : currentIndex - 1;
+      const currentIndex =
+        focusedIndex ?? (direction === "down" ? -1 : currentItemCount);
+      const nextIndex =
+        direction === "down" ? currentIndex + 1 : currentIndex - 1;
 
       if (nextIndex >= 0 && nextIndex < currentItemCount) {
         setFocusedIndex(nextIndex);
@@ -174,7 +178,7 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
         element?.focus();
       }
     },
-    [focusedIndex, currentItemCount]
+    [focusedIndex, currentItemCount],
   );
 
   // Get props for individual items
@@ -204,7 +208,7 @@ export function useKeyboardNavigation(options: UseKeyboardNavigationOptions): Us
         },
       };
     },
-    [focusedIndex, keyboardFocused]
+    [focusedIndex, keyboardFocused],
   );
 
   return {

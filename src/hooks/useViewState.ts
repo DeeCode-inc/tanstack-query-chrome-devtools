@@ -24,8 +24,12 @@ export const useViewState = (): UseViewStateReturn => {
   // View and selection state
   const [currentView, setCurrentView] = useState<ViewType>("queries");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(null);
-  const [selectedMutationIndex, setSelectedMutationIndex] = useState<number | null>(null);
+  const [selectedQueryIndex, setSelectedQueryIndex] = useState<number | null>(
+    null,
+  );
+  const [selectedMutationIndex, setSelectedMutationIndex] = useState<
+    number | null
+  >(null);
 
   // Keyboard navigation hooks for queries and mutations
   const queryKeyboardNavigation = useKeyboardNavigation({

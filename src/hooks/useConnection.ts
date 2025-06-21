@@ -13,12 +13,16 @@ interface UseConnectionReturn {
 }
 
 export const useConnection = (): UseConnectionReturn => {
-  const [tanStackQueryDetected, setTanStackQueryDetected] = useState<boolean | null>(null);
+  const [tanStackQueryDetected, setTanStackQueryDetected] = useState<
+    boolean | null
+  >(null);
   const [queries, setQueries] = useState<QueryData[]>([]);
   const [mutations, setMutations] = useState<MutationData[]>([]);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   // Track artificial states triggered by DevTools
-  const [artificialStates, setArtificialStates] = useState<Map<string, "loading" | "error">>(new Map());
+  const [artificialStates, setArtificialStates] = useState<
+    Map<string, "loading" | "error">
+  >(new Map());
 
   // Connection management
   const portRef = useRef<chrome.runtime.Port | null>(null);
@@ -55,7 +59,10 @@ export const useConnection = (): UseConnectionReturn => {
           heartbeatIntervalRef.current = setInterval(() => {
             if (portRef.current) {
               try {
-                portRef.current.postMessage({ type: "PING", timestamp: Date.now() });
+                portRef.current.postMessage({
+                  type: "PING",
+                  timestamp: Date.now(),
+                });
               } catch (error) {
                 console.warn("Failed to send ping:", error);
               }
@@ -88,7 +95,11 @@ export const useConnection = (): UseConnectionReturn => {
           }
         } else if (message.type === "QUERY_ACTION_RESULT") {
           // Update artificial states based on action results
-          if (message.success && (message.action === "TRIGGER_LOADING" || message.action === "TRIGGER_ERROR")) {
+          if (
+            message.success &&
+            (message.action === "TRIGGER_LOADING" ||
+              message.action === "TRIGGER_ERROR")
+          ) {
             setArtificialStates((prev) => {
               const newStates = new Map(prev);
               const queryHash = message.queryHash;

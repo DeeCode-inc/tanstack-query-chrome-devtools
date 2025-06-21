@@ -68,7 +68,9 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
 }
 
 // Helper function to get mutation status display
-export function getMutationStatusDisplay(mutation: MutationData): StatusDisplay {
+export function getMutationStatusDisplay(
+  mutation: MutationData,
+): StatusDisplay {
   switch (mutation.state) {
     case "pending":
       return {

@@ -13,7 +13,10 @@ interface StatusTransitionReturn {
   handleTransitionEnd: () => void;
 }
 
-export function useStatusTransition({ currentStatus, transitionDuration = 500 }: UseStatusTransitionOptions): StatusTransitionReturn {
+export function useStatusTransition({
+  currentStatus,
+  transitionDuration = 500,
+}: UseStatusTransitionOptions): StatusTransitionReturn {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionClass, setTransitionClass] = useState("");
   const [containerClass, setContainerClass] = useState("");
@@ -73,7 +76,12 @@ export function useStatusTransition({ currentStatus, transitionDuration = 500 }:
     }
 
     setLastStatusText(currentStatusText);
-  }, [currentStatus.text, lastStatusText, transitionDuration, handleTransitionEnd]);
+  }, [
+    currentStatus.text,
+    lastStatusText,
+    transitionDuration,
+    handleTransitionEnd,
+  ]);
 
   return {
     isTransitioning,

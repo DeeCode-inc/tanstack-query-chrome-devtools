@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { IconRenderer } from './IconRenderer';
+import React, { useState } from "react";
+import { IconRenderer } from "./IconRenderer";
 
 interface CollapsibleProps {
   title: string;
@@ -13,8 +13,8 @@ export function Collapsible({
   title,
   icon,
   defaultExpanded = false,
-  className = '',
-  children
+  className = "",
+  children,
 }: CollapsibleProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -32,15 +32,13 @@ export function Collapsible({
       >
         <IconRenderer
           iconName="ChevronDown"
-          className={`collapsible-icon w-4 h-4 transition-transform ${isExpanded ? 'expanded' : ''}`}
+          className={`collapsible-icon w-4 h-4 transition-transform ${isExpanded ? "expanded" : ""}`}
         />
         {icon && <span className="collapsible-title-icon">{icon}</span>}
         <span>{title}</span>
       </button>
-      <div className={`collapsible-content ${isExpanded ? 'expanded' : ''}`}>
-        <div className="collapsible-inner">
-          {children}
-        </div>
+      <div className={`collapsible-content ${isExpanded ? "expanded" : ""}`}>
+        <div className="collapsible-inner">{children}</div>
       </div>
     </div>
   );

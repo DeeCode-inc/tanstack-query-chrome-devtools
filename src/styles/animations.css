@@ -174,14 +174,24 @@
 
   /* Skeleton Component Classes */
   .skeleton-base {
-    background: linear-gradient(90deg, rgb(var(--color-gray-200)) 25%, rgb(var(--color-gray-100)) 50%, rgb(var(--color-gray-200)) 75%);
+    background: linear-gradient(
+      90deg,
+      rgb(var(--color-gray-200)) 25%,
+      rgb(var(--color-gray-100)) 50%,
+      rgb(var(--color-gray-200)) 75%
+    );
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite linear;
     @apply rounded;
   }
 
   .skeleton-base-dark {
-    background: linear-gradient(90deg, rgb(var(--color-gray-700)) 25%, rgb(var(--color-gray-600)) 50%, rgb(var(--color-gray-700)) 75%);
+    background: linear-gradient(
+      90deg,
+      rgb(var(--color-gray-700)) 25%,
+      rgb(var(--color-gray-600)) 50%,
+      rgb(var(--color-gray-700)) 75%
+    );
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite linear;
     @apply rounded;

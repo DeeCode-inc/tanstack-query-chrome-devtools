@@ -2,7 +2,9 @@ import React from "react";
 import { buttonVariants, type ButtonVariants } from "../../lib/variants";
 import { clsx } from "clsx";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, ButtonVariants {
+interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    ButtonVariants {
   children: React.ReactNode;
   isLoading?: boolean;
   loadingText?: string;
@@ -30,7 +32,7 @@ export function Button({
       disabled={isDisabled}
       {...props}
     >
-      {isLoading ? (loadingText || "Loading...") : children}
+      {isLoading ? loadingText || "Loading..." : children}
     </button>
   );
 }

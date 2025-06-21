@@ -18,9 +18,22 @@ interface MutationListItemProps {
   itemRef?: (element: HTMLElement | null) => void;
 }
 
-export function MutationListItem({ mutation, index, isSelected, onSelect, staggerIndex, isFocused = false, isKeyboardFocused = false, tabIndex = -1, onFocus, onMouseEnter, itemRef }: MutationListItemProps) {
+export function MutationListItem({
+  mutation,
+  index,
+  isSelected,
+  onSelect,
+  staggerIndex,
+  isFocused = false,
+  isKeyboardFocused = false,
+  tabIndex = -1,
+  onFocus,
+  onMouseEnter,
+  itemRef,
+}: MutationListItemProps) {
   const status = getMutationStatusDisplay(mutation);
-  const [staggerAnimationComplete, setStaggerAnimationComplete] = useState(false);
+  const [staggerAnimationComplete, setStaggerAnimationComplete] =
+    useState(false);
 
   // Apply stagger animation if staggerIndex is provided
   const staggerStyle =
@@ -65,8 +78,12 @@ export function MutationListItem({ mutation, index, isSelected, onSelect, stagge
 
         {/* Mutation info */}
         <div className="flex-1">
-          <div className="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{mutation.mutationKey || `Mutation #${mutation.mutationId}`}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{new Date(mutation.submittedAt).toLocaleTimeString()}</div>
+          <div className="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">
+            {mutation.mutationKey || `Mutation #${mutation.mutationId}`}
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            {new Date(mutation.submittedAt).toLocaleTimeString()}
+          </div>
         </div>
       </div>
     </div>

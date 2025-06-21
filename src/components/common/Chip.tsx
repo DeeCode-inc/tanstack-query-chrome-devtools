@@ -2,7 +2,9 @@ import React from "react";
 import { chipVariants, type ChipVariants } from "../../lib/variants";
 import { clsx } from "clsx";
 
-interface ChipProps extends React.HTMLAttributes<HTMLSpanElement>, ChipVariants {
+interface ChipProps
+  extends React.HTMLAttributes<HTMLSpanElement>,
+    ChipVariants {
   children: React.ReactNode;
 }
 

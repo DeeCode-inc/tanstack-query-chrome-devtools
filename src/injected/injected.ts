@@ -4,14 +4,28 @@ import type { Query, Mutation, QueryState } from "@tanstack/query-core";
 // Message types for communication
 interface TanStackQueryEvent {
   type: "QEVENT";
-  subtype: "QUERY_CLIENT_DETECTED" | "QUERY_CLIENT_NOT_FOUND" | "QUERY_STATE_UPDATE" | "QUERY_DATA_UPDATE" | "MUTATION_DATA_UPDATE";
+  subtype:
+    | "QUERY_CLIENT_DETECTED"
+    | "QUERY_CLIENT_NOT_FOUND"
+    | "QUERY_STATE_UPDATE"
+    | "QUERY_DATA_UPDATE"
+    | "MUTATION_DATA_UPDATE";
   payload?: unknown;
 }
 
 // Action message types
 interface QueryActionMessage {
   type: "QUERY_ACTION";
-  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR" | "SET_QUERY_DATA";
+  action:
+    | "INVALIDATE"
+    | "REFETCH"
+    | "REMOVE"
+    | "RESET"
+    | "TRIGGER_LOADING"
+    | "TRIGGER_ERROR"
+    | "CANCEL_LOADING"
+    | "CANCEL_ERROR"
+    | "SET_QUERY_DATA";
   queryHash: string;
   newData?: unknown;
 }
@@ -19,7 +33,16 @@ interface QueryActionMessage {
 // Action result message
 interface QueryActionResult {
   type: "QUERY_ACTION_RESULT";
-  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET" | "TRIGGER_LOADING" | "TRIGGER_ERROR" | "CANCEL_LOADING" | "CANCEL_ERROR" | "SET_QUERY_DATA";
+  action:
+    | "INVALIDATE"
+    | "REFETCH"
+    | "REMOVE"
+    | "RESET"
+    | "TRIGGER_LOADING"
+    | "TRIGGER_ERROR"
+    | "CANCEL_LOADING"
+    | "CANCEL_ERROR"
+    | "SET_QUERY_DATA";
   queryHash: string;
   success: boolean;
   error?: string;
@@ -95,7 +118,9 @@ function getQueryData(): QueryData[] {
           status: query.state.status,
           isFetching: query.state.fetchStatus === "fetching",
           isPending: query.state.status === "pending",
-          isLoading: query.state.fetchStatus === "fetching" && query.state.status === "pending",
+          isLoading:
+            query.state.fetchStatus === "fetching" &&
+            query.state.status === "pending",
           isStale: query.isStale(),
           dataUpdatedAt: query.state.dataUpdatedAt,
           errorUpdatedAt: query.state.errorUpdatedAt,
@@ -104,10 +129,13 @@ function getQueryData(): QueryData[] {
         meta: query.meta || {},
         isActive: query.getObserversCount() > 0,
         observersCount: query.getObserversCount(),
-      })
+      }),
     );
   } catch (error) {
-    console.error("TanStack Query DevTools: Error collecting query data:", error);
+    console.error(
+      "TanStack Query DevTools: Error collecting query data:",
+      error,
+    );
     return [];
   }
 }
@@ -126,7 +154,9 @@ function getMutationData(): MutationData[] {
     return mutations.map(
       (mutation: Mutation): MutationData => ({
         mutationId: mutation.mutationId,
-        mutationKey: mutation.options.mutationKey ? JSON.stringify(mutation.options.mutationKey) : undefined,
+        mutationKey: mutation.options.mutationKey
+          ? JSON.stringify(mutation.options.mutationKey)
+          : undefined,
         state: mutation.state.status,
         variables: mutation.state.variables,
         context: mutation.state.context,
@@ -134,10 +164,13 @@ function getMutationData(): MutationData[] {
         error: mutation.state.error,
         submittedAt: mutation.state.submittedAt || Date.now(),
         isPending: mutation.state.status === "pending",
-      })
+      }),
     );
   } catch (error) {
-    console.error("TanStack Query DevTools: Error collecting mutation data:", error);
+    console.error(
+      "TanStack Query DevTools: Error collecting mutation data:",
+      error,
+    );
     return [];
   }
 }
@@ -149,7 +182,7 @@ function sendToContentScript(event: TanStackQueryEvent) {
       source: "tanstack-query-devtools-injected",
       ...event,
     },
-    "*"
+    "*",
   );
 }
 
@@ -192,7 +225,10 @@ function setupQuerySubscription() {
       sendQueryDataUpdate();
     }
   } catch (error) {
-    console.error("TanStack Query DevTools: Error setting up subscription:", error);
+    console.error(
+      "TanStack Query DevTools: Error setting up subscription:",
+      error,
+    );
   }
 }
 
@@ -215,7 +251,10 @@ function setupMutationSubscription() {
       sendMutationDataUpdate();
     }
   } catch (error) {
-    console.error("TanStack Query DevTools: Error setting up mutation subscription:", error);
+    console.error(
+      "TanStack Query DevTools: Error setting up mutation subscription:",
+      error,
+    );
   }
 }
 
@@ -241,7 +280,9 @@ function performEnhancedDetection() {
 }
 
 // Query action handlers
-async function handleQueryAction(action: QueryActionMessage): Promise<QueryActionResult> {
+async function handleQueryAction(
+  action: QueryActionMessage,
+): Promise<QueryActionResult> {
   const queryClient = getQueryClient();
 
   if (!queryClient) {
@@ -290,10 +331,14 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
 
       case "TRIGGER_LOADING": {
         // Check if already in artificial loading state by checking fetchMeta
-        if (activeQuery.state.fetchMeta && "__previousQueryOptions" in activeQuery.state.fetchMeta) {
+        if (
+          activeQuery.state.fetchMeta &&
+          "__previousQueryOptions" in activeQuery.state.fetchMeta
+        ) {
           // Cancel the loading state - restore previous state
           const previousState = activeQuery.state;
-          const previousOptions = activeQuery.state.fetchMeta.__previousQueryOptions;
+          const previousOptions =
+            activeQuery.state.fetchMeta.__previousQueryOptions;
 
           activeQuery.cancel({ silent: true });
           activeQuery.setState({
@@ -335,9 +380,13 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
 
       case "TRIGGER_ERROR": {
         // Check if already in artificial error state by checking fetchMeta
-        if (activeQuery.state.fetchMeta && "__previousQueryState" in activeQuery.state.fetchMeta) {
+        if (
+          activeQuery.state.fetchMeta &&
+          "__previousQueryState" in activeQuery.state.fetchMeta
+        ) {
           // Cancel the error state - restore previous state
-          const previousState = activeQuery.state.fetchMeta.__previousQueryState;
+          const previousState =
+            activeQuery.state.fetchMeta.__previousQueryState;
 
           if (previousState) {
             activeQuery.setState({
@@ -361,7 +410,12 @@ async function handleQueryAction(action: QueryActionMessage): Promise<QueryActio
           queryClient
             .fetchQuery({
               queryKey: activeQuery.queryKey,
-              queryFn: () => Promise.reject(new Error("Error state triggered by TanStack Query DevTools for testing purposes")),
+              queryFn: () =>
+                Promise.reject(
+                  new Error(
+                    "Error state triggered by TanStack Query DevTools for testing purposes",
+                  ),
+                ),
               retry: false,
               staleTime: 0,
             })
@@ -427,7 +481,7 @@ function sendActionResult(result: QueryActionResult) {
       source: "tanstack-query-devtools-injected",
       ...result,
     },
-    "*"
+    "*",
   );
 }
 

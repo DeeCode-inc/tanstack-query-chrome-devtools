@@ -10,7 +10,12 @@ interface StatusBadgeProps {
   transitionDuration?: number;
 }
 
-export function StatusBadge({ status, count, className = "", transitionDuration = 500 }: StatusBadgeProps) {
+export function StatusBadge({
+  status,
+  count,
+  className = "",
+  transitionDuration = 500,
+}: StatusBadgeProps) {
   const { transitionClass, handleTransitionEnd } = useStatusTransition({
     currentStatus: status,
     transitionDuration,
@@ -24,7 +29,11 @@ export function StatusBadge({ status, count, className = "", transitionDuration 
       `}
       onAnimationEnd={handleTransitionEnd}
     >
-      {count !== undefined ? count : <IconRenderer iconName={status.icon} className="w-4 h-4" />}
+      {count !== undefined ? (
+        count
+      ) : (
+        <IconRenderer iconName={status.icon} className="w-4 h-4" />
+      )}
     </div>
   );
 }

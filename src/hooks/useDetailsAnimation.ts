@@ -5,7 +5,10 @@ interface UseDetailsAnimationOptions<T> {
   getItemKey: (item: T) => string;
 }
 
-export function useDetailsAnimation<T>({ selectedItem, getItemKey }: UseDetailsAnimationOptions<T>) {
+export function useDetailsAnimation<T>({
+  selectedItem,
+  getItemKey,
+}: UseDetailsAnimationOptions<T>) {
   const [isEntering, setIsEntering] = useState(false);
   const [lastItemKey, setLastItemKey] = useState<string | null>(null);
 

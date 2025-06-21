@@ -3,10 +3,16 @@ import { useState, useEffect, useCallback } from "react";
 interface UseUIStateReturn {
   isDarkMode: boolean;
 
-  handleQueryAction: (action: string, queryHash: string, newValue?: unknown) => Promise<void>;
+  handleQueryAction: (
+    action: string,
+    queryHash: string,
+    newValue?: unknown,
+  ) => Promise<void>;
 }
 
-export const useUIState = (sendMessage: (message: unknown) => void): UseUIStateReturn => {
+export const useUIState = (
+  sendMessage: (message: unknown) => void,
+): UseUIStateReturn => {
   // UI State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
@@ -30,7 +36,7 @@ export const useUIState = (sendMessage: (message: unknown) => void): UseUIStateR
         console.error("Failed to send action:", error);
       }
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   // Detect system dark mode preference

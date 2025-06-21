@@ -21,15 +21,29 @@ interface QueryListItemProps {
   itemRef?: (element: HTMLElement | null) => void;
 }
 
-export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex, isFocused = false, isKeyboardFocused = false, tabIndex = -1, onFocus, onMouseEnter, itemRef }: QueryListItemProps) {
+export function QueryListItem({
+  query,
+  index,
+  isSelected,
+  onSelect,
+  staggerIndex,
+  isFocused = false,
+  isKeyboardFocused = false,
+  tabIndex = -1,
+  onFocus,
+  onMouseEnter,
+  itemRef,
+}: QueryListItemProps) {
   const status = getQueryStatusDisplay(query);
-  const [staggerAnimationComplete, setStaggerAnimationComplete] = useState(false);
+  const [staggerAnimationComplete, setStaggerAnimationComplete] =
+    useState(false);
 
   // Container animation for status changes
-  const { containerClass, handleTransitionEnd: handleStatusTransitionEnd } = useStatusTransition({
-    currentStatus: status,
-    transitionDuration: 300,
-  });
+  const { containerClass, handleTransitionEnd: handleStatusTransitionEnd } =
+    useStatusTransition({
+      currentStatus: status,
+      transitionDuration: 300,
+    });
 
   // Apply stagger animation if staggerIndex is provided
   const staggerStyle =
@@ -74,10 +88,16 @@ export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex
       {/* Simple card content */}
       <div className="flex items-center gap-3">
         {/* Observer count badge with state transition animations */}
-        <StatusBadge status={status} count={query.observersCount} transitionDuration={500} />
+        <StatusBadge
+          status={status}
+          count={query.observersCount}
+          transitionDuration={500}
+        />
 
         {/* Query key */}
-        <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 break-all">{formatQueryKeyShort(query.queryKey)}</div>
+        <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 break-all">
+          {formatQueryKeyShort(query.queryKey)}
+        </div>
 
         {/* Disabled chip for pending queries */}
         {query.state.status === "pending" && !query.state.isFetching && (

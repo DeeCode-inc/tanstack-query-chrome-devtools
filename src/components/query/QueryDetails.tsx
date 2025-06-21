@@ -14,7 +14,12 @@ interface QueryDetailsProps {
   artificialStates: Map<string, "loading" | "error">;
 }
 
-export function QueryDetails({ selectedQuery, onAction, isDarkMode, artificialStates }: QueryDetailsProps) {
+export function QueryDetails({
+  selectedQuery,
+  onAction,
+  isDarkMode,
+  artificialStates,
+}: QueryDetailsProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const { animationClass } = useDetailsAnimation({
@@ -43,9 +48,22 @@ export function QueryDetails({ selectedQuery, onAction, isDarkMode, artificialSt
     <div className={`h-full overflow-y-auto ${animationClass}`}>
       <QueryHeader selectedQuery={selectedQuery} />
 
-      <QueryActions selectedQuery={selectedQuery} onAction={onAction} actionLoading={actionLoading} setActionLoading={setActionLoading} artificialStates={artificialStates} />
+      <QueryActions
+        selectedQuery={selectedQuery}
+        onAction={onAction}
+        actionLoading={actionLoading}
+        setActionLoading={setActionLoading}
+        artificialStates={artificialStates}
+      />
 
-      <DataExplorer data={selectedQuery.state.data} error={selectedQuery.state.error} isDarkMode={isDarkMode} title="Data Explorer" emptyMessage="No data available" onEdit={handleDataEdit} />
+      <DataExplorer
+        data={selectedQuery.state.data}
+        error={selectedQuery.state.error}
+        isDarkMode={isDarkMode}
+        title="Data Explorer"
+        emptyMessage="No data available"
+        onEdit={handleDataEdit}
+      />
 
       <QueryExplorer selectedQuery={selectedQuery} isDarkMode={isDarkMode} />
     </div>

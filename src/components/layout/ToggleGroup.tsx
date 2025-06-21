@@ -14,14 +14,21 @@ interface ToggleGroupProps {
   className?: string;
 }
 
-export function ToggleGroup({ currentView, onViewChange, options, className = "" }: ToggleGroupProps) {
+export function ToggleGroup({
+  currentView,
+  onViewChange,
+  options,
+  className = "",
+}: ToggleGroupProps) {
   return (
     <div className={`toggle-group-base ${className}`}>
       {options.map((option) => (
         <button
           key={option.value}
           onClick={() => onViewChange(option.value)}
-          className={toggleOptionVariants({ state: currentView === option.value ? "active" : "inactive" })}
+          className={toggleOptionVariants({
+            state: currentView === option.value ? "active" : "inactive",
+          })}
         >
           {option.label} ({option.count})
         </button>

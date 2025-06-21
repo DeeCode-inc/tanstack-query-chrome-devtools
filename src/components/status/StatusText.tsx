@@ -7,7 +7,11 @@ interface StatusTextProps {
   transitionDuration?: number;
 }
 
-export function StatusText({ status, className = "", transitionDuration = 500 }: StatusTextProps) {
+export function StatusText({
+  status,
+  className = "",
+  transitionDuration = 500,
+}: StatusTextProps) {
   const { transitionClass, handleTransitionEnd } = useStatusTransition({
     currentStatus: status,
     transitionDuration,

@@ -3,7 +3,11 @@
 // Message types for communication with background script
 interface TanStackQueryMessage {
   type: "QEVENT";
-  subtype: "QUERY_CLIENT_DETECTED" | "QUERY_CLIENT_NOT_FOUND" | "QUERY_STATE_UPDATE" | "QUERY_DATA_UPDATE";
+  subtype:
+    | "QUERY_CLIENT_DETECTED"
+    | "QUERY_CLIENT_NOT_FOUND"
+    | "QUERY_STATE_UPDATE"
+    | "QUERY_DATA_UPDATE";
   payload?: unknown;
 }
 
@@ -26,7 +30,10 @@ interface QueryActionResult {
 // Send message to background script
 function sendToBackground(message: TanStackQueryMessage) {
   chrome.runtime.sendMessage(message).catch((error) => {
-    console.warn("TanStack Query DevTools: Failed to send message to background:", error);
+    console.warn(
+      "TanStack Query DevTools: Failed to send message to background:",
+      error,
+    );
   });
 }
 
@@ -37,14 +44,17 @@ function sendActionToInjected(action: QueryActionMessage) {
       source: "tanstack-query-devtools-content",
       ...action,
     },
-    "*"
+    "*",
   );
 }
 
 // Send action result to background script
 function sendActionResultToBackground(result: QueryActionResult) {
   chrome.runtime.sendMessage(result).catch((error) => {
-    console.warn("TanStack Query DevTools: Failed to send action result to background:", error);
+    console.warn(
+      "TanStack Query DevTools: Failed to send action result to background:",
+      error,
+    );
   });
 }
 
@@ -102,7 +112,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         source: "tanstack-query-devtools-content",
         type: "REQUEST_IMMEDIATE_UPDATE",
       },
-      "*"
+      "*",
     );
     sendResponse({ received: true });
     return true;

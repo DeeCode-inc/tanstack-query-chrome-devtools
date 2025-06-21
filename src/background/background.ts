@@ -16,7 +16,12 @@ const activeConnections = new Map<string, ConnectionInfo>();
 // Message types
 interface TanStackQueryMessage {
   type: "QEVENT";
-  subtype: "QUERY_CLIENT_DETECTED" | "QUERY_CLIENT_NOT_FOUND" | "QUERY_STATE_UPDATE" | "QUERY_DATA_UPDATE" | "MUTATION_DATA_UPDATE";
+  subtype:
+    | "QUERY_CLIENT_DETECTED"
+    | "QUERY_CLIENT_NOT_FOUND"
+    | "QUERY_STATE_UPDATE"
+    | "QUERY_DATA_UPDATE"
+    | "MUTATION_DATA_UPDATE";
   payload?: unknown;
 }
 
@@ -107,93 +112,100 @@ chrome.runtime.onConnect.addListener(async (port) => {
       // Forward messages to content script if needed
       const currentTabId = await getCurrentTabId();
       if (currentTabId && message.type) {
-        chrome.tabs.sendMessage(currentTabId, message).catch((error: unknown) => {
-          console.warn("Failed to send message to content script:", error);
-        });
+        chrome.tabs
+          .sendMessage(currentTabId, message)
+          .catch((error: unknown) => {
+            console.warn("Failed to send message to content script:", error);
+          });
       }
     });
   }
 });
 
 // Handle messages from content scripts
-chrome.runtime.onMessage.addListener((message: TanStackQueryMessage | QueryActionResult, sender, sendResponse) => {
-  const tabId = sender.tab?.id;
-  if (!tabId) return;
+chrome.runtime.onMessage.addListener(
+  (message: TanStackQueryMessage | QueryActionResult, sender, sendResponse) => {
+    const tabId = sender.tab?.id;
+    if (!tabId) return;
 
-  if (message.type === "QEVENT") {
-    switch (message.subtype) {
-      case "QUERY_CLIENT_DETECTED":
-        tabsWithTanStackQuery.add(tabId);
+    if (message.type === "QEVENT") {
+      switch (message.subtype) {
+        case "QUERY_CLIENT_DETECTED":
+          tabsWithTanStackQuery.add(tabId);
 
-        // Forward to DevTools panel
-        devtoolsPort?.postMessage({
-          type: "QEVENT",
-          subtype: "QUERY_CLIENT_DETECTED",
-          tabId: tabId,
-          payload: message.payload,
-        });
-        break;
+          // Forward to DevTools panel
+          devtoolsPort?.postMessage({
+            type: "QEVENT",
+            subtype: "QUERY_CLIENT_DETECTED",
+            tabId: tabId,
+            payload: message.payload,
+          });
+          break;
 
-      case "QUERY_CLIENT_NOT_FOUND":
-        tabsWithTanStackQuery.delete(tabId);
+        case "QUERY_CLIENT_NOT_FOUND":
+          tabsWithTanStackQuery.delete(tabId);
 
-        // Forward to DevTools panel
-        devtoolsPort?.postMessage({
-          type: "QEVENT",
-          subtype: "QUERY_CLIENT_NOT_FOUND",
-          tabId: tabId,
-          payload: message.payload,
-        });
-        break;
+          // Forward to DevTools panel
+          devtoolsPort?.postMessage({
+            type: "QEVENT",
+            subtype: "QUERY_CLIENT_NOT_FOUND",
+            tabId: tabId,
+            payload: message.payload,
+          });
+          break;
 
-      case "QUERY_STATE_UPDATE":
-        // Forward to DevTools panel
-        devtoolsPort?.postMessage({
-          type: "QEVENT",
-          subtype: "QUERY_STATE_UPDATE",
-          tabId: tabId,
-          payload: message.payload,
-        });
-        break;
+        case "QUERY_STATE_UPDATE":
+          // Forward to DevTools panel
+          devtoolsPort?.postMessage({
+            type: "QEVENT",
+            subtype: "QUERY_STATE_UPDATE",
+            tabId: tabId,
+            payload: message.payload,
+          });
+          break;
 
-      case "QUERY_DATA_UPDATE":
-        // Forward to DevTools panel
-        devtoolsPort?.postMessage({
-          type: "QEVENT",
-          subtype: "QUERY_DATA_UPDATE",
-          tabId: tabId,
-          payload: message.payload,
-        });
-        break;
+        case "QUERY_DATA_UPDATE":
+          // Forward to DevTools panel
+          devtoolsPort?.postMessage({
+            type: "QEVENT",
+            subtype: "QUERY_DATA_UPDATE",
+            tabId: tabId,
+            payload: message.payload,
+          });
+          break;
 
-      case "MUTATION_DATA_UPDATE":
-        // Forward to DevTools panel
-        devtoolsPort?.postMessage({
-          type: "QEVENT",
-          subtype: "MUTATION_DATA_UPDATE",
-          tabId: tabId,
-          payload: message.payload,
-        });
-        break;
+        case "MUTATION_DATA_UPDATE":
+          // Forward to DevTools panel
+          devtoolsPort?.postMessage({
+            type: "QEVENT",
+            subtype: "MUTATION_DATA_UPDATE",
+            tabId: tabId,
+            payload: message.payload,
+          });
+          break;
+      }
     }
-  }
 
-  // Handle query action results from content script
-  if (message.type === "QUERY_ACTION_RESULT") {
-    // Forward to DevTools panel
-    devtoolsPort?.postMessage({
-      ...message,
-      tabId: tabId,
-    });
-  }
+    // Handle query action results from content script
+    if (message.type === "QUERY_ACTION_RESULT") {
+      // Forward to DevTools panel
+      devtoolsPort?.postMessage({
+        ...message,
+        tabId: tabId,
+      });
+    }
 
-  sendResponse({ received: true });
-});
+    sendResponse({ received: true });
+  },
+);
 
 // Helper function to get current active tab ID
 async function getCurrentTabId(): Promise<number | null> {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
     return tab?.id || null;
   } catch (error) {
     console.warn("Failed to get current tab ID:", error);

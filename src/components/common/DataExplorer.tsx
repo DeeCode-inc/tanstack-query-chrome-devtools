@@ -10,7 +10,14 @@ interface DataExplorerProps {
   onEdit?: (edit: InteractionProps) => void;
 }
 
-export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "No data available", onEdit }: DataExplorerProps) {
+export function DataExplorer({
+  data,
+  error,
+  isDarkMode,
+  title,
+  emptyMessage = "No data available",
+  onEdit,
+}: DataExplorerProps) {
   const [isContentEntering, setIsContentEntering] = useState(false);
   const [hasDataLoaded, setHasDataLoaded] = useState(false);
 
@@ -26,8 +33,12 @@ export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "N
 
   return (
     <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
-      <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">{title}</h4>
-      <div className={`bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 ${isContentEntering ? "content-enter" : ""}`}>
+      <h4 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
+        {title}
+      </h4>
+      <div
+        className={`bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 ${isContentEntering ? "content-enter" : ""}`}
+      >
         {data !== undefined && data !== null ? (
           <JsonView
             src={data}
@@ -63,7 +74,9 @@ export function DataExplorer({ data, error, isDarkMode, title, emptyMessage = "N
             />
           </div>
         ) : (
-          <div className="text-gray-500 dark:text-gray-400 text-sm italic">{emptyMessage}</div>
+          <div className="text-gray-500 dark:text-gray-400 text-sm italic">
+            {emptyMessage}
+          </div>
         )}
       </div>
     </div>

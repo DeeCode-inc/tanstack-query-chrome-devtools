@@ -2,5 +2,5 @@
 chrome.devtools.panels.create(
   "TanStack Query",
   "", // icon path (empty for now)
-  "index.html" // panel page
+  "index.html", // panel page
 );
