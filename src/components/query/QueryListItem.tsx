@@ -80,7 +80,7 @@ export function QueryListItem({ query, index, isSelected, onSelect, staggerIndex
         <div className="flex-1 font-mono text-xs text-gray-700 dark:text-gray-300 break-all">{formatQueryKeyShort(query.queryKey)}</div>
 
         {/* Disabled chip for pending queries */}
-        {query.state.status === "pending" && (
+        {query.state.status === "pending" && !query.state.isFetching && (
           <Chip variant="disabled" size="sm">
             Disabled
           </Chip>

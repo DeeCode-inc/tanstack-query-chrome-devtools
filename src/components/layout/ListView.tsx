@@ -38,15 +38,16 @@ export function ListView({ currentView, searchTerm, queries, mutations, selected
   });
 
   // Sort queries so inactive ones go to the end
-  const sortedData = currentView === "queries"
-    ? [...filteredData].sort((a, b) => {
-        const aQuery = a as QueryData;
-        const bQuery = b as QueryData;
-        if (!aQuery.isActive && bQuery.isActive) return 1;
-        if (aQuery.isActive && !bQuery.isActive) return -1;
-        return 0;
-      })
-    : filteredData;
+  const sortedData =
+    currentView === "queries"
+      ? [...filteredData].sort((a, b) => {
+          const aQuery = a as QueryData;
+          const bQuery = b as QueryData;
+          if (!aQuery.isActive && bQuery.isActive) return 1;
+          if (aQuery.isActive && !bQuery.isActive) return -1;
+          return 0;
+        })
+      : filteredData;
 
   // Update keyboard navigation item count when sorted data changes
   useEffect(() => {
@@ -74,7 +75,7 @@ export function ListView({ currentView, searchTerm, queries, mutations, selected
                 const originalIndex = queries.indexOf(query);
                 return (
                   <QueryListItem
-                    key={`${query.queryKey}-${index}`}
+                    key={query.queryHash}
                     query={query}
                     index={originalIndex}
                     isSelected={selectedQueryIndex === originalIndex}
