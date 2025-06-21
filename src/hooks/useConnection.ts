@@ -48,6 +48,14 @@ export const useConnection = (): UseConnectionReturn => {
       const port = chrome.runtime.connect({ name: "devtools" });
       portRef.current = port;
 
+      // Send the inspected tab ID immediately after connection
+      const inspectedTabId = chrome.devtools.inspectedWindow.tabId;
+      port.postMessage({
+        type: "DEVTOOLS_CONNECT",
+        inspectedTabId: inspectedTabId,
+        timestamp: Date.now(),
+      });
+
       port.onMessage.addListener((message) => {
         if (message.type === "CONNECTION_ESTABLISHED") {
           setReconnectAttempts(0);
@@ -71,6 +79,10 @@ export const useConnection = (): UseConnectionReturn => {
         } else if (message.type === "PONG") {
           // Connection is healthy
         } else if (message.type === "INITIAL_STATE") {
+          // Clear previous data when connecting to a different tab
+          setQueries([]);
+          setMutations([]);
+          setArtificialStates(new Map());
           setTanStackQueryDetected(message.hasTanStackQuery);
         } else if (message.type === "QEVENT") {
           switch (message.subtype) {

@@ -12,7 +12,6 @@ export default defineConfig({
         panel: "index.html",
         // DevTools entry point
         devtools: "devtools.html",
-        // devtools: 'src/devtools/devtools.html',
         // Content script
         content: "src/content/content.ts",
         // Background service worker
