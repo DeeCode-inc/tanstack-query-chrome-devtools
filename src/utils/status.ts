@@ -22,6 +22,16 @@ export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
     };
   }
 
+  if (query.state.fetchStatus === "paused") {
+    return {
+      icon: "Pause",
+      text: "Paused",
+      bgColor: "status status-purple",
+      textColor: "text-purple-500",
+      variant: "purple",
+    };
+  }
+
   switch (query.state.status) {
     case "success":
       if (query.state.isStale) {
