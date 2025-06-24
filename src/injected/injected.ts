@@ -1,5 +1,6 @@
 // Injected script - runs in the webpage context for deeper TanStack Query integration
 import type { Query, Mutation, QueryState } from "@tanstack/query-core";
+import { safeSerialize } from "../utils/serialization";
 
 // Message types for communication
 interface TanStackQueryEvent {
@@ -177,13 +178,32 @@ function getMutationData(): MutationData[] {
 
 // Send message to content script via postMessage
 function sendToContentScript(event: TanStackQueryEvent) {
-  window.postMessage(
-    {
-      source: "tanstack-query-devtools-injected",
-      ...event,
-    },
-    "*",
-  );
+  // Serialize the payload if it exists
+  const serializedEvent: {
+    source: string;
+    type: string;
+    subtype: string;
+    payload?: {
+      serialized: string;
+      usedSuperjson: boolean;
+      isSerializedPayload: boolean;
+    };
+  } = {
+    source: "tanstack-query-devtools-injected",
+    type: event.type,
+    subtype: event.subtype,
+  };
+
+  if (event.payload !== undefined) {
+    const serialized = safeSerialize(event.payload);
+    serializedEvent.payload = {
+      serialized,
+      usedSuperjson: true, // Using custom serialization
+      isSerializedPayload: true,
+    };
+  }
+
+  window.postMessage(serializedEvent, "*");
 }
 
 // Send query data update

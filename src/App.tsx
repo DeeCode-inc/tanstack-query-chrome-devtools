@@ -21,7 +21,7 @@ function App() {
     artificialStates,
     sendMessage,
   } = useConnection();
-  const { isDarkMode, handleQueryAction } = useUIState(sendMessage);
+  const { handleQueryAction } = useUIState(sendMessage);
   const {
     currentView,
     searchTerm,
@@ -95,7 +95,6 @@ function App() {
                         : null
                     }
                     onAction={handleQueryAction}
-                    isDarkMode={isDarkMode}
                     artificialStates={artificialStates}
                   />
                 ) : (
@@ -105,7 +104,6 @@ function App() {
                         ? mutations[selectedMutationIndex]
                         : null
                     }
-                    isDarkMode={isDarkMode}
                   />
                 )
               }

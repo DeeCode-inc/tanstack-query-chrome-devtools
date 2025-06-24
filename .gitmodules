@@ -1,0 +1,3 @@
+[submodule "memory-bank"]
+	path = memory-bank
+	url = git@github.com:DeeCode-inc/tanstack-query-chrome-devtools-memory-bank.git

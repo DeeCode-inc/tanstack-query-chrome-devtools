@@ -7,13 +7,9 @@ import { MutationVariables } from "./MutationVariables";
 
 interface MutationDetailsProps {
   selectedMutation: MutationData | null;
-  isDarkMode: boolean;
 }
 
-export function MutationDetails({
-  selectedMutation,
-  isDarkMode,
-}: MutationDetailsProps) {
+export function MutationDetails({ selectedMutation }: MutationDetailsProps) {
   const { animationClass } = useDetailsAnimation({
     selectedItem: selectedMutation,
     getItemKey: (mutation: MutationData) => mutation.mutationId.toString(),
@@ -33,23 +29,17 @@ export function MutationDetails({
     <div className={`h-full overflow-y-auto ${animationClass}`}>
       <MutationHeader selectedMutation={selectedMutation} />
 
-      <MutationVariables
-        variables={selectedMutation.variables}
-        isDarkMode={isDarkMode}
-      />
+      <MutationVariables variables={selectedMutation.variables} />
 
       <DataExplorer
         data={selectedMutation.data}
         error={selectedMutation.error}
-        isDarkMode={isDarkMode}
         title="Data Explorer"
         emptyMessage="No data available"
+        readonly={true}
       />
 
-      <MutationExplorer
-        selectedMutation={selectedMutation}
-        isDarkMode={isDarkMode}
-      />
+      <MutationExplorer selectedMutation={selectedMutation} />
     </div>
   );
 }

@@ -1,14 +1,10 @@
-import JsonView from "@microlink/react-json-view";
+import { JsonViewer } from "../common/JsonViewer";
 
 interface MutationVariablesProps {
   variables?: unknown;
-  isDarkMode: boolean;
 }
 
-export function MutationVariables({
-  variables,
-  isDarkMode,
-}: MutationVariablesProps) {
+export function MutationVariables({ variables }: MutationVariablesProps) {
   if (variables === undefined) {
     return null;
   }
@@ -19,19 +15,7 @@ export function MutationVariables({
         Variables
       </h4>
       <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
-        <JsonView
-          src={variables ?? {}}
-          collapsed={2}
-          displayDataTypes={false}
-          displayObjectSize={true}
-          enableClipboard={true}
-          theme={isDarkMode ? "monokai" : "rjv-default"}
-          style={{
-            fontSize: "12px",
-            fontFamily: "monospace",
-            backgroundColor: "transparent",
-          }}
-        />
+        <JsonViewer data={variables ?? {}} collapsed={2} readonly={true} />
       </div>
     </div>
   );

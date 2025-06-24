@@ -1,4 +1,3 @@
-import type { InteractionProps } from "@microlink/react-json-view";
 import { useState } from "react";
 import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
 import type { QueryData } from "../../types/query";
@@ -10,14 +9,12 @@ import { QueryHeader } from "./QueryHeader";
 interface QueryDetailsProps {
   selectedQuery: QueryData | null;
   onAction: (action: string, queryHash: string, newValue?: unknown) => void;
-  isDarkMode: boolean;
   artificialStates: Map<string, "loading" | "error">;
 }
 
 export function QueryDetails({
   selectedQuery,
   onAction,
-  isDarkMode,
   artificialStates,
 }: QueryDetailsProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -27,10 +24,10 @@ export function QueryDetails({
     getItemKey: (query: QueryData) => JSON.stringify(query.queryKey),
   });
 
-  const handleDataEdit = (edit: InteractionProps) => {
+  const handleDataEdit = (newData: unknown) => {
     if (selectedQuery) {
       // Call action with new data from edit
-      onAction("SET_QUERY_DATA", selectedQuery.queryHash, edit.updated_src);
+      onAction("SET_QUERY_DATA", selectedQuery.queryHash, newData);
     }
   };
 
@@ -59,13 +56,12 @@ export function QueryDetails({
       <DataExplorer
         data={selectedQuery.state.data}
         error={selectedQuery.state.error}
-        isDarkMode={isDarkMode}
         title="Data Explorer"
         emptyMessage="No data available"
         onEdit={handleDataEdit}
       />
 
-      <QueryExplorer selectedQuery={selectedQuery} isDarkMode={isDarkMode} />
+      <QueryExplorer selectedQuery={selectedQuery} />
     </div>
   );
 }

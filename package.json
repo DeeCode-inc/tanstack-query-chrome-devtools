@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --mode injected",
     "lint": "eslint .",
     "preview": "vite preview",
     "prettier:format": "prettier --write .",
@@ -13,14 +13,14 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@microlink/react-json-view": "^1.26.2",
     "@tanstack/query-core": "^5.80.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.522.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "superjson": "^2.2.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

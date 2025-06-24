@@ -1,22 +1,22 @@
 import { useState, useEffect } from "react";
-import JsonView, { type InteractionProps } from "@microlink/react-json-view";
+import { JsonViewer } from "./JsonViewer";
 
 interface DataExplorerProps {
   data?: unknown;
   error?: unknown;
-  isDarkMode: boolean;
   title: string;
   emptyMessage?: string;
-  onEdit?: (edit: InteractionProps) => void;
+  onEdit?: (newData: unknown) => void;
+  readonly?: boolean;
 }
 
 export function DataExplorer({
   data,
   error,
-  isDarkMode,
   title,
   emptyMessage = "No data available",
   onEdit,
+  readonly,
 }: DataExplorerProps) {
   const [isContentEntering, setIsContentEntering] = useState(false);
   const [hasDataLoaded, setHasDataLoaded] = useState(false);
@@ -40,38 +40,16 @@ export function DataExplorer({
         className={`bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 ${isContentEntering ? "content-enter" : ""}`}
       >
         {data !== undefined && data !== null ? (
-          <JsonView
-            src={data}
+          <JsonViewer
+            data={data}
             collapsed={1}
-            displayDataTypes={false}
-            displayObjectSize={true}
-            enableClipboard={true}
             onEdit={onEdit}
-            onAdd={onEdit}
-            onDelete={onEdit}
-            theme={isDarkMode ? "monokai" : "rjv-default"}
-            style={{
-              fontSize: "12px",
-              fontFamily: "monospace",
-              backgroundColor: "transparent",
-            }}
+            readonly={readonly}
           />
         ) : error ? (
           <div className="text-red-600 dark:text-red-400 text-sm">
             <div className="font-medium mb-2">Error occurred:</div>
-            <JsonView
-              src={error}
-              collapsed={1}
-              displayDataTypes={false}
-              displayObjectSize={true}
-              enableClipboard={true}
-              theme={isDarkMode ? "monokai" : "rjv-default"}
-              style={{
-                fontSize: "12px",
-                fontFamily: "monospace",
-                backgroundColor: "transparent",
-              }}
-            />
+            <JsonViewer data={error} collapsed={1} />
           </div>
         ) : (
           <div className="text-gray-500 dark:text-gray-400 text-sm italic">

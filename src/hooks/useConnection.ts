@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { QueryData, MutationData } from "../types/query";
+import { safeDeserialize } from "../utils/serialization";
 
 interface UseConnectionReturn {
   // State
@@ -85,6 +86,27 @@ export const useConnection = (): UseConnectionReturn => {
           setArtificialStates(new Map());
           setTanStackQueryDetected(message.hasTanStackQuery);
         } else if (message.type === "QEVENT") {
+          // Deserialize payload if it was serialized
+          let payload = message.payload;
+          if (
+            payload &&
+            typeof payload === "object" &&
+            payload.isSerializedPayload
+          ) {
+            try {
+              payload = safeDeserialize(payload.serialized);
+            } catch (error) {
+              console.error(
+                "Failed to deserialize payload in DevTools:",
+                error,
+              );
+              payload = {
+                error: "Deserialization failed",
+                originalPayload: payload,
+              };
+            }
+          }
+
           switch (message.subtype) {
             case "QUERY_CLIENT_DETECTED":
               setTanStackQueryDetected(true);
@@ -95,13 +117,13 @@ export const useConnection = (): UseConnectionReturn => {
             case "QUERY_STATE_UPDATE":
               break;
             case "QUERY_DATA_UPDATE":
-              if (Array.isArray(message.payload)) {
-                setQueries(message.payload);
+              if (Array.isArray(payload)) {
+                setQueries(payload);
               }
               break;
             case "MUTATION_DATA_UPDATE":
-              if (Array.isArray(message.payload)) {
-                setMutations(message.payload);
+              if (Array.isArray(payload)) {
+                setMutations(payload);
               }
               break;
           }

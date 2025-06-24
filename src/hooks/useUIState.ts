@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 
 interface UseUIStateReturn {
-  isDarkMode: boolean;
-
   handleQueryAction: (
     action: string,
     queryHash: string,
@@ -13,9 +11,6 @@ interface UseUIStateReturn {
 export const useUIState = (
   sendMessage: (message: unknown) => void,
 ): UseUIStateReturn => {
-  // UI State
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-
   // Handle query actions
   const handleQueryAction = useCallback(
     async (action: string, queryHash: string, newValue?: unknown) => {
@@ -39,27 +34,7 @@ export const useUIState = (
     [sendMessage],
   );
 
-  // Detect system dark mode preference
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-    // Set initial state
-    setIsDarkMode(mediaQuery.matches);
-
-    // Listen for changes
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches);
-    };
-
-    mediaQuery.addEventListener("change", handleChange);
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleChange);
-    };
-  }, []);
-
   return {
-    isDarkMode,
     handleQueryAction,
   };
 };
