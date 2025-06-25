@@ -28,7 +28,7 @@
     "@types/chrome": "^0.0.326",
     "@types/node": "^24.0.3",
     "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.2",
+    "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react-swc": "^3.9.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.25.0",
