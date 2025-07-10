@@ -9,7 +9,6 @@ interface TabConnection {
   inspectedTabId: number;
   connectionId: string;
   connectedAt: number;
-  lastPing: number;
 }
 
 // Track DevTools connections per inspected tab
@@ -59,7 +58,6 @@ chrome.runtime.onConnect.addListener((port) => {
           inspectedTabId,
           connectionId,
           connectedAt: Date.now(),
-          lastPing: Date.now(),
         };
 
         tabConnections.set(inspectedTabId, connection);
@@ -87,19 +85,6 @@ chrome.runtime.onConnect.addListener((port) => {
           timestamp: Date.now(),
         });
 
-        return;
-      }
-
-      // Handle ping messages for connection health
-      if (message.type === "PING" && inspectedTabId) {
-        const connection = tabConnections.get(inspectedTabId);
-        if (connection) {
-          connection.lastPing = Date.now();
-          port.postMessage({
-            type: "PONG",
-            timestamp: Date.now(),
-          });
-        }
         return;
       }
 
@@ -207,6 +192,13 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   tabsWithTanStackQuery.delete(tabId);
   tabConnections.delete(tabId);
 });
+
+// https://developer.chrome.com/docs/extensions/develop/migrate/to-service-workers#keep_a_service_worker_alive_continuously
+setInterval(
+  () =>
+    void chrome.storage.local.set({ "last-heartbeat": new Date().getTime() }),
+  20000,
+);
 
 // Extension lifecycle
 chrome.runtime.onStartup.addListener(() => {});

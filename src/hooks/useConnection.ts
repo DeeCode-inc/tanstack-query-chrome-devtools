@@ -19,7 +19,6 @@ export const useConnection = (): UseConnectionReturn => {
   >(null);
   const [queries, setQueries] = useState<QueryData[]>([]);
   const [mutations, setMutations] = useState<MutationData[]>([]);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   // Track artificial states triggered by DevTools
   const [artificialStates, setArtificialStates] = useState<
     Map<string, "loading" | "error">
@@ -28,7 +27,6 @@ export const useConnection = (): UseConnectionReturn => {
   // Connection management
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Send message function
   const sendMessage = useCallback((message: unknown) => {
@@ -58,28 +56,7 @@ export const useConnection = (): UseConnectionReturn => {
       });
 
       port.onMessage.addListener((message) => {
-        if (message.type === "CONNECTION_ESTABLISHED") {
-          setReconnectAttempts(0);
-
-          // Start heartbeat
-          if (heartbeatIntervalRef.current) {
-            clearInterval(heartbeatIntervalRef.current);
-          }
-          heartbeatIntervalRef.current = setInterval(() => {
-            if (portRef.current) {
-              try {
-                portRef.current.postMessage({
-                  type: "PING",
-                  timestamp: Date.now(),
-                });
-              } catch (error) {
-                console.warn("Failed to send ping:", error);
-              }
-            }
-          }, 10000); // Ping every 10 seconds
-        } else if (message.type === "PONG") {
-          // Connection is healthy
-        } else if (message.type === "INITIAL_STATE") {
+        if (message.type === "INITIAL_STATE") {
           // Clear previous data when connecting to a different tab
           setQueries([]);
           setMutations([]);
@@ -110,9 +87,13 @@ export const useConnection = (): UseConnectionReturn => {
           switch (message.subtype) {
             case "QUERY_CLIENT_DETECTED":
               setTanStackQueryDetected(true);
+              // Clear artificial states when TanStack Query is detected (page refresh/reload)
+              setArtificialStates(new Map());
               break;
             case "QUERY_CLIENT_NOT_FOUND":
               setTanStackQueryDetected(false);
+              // Clear artificial states when TanStack Query is not found
+              setArtificialStates(new Map());
               break;
             case "QUERY_STATE_UPDATE":
               break;
@@ -161,50 +142,21 @@ export const useConnection = (): UseConnectionReturn => {
           }
         }
       });
-
-      port.onDisconnect.addListener(() => {
-        portRef.current = null;
-
-        // Clear heartbeat
-        if (heartbeatIntervalRef.current) {
-          clearInterval(heartbeatIntervalRef.current);
-          heartbeatIntervalRef.current = null;
-        }
-
-        // Attempt reconnection with exponential backoff
-        const attempt = reconnectAttempts + 1;
-        setReconnectAttempts(attempt);
-
-        if (attempt <= 5) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10s delay
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connectToBackground();
-          }, delay);
-        } else {
-          console.error("Failed to reconnect after 5 attempts");
-        }
-      });
     } catch (error) {
       console.error("Failed to connect to background script:", error);
     }
-  }, [reconnectAttempts]);
+  }, []);
 
   useEffect(() => {
     connectToBackground();
 
+    const reconnectTimeout = reconnectTimeoutRef.current;
+
     // Cleanup function
     return () => {
-      if (portRef.current) {
-        portRef.current.disconnect();
-        portRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-      }
+      portRef.current?.disconnect();
+      portRef.current = null;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
   }, [connectToBackground]);
 

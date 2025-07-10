@@ -36,12 +36,18 @@ export const useViewState = (): UseViewStateReturn => {
     enabled: currentView === "queries",
     itemCount: 0, // Item count will be updated by the component with filtered data
     enableWrapAround: true,
+    onActivate: (index: number) => {
+      setSelectedQueryIndex(index);
+    },
   });
 
   const mutationKeyboardNavigation = useKeyboardNavigation({
     enabled: currentView === "mutations",
     itemCount: 0, // Item count will be updated by the component with filtered data
     enableWrapAround: true,
+    onActivate: (index: number) => {
+      setSelectedMutationIndex(index);
+    },
   });
 
   // Handle view changes with automatic selection clearing

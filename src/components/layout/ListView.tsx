@@ -63,9 +63,13 @@ export function ListView({
           if (aQuery.isActive && !bQuery.isActive) return -1;
           return 0;
         })
-      : filteredData;
+      : [...filteredData].sort((a, b) => {
+          const aMutation = a as MutationData;
+          const bMutation = b as MutationData;
 
-  // Update keyboard navigation item count when sorted data changes
+          return bMutation.submittedAt - aMutation.submittedAt;
+        });
+
   useEffect(() => {
     if (currentView === "queries" && queryKeyboardNavigation) {
       queryKeyboardNavigation.updateItemCount(sortedData.length);
@@ -126,7 +130,7 @@ export function ListView({
               No mutations found.
             </div>
           ) : (
-            filteredData.map((item, index) => {
+            sortedData.map((item, index) => {
               const mutation = item as MutationData;
               const originalIndex = mutations.indexOf(mutation);
               return (

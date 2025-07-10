@@ -4,6 +4,7 @@ interface UseKeyboardNavigationOptions {
   enabled?: boolean;
   itemCount: number;
   enableWrapAround?: boolean;
+  onActivate?: (index: number) => void;
 }
 
 interface UseKeyboardNavigationReturn {
@@ -120,6 +121,15 @@ export function useKeyboardNavigation(
           break;
         }
 
+        case " ":
+        case "Enter": {
+          event.preventDefault();
+          if (focusedIndex !== null && options.onActivate) {
+            options.onActivate(focusedIndex);
+          }
+          break;
+        }
+
         case "Tab": {
           // Allow normal tab behavior but reset keyboard navigation state
           setKeyboardFocused(false);
@@ -132,7 +142,7 @@ export function useKeyboardNavigation(
           break;
       }
     },
-    [enabled, currentItemCount, focusedIndex, enableWrapAround],
+    [enabled, currentItemCount, focusedIndex, enableWrapAround, options],
   );
 
   // Reset focus

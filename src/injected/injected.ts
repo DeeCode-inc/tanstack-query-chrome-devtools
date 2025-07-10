@@ -297,6 +297,8 @@ function performEnhancedDetection() {
       subtype: "QUERY_CLIENT_NOT_FOUND",
     });
   }
+
+  return detected;
 }
 
 // Query action handlers
@@ -534,23 +536,23 @@ if (typeof window !== "undefined") {
   window.__TANSTACK_QUERY_DEVTOOLS_INJECTED__ = true;
 
   // Perform initial detection
-  performEnhancedDetection();
+  if (!performEnhancedDetection()) {
+    // Also check periodically in case TanStack Query is loaded dynamically
+    // Continue checking until TanStack Query is found (no artificial limit)
+    let detectionFound = false;
+    const interval = setInterval(() => {
+      if (!detectionFound && detectTanStackQuery()) {
+        detectionFound = true;
+        performEnhancedDetection();
+        clearInterval(interval);
+      }
+    }, 1000);
 
-  // Also check periodically in case TanStack Query is loaded dynamically
-  // Continue checking until TanStack Query is found (no artificial limit)
-  let detectionFound = false;
-  const interval = setInterval(() => {
-    if (!detectionFound && detectTanStackQuery()) {
-      detectionFound = true;
-      performEnhancedDetection();
-      clearInterval(interval);
-    }
-  }, 1000);
-
-  // Stop checking after 2 minutes to avoid infinite polling
-  setTimeout(() => {
-    if (!detectionFound) {
-      clearInterval(interval);
-    }
-  }, 120000);
+    // Stop checking after 2 minutes to avoid infinite polling
+    setTimeout(() => {
+      if (!detectionFound) {
+        clearInterval(interval);
+      }
+    }, 120000);
+  }
 }
