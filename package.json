@@ -1,8 +1,20 @@
 {
   "name": "tanstack-query-chrome-devtools",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
+  "description": "TanStack Query Chrome DevTools",
+  "homepage": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools.git"
+  },
+  "author": {
+    "name": "Dmytro Borysov"
+  },
+  "bugs": {
+    "url": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build && vite build --mode injected",
