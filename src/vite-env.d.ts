@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="@crxjs/vite-plugin/client" />
 
 import type { QueryClient } from "@tanstack/query-core";
 
@@ -10,5 +11,3 @@ declare global {
     __TANSTACK_QUERY_DEVTOOLS_INJECTED__?: boolean;
   }
 }
-
-export {};

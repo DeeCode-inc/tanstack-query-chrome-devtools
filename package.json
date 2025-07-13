@@ -3,21 +3,22 @@
   "private": true,
   "version": "0.7.0",
   "type": "module",
-  "description": "TanStack Query Chrome DevTools",
-  "homepage": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools#readme",
+  "description": "TanStack Query DevTools",
+  "homepage": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools",
   "repository": {
     "type": "git",
     "url": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools.git"
   },
   "author": {
-    "name": "Dmytro Borysov"
+    "name": "Dmytro Borysov",
+    "email": "dmytro@borysov.dev"
   },
   "bugs": {
     "url": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools/issues"
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --mode injected",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "prettier:format": "prettier --write .",
@@ -35,6 +36,7 @@
     "superjson": "^2.2.2"
   },
   "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.2",
     "@eslint/js": "^9.30.1",
     "@tailwindcss/vite": "^4.1.11",
     "@types/chrome": "^0.1.0",

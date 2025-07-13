@@ -1,3 +1,5 @@
+import injectedScriptPath from "../injected/injected?script&module";
+
 // Content script - bridges between injected script and extension
 
 // Message types for communication with background script
@@ -82,7 +84,8 @@ window.addEventListener("message", (event) => {
 // Inject the injected script into the page context
 function injectScript() {
   const script = document.createElement("script");
-  script.src = chrome.runtime.getURL("injected.js");
+  script.src = chrome.runtime.getURL(injectedScriptPath);
+  script.type = "module";
   script.onload = () => {
     script.remove();
   };
