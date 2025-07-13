@@ -83,6 +83,7 @@ window.addEventListener("message", (event) => {
 function injectScript() {
   const script = document.createElement("script");
   script.src = chrome.runtime.getURL("injected.js");
+  script.type = "module";
   script.onload = () => {
     script.remove();
   };

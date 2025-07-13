@@ -17,7 +17,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --mode injected",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "prettier:format": "prettier --write .",
