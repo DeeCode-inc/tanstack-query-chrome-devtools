@@ -1,10 +1,11 @@
 import type { QueryData } from "../../types/query";
+import type { QueryAction } from "../../types/messages";
 import { formatQueryKeyShort } from "../../utils/formatters";
 import { buttonVariants } from "../../lib/variants";
 
 interface QueryActionsProps {
   selectedQuery: QueryData;
-  onAction: (action: string, queryHash: string) => void;
+  onAction: (action: QueryAction["type"], queryHash: string) => void;
   actionLoading: string | null;
   setActionLoading: (action: string | null) => void;
   artificialStates: Map<string, "loading" | "error">;
@@ -17,7 +18,7 @@ export function QueryActions({
   setActionLoading,
   artificialStates,
 }: QueryActionsProps) {
-  const handleAction = async (action: string) => {
+  const handleAction = async (action: QueryAction["type"]) => {
     setActionLoading(action);
     try {
       await onAction(action, selectedQuery.queryHash);

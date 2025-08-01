@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDetailsAnimation } from "../../hooks/useDetailsAnimation";
 import type { QueryData } from "../../types/query";
+import type { QueryAction } from "../../types/messages";
 import { DataExplorer } from "../common/DataExplorer";
 import { QueryActions } from "./QueryActions";
 import { QueryExplorer } from "./QueryExplorer";
@@ -8,7 +9,11 @@ import { QueryHeader } from "./QueryHeader";
 
 interface QueryDetailsProps {
   selectedQuery: QueryData | null;
-  onAction: (action: string, queryHash: string, newValue?: unknown) => void;
+  onAction: (
+    action: QueryAction["type"],
+    queryHash: string,
+    newValue?: unknown,
+  ) => void;
   artificialStates: Map<string, "loading" | "error">;
 }
 

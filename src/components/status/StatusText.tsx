@@ -20,7 +20,7 @@ export function StatusText({
   return (
     <div
       className={`
-        px-3 py-1 rounded text-white text-sm font-medium min-w-[85px] text-center
+        px-3 py-1 rounded text-sm font-medium min-w-[85px] text-center
         status-badge-animated status-transition ${status.bgColor} ${transitionClass} ${className}
       `}
       onAnimationEnd={handleTransitionEnd}

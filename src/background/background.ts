@@ -1,15 +1,16 @@
 import "webextension-polyfill";
+import { z } from "zod";
 import { StorageManager } from "../shared/storage-manager";
 import { safeDeserialize } from "../utils/serialization";
 import type { QueryState } from "../types/storage";
 import type { UpdateMessage, QueryActionResult } from "../types/messages";
 
-// Define serialized payload type
-interface SerializedPayload {
-  serialized: string;
-  usedSuperjson: boolean;
-  isSerializedPayload: boolean;
-}
+// Zod schema for serialized payload validation
+const SerializedPayloadSchema = z.object({
+  serialized: z.string(),
+  usedSuperjson: z.boolean(),
+  isSerializedPayload: z.literal(true),
+});
 
 // Define possible background messages
 type BackgroundMessage =
@@ -63,17 +64,12 @@ chrome.runtime.onMessage.addListener(
         // Deserialize queries if they are serialized
         if (processedPayload.queries) {
           try {
-            if (
-              typeof processedPayload.queries === "object" &&
-              processedPayload.queries !== null &&
-              "isSerializedPayload" in processedPayload.queries &&
-              (processedPayload.queries as SerializedPayload)
-                .isSerializedPayload
-            ) {
-              const serializedData =
-                processedPayload.queries as SerializedPayload;
+            const parseResult = SerializedPayloadSchema.safeParse(
+              processedPayload.queries,
+            );
+            if (parseResult.success) {
               const deserializedQueries = safeDeserialize(
-                serializedData.serialized,
+                parseResult.data.serialized,
               );
               if (Array.isArray(deserializedQueries)) {
                 processedPayload.queries = deserializedQueries;
@@ -91,17 +87,12 @@ chrome.runtime.onMessage.addListener(
         // Deserialize mutations if they are serialized
         if (processedPayload.mutations) {
           try {
-            if (
-              typeof processedPayload.mutations === "object" &&
-              processedPayload.mutations !== null &&
-              "isSerializedPayload" in processedPayload.mutations &&
-              (processedPayload.mutations as SerializedPayload)
-                .isSerializedPayload
-            ) {
-              const serializedData =
-                processedPayload.mutations as SerializedPayload;
+            const parseResult = SerializedPayloadSchema.safeParse(
+              processedPayload.mutations,
+            );
+            if (parseResult.success) {
               const deserializedMutations = safeDeserialize(
-                serializedData.serialized,
+                parseResult.data.serialized,
               );
               if (Array.isArray(deserializedMutations)) {
                 processedPayload.mutations = deserializedMutations;
@@ -131,6 +122,12 @@ chrome.runtime.onMessage.addListener(
         if (processedPayload.tanStackQueryDetected !== undefined) {
           updateData.tanStackQueryDetected =
             processedPayload.tanStackQueryDetected;
+
+          // Clear artificial states when QueryClient is freshly detected
+          // This handles page refreshes and navigations
+          if (processedPayload.tanStackQueryDetected === true) {
+            updateData.artificialStates = {};
+          }
         }
 
         StorageManager.updatePartialState(updateData)

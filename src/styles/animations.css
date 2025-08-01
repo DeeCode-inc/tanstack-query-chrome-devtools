@@ -1,3 +1,112 @@
+/* CSS Custom Properties for Dark Mode Support */
+:root {
+  /* Light theme pulse animation colors */
+  --pulse-bg-start: theme("colors.blue.100");
+  --pulse-bg-mid: theme("colors.blue.200");
+  --pulse-text-start: theme("colors.blue.800");
+  --pulse-text-mid: theme("colors.blue.900");
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark theme pulse animation colors */
+    --pulse-bg-start: theme("colors.blue.900");
+    --pulse-bg-mid: theme("colors.blue.800");
+    --pulse-text-start: theme("colors.blue.100");
+    --pulse-text-mid: theme("colors.blue.200");
+  }
+}
+
+@theme {
+  --animate-pulse-blue: pulse-blue 2s ease-in-out infinite;
+  --animate-selection-pulse: selection-pulse 2s ease-in-out infinite;
+  --animate-bounce-error: bounce-error 0.6s ease-out;
+  --animate-status-to-success: statusToSuccess 600ms ease-out forwards;
+  --animate-status-attention: statusAttention 600ms ease-out forwards;
+  --animate-query-item-status-change: queryItemStatusChange 300ms ease-out
+    forwards;
+
+  @keyframes pulse-blue {
+    0%,
+    100% {
+      background-color: var(--pulse-bg-start);
+      color: var(--pulse-text-start);
+    }
+    50% {
+      background-color: var(--pulse-bg-mid);
+      color: var(--pulse-text-mid);
+    }
+  }
+
+  @keyframes statusToSuccess {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(theme("colors.green.500") / 0.3);
+    }
+    50% {
+      transform: scale(1.05);
+      box-shadow: 0 0 0 4px rgb(theme("colors.green.500") / 0.1);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(theme("colors.green.500") / 0);
+    }
+  }
+
+  @keyframes statusAttention {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(theme("colors.red.500") / 0.4);
+    }
+    50% {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 6px rgb(theme("colors.red.500") / 0.2);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgb(theme("colors.red.500") / 0);
+    }
+  }
+
+  @keyframes selection-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(theme("colors.blue.500") / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgb(theme("colors.blue.500") / 0);
+    }
+  }
+
+  @keyframes bounce-error {
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
+      transform: translateY(0);
+    }
+    40% {
+      transform: translateY(-4px);
+    }
+    60% {
+      transform: translateY(-2px);
+    }
+  }
+
+  @keyframes queryItemStatusChange {
+    0% {
+      background-color: transparent;
+    }
+    50% {
+      background-color: rgb(theme("colors.blue.50") / 0.3);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+}
+
 @layer animations {
   /* Reusable Collapsible Component Animation */
   .collapsible-container {
@@ -66,7 +175,7 @@
 
   /* Selection Animations */
   .card-selection-animated.card-selected {
-    animation: selection-pulse 2s ease-in-out infinite;
+    @apply animate-selection-pulse;
   }
 
   /* List Item Micro-Interactions */
@@ -103,11 +212,11 @@
   }
 
   .status-badge-animated.status-blue {
-    animation: pulse-blue 2s ease-in-out infinite;
+    @apply animate-pulse-blue;
   }
 
   .status-badge-animated.status-red {
-    animation: bounce-error 0.6s ease-out;
+    @apply animate-bounce-error;
   }
 
   /* List Item Stagger Animations */
@@ -262,11 +371,6 @@
     will-change: transform, opacity;
   }
 
-  .loading-refresh {
-    animation: pulse-blue 1s ease-in-out 2;
-    will-change: background-color;
-  }
-
   .loading-background {
     opacity: 0.7;
     animation: skeleton-pulse 3s ease-in-out infinite;
@@ -358,18 +462,6 @@
     }
   }
 
-  @keyframes pulse-blue {
-    0%,
-    100% {
-      background-color: rgb(var(--color-blue-100));
-      color: rgb(var(--color-blue-800));
-    }
-    50% {
-      background-color: rgb(var(--color-blue-200));
-      color: rgb(var(--color-blue-900));
-    }
-  }
-
   @keyframes bounce-error {
     0%,
     20%,
@@ -448,7 +540,7 @@
   }
 
   .status-to-success {
-    animation: statusToSuccess 600ms ease-out forwards;
+    @apply animate-status-to-success;
   }
 
   .status-to-stale {
@@ -464,7 +556,7 @@
   }
 
   .status-attention {
-    animation: statusAttention 600ms ease-out forwards;
+    @apply animate-status-attention;
   }
 
   .status-fade-gentle {
@@ -473,7 +565,7 @@
 
   /* Container animations for state changes */
   .query-item-status-change {
-    animation: queryItemStatusChange 300ms ease-out forwards;
+    @apply animate-query-item-status-change;
   }
 
   /* State Transition Keyframes - Phase 6D */
@@ -619,7 +711,6 @@
     .skeleton-json,
     .loading-sequence,
     .loading-initial,
-    .loading-refresh,
     .loading-background,
     .skeleton-to-content,
     .status-transition,
