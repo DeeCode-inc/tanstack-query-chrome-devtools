@@ -1,44 +1,9 @@
 // Content script - bridges between injected script and extension storage
-
-// Query action message types
-interface QueryActionMessage {
-  type: "QUERY_ACTION";
-  action:
-    | "INVALIDATE"
-    | "REFETCH"
-    | "REMOVE"
-    | "RESET"
-    | "TRIGGER_LOADING"
-    | "TRIGGER_ERROR";
-  queryKey?: readonly unknown[];
-  queryHash?: string;
-}
-
-// Action result message
-interface QueryActionResult {
-  type: "QUERY_ACTION_RESULT";
-  action:
-    | "INVALIDATE"
-    | "REFETCH"
-    | "REMOVE"
-    | "RESET"
-    | "TRIGGER_LOADING"
-    | "TRIGGER_ERROR";
-  queryKey?: readonly unknown[];
-  queryHash?: string;
-  success: boolean;
-  error?: string;
-}
-
-// Update message for storage
-interface UpdateMessage {
-  type: "UPDATE_QUERY_STATE";
-  payload: {
-    queries?: unknown[];
-    mutations?: unknown[];
-    tanStackQueryDetected?: boolean;
-  };
-}
+import type {
+  QueryActionMessage,
+  QueryActionResult,
+  UpdateMessage,
+} from "../types/messages";
 
 // Send message to background script for storage update
 function sendToBackground(message: UpdateMessage | QueryActionResult) {

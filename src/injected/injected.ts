@@ -1,87 +1,12 @@
 // Injected script - runs in the webpage context for deeper TanStack Query integration
 import type { Query, Mutation, QueryState } from "@tanstack/query-core";
 import { safeSerialize } from "../utils/serialization";
-
-// Message types for communication
-interface TanStackQueryEvent {
-  type: "QEVENT";
-  subtype:
-    | "QUERY_CLIENT_DETECTED"
-    | "QUERY_CLIENT_NOT_FOUND"
-    | "QUERY_STATE_UPDATE"
-    | "QUERY_DATA_UPDATE"
-    | "MUTATION_DATA_UPDATE";
-  payload?: unknown;
-}
-
-// Action message types
-interface QueryActionMessage {
-  type: "QUERY_ACTION";
-  action:
-    | "INVALIDATE"
-    | "REFETCH"
-    | "REMOVE"
-    | "RESET"
-    | "TRIGGER_LOADING"
-    | "TRIGGER_ERROR"
-    | "CANCEL_LOADING"
-    | "CANCEL_ERROR"
-    | "SET_QUERY_DATA";
-  queryHash: string;
-  newData?: unknown;
-}
-
-// Action result message
-interface QueryActionResult {
-  type: "QUERY_ACTION_RESULT";
-  action:
-    | "INVALIDATE"
-    | "REFETCH"
-    | "REMOVE"
-    | "RESET"
-    | "TRIGGER_LOADING"
-    | "TRIGGER_ERROR"
-    | "CANCEL_LOADING"
-    | "CANCEL_ERROR"
-    | "SET_QUERY_DATA";
-  queryHash: string;
-  success: boolean;
-  error?: string;
-}
-
-// Query data interface
-interface QueryData {
-  queryKey: readonly unknown[];
-  queryHash: string;
-  state: {
-    data?: unknown;
-    error?: unknown;
-    status: "idle" | "pending" | "success" | "error";
-    isFetching: boolean;
-    isPending: boolean;
-    isLoading: boolean;
-    isStale: boolean;
-    dataUpdatedAt: number;
-    errorUpdatedAt: number;
-    fetchStatus: "idle" | "fetching" | "paused";
-  };
-  meta?: Record<string, unknown>;
-  isActive: boolean;
-  observersCount: number;
-}
-
-// Mutation data interface
-interface MutationData {
-  mutationId: number;
-  mutationKey?: string;
-  state: "idle" | "pending" | "success" | "error" | "paused";
-  variables?: unknown;
-  context?: unknown;
-  data?: unknown;
-  error?: unknown;
-  submittedAt: number;
-  isPending: boolean;
-}
+import type {
+  TanStackQueryEvent,
+  QueryActionMessage,
+  QueryActionResult,
+} from "../types/messages";
+import type { QueryData, MutationData } from "../types/query";
 
 // Check for TanStack Query in the application's window context
 function detectTanStackQuery(): boolean {
@@ -194,7 +119,7 @@ function sendToContentScript(event: TanStackQueryEvent) {
     subtype: event.subtype,
   };
 
-  if (event.payload !== undefined) {
+  if ("payload" in event && event.payload !== undefined) {
     const serialized = safeSerialize(event.payload);
     serializedEvent.payload = {
       serialized,

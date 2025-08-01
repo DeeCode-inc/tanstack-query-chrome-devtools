@@ -3,7 +3,19 @@ import type { QueryKey, QueryObserverBaseResult } from "@tanstack/query-core";
 export interface QueryData {
   queryKey: QueryKey;
   queryHash: string;
-  state: QueryObserverBaseResult<unknown, unknown>;
+  state: Pick<
+    QueryObserverBaseResult<unknown, unknown>,
+    | "data"
+    | "error"
+    | "status"
+    | "isFetching"
+    | "isPending"
+    | "isLoading"
+    | "isStale"
+    | "dataUpdatedAt"
+    | "errorUpdatedAt"
+    | "fetchStatus"
+  >;
   meta?: Record<string, unknown>;
   isActive: boolean;
   observersCount: number;

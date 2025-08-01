@@ -1,21 +1,26 @@
 import { useCallback } from "react";
+import type { QueryAction, QueryActionMessage } from "../types/messages";
 
 interface UseUIStateReturn {
   handleQueryAction: (
-    action: string,
+    action: QueryAction["type"],
     queryHash: string,
     newValue?: unknown,
   ) => Promise<void>;
 }
 
 export const useUIState = (
-  sendMessage: (message: unknown) => void,
+  sendMessage: (message: QueryActionMessage) => void,
 ): UseUIStateReturn => {
   // Handle query actions
   const handleQueryAction = useCallback(
-    async (action: string, queryHash: string, newValue?: unknown) => {
+    async (
+      action: QueryAction["type"],
+      queryHash: string,
+      newValue?: unknown,
+    ) => {
       try {
-        const message: Record<string, unknown> = {
+        const message: QueryActionMessage = {
           type: "QUERY_ACTION",
           action: action,
           queryHash: queryHash,
