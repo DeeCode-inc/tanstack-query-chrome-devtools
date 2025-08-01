@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/chrome-manifest",
   "manifest_version": 3,
   "name": "TanStack Query DevTools",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Chrome DevTools extension for debugging TanStack Query applications. Inspect queries, mutations, and cache state in real-time.",
   "homepage_url": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools",
 
