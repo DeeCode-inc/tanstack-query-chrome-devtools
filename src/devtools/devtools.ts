@@ -1,3 +1,5 @@
+import "webextension-polyfill";
+
 // DevTools entry point - registers the TanStack Query panel
 chrome.devtools.panels.create(
   "TanStack Query",

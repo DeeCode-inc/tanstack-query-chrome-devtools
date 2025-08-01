@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import "webextension-polyfill";
+
+import { useState, useEffect, useCallback } from "react";
 import type { QueryData, MutationData } from "../types/query";
-import { safeDeserialize } from "../utils/serialization";
+import { StateSync } from "../shared/state-sync";
 
 interface UseConnectionReturn {
   // State
@@ -19,146 +21,67 @@ export const useConnection = (): UseConnectionReturn => {
   >(null);
   const [queries, setQueries] = useState<QueryData[]>([]);
   const [mutations, setMutations] = useState<MutationData[]>([]);
-  // Track artificial states triggered by DevTools
+  // Track artificial states from storage
   const [artificialStates, setArtificialStates] = useState<
     Map<string, "loading" | "error">
   >(new Map());
 
-  // Connection management
-  const portRef = useRef<chrome.runtime.Port | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // State sync instance - DevTools only listens to storage, not messages
+  const [stateSync] = useState(() => new StateSync(false));
 
-  // Send message function
+  // Send message function - now sends through background to content script
   const sendMessage = useCallback((message: unknown) => {
-    if (portRef.current) {
-      try {
-        portRef.current.postMessage(message);
-      } catch (error) {
-        console.error("Failed to send message:", error);
-        throw error;
-      }
-    } else {
-      throw new Error("Not connected to background script");
-    }
-  }, []);
-
-  const connectToBackground = useCallback(() => {
     try {
-      const port = chrome.runtime.connect({ name: "devtools" });
-      portRef.current = port;
+      // Add inspected tab ID for proper routing
+      const messageWithTab = {
+        ...(message as Record<string, unknown>),
+        inspectedTabId: chrome.devtools.inspectedWindow.tabId,
+      };
 
-      // Send the inspected tab ID immediately after connection
-      const inspectedTabId = chrome.devtools.inspectedWindow.tabId;
-      port.postMessage({
-        type: "DEVTOOLS_CONNECT",
-        inspectedTabId: inspectedTabId,
-        timestamp: Date.now(),
-      });
-
-      port.onMessage.addListener((message) => {
-        if (message.type === "INITIAL_STATE") {
-          // Clear previous data when connecting to a different tab
-          setQueries([]);
-          setMutations([]);
-          setArtificialStates(new Map());
-          setTanStackQueryDetected(message.hasTanStackQuery);
-        } else if (message.type === "QEVENT") {
-          // Deserialize payload if it was serialized
-          let payload = message.payload;
-          if (
-            payload &&
-            typeof payload === "object" &&
-            payload.isSerializedPayload
-          ) {
-            try {
-              payload = safeDeserialize(payload.serialized);
-            } catch (error) {
-              console.error(
-                "Failed to deserialize payload in DevTools:",
-                error,
-              );
-              payload = {
-                error: "Deserialization failed",
-                originalPayload: payload,
-              };
-            }
-          }
-
-          switch (message.subtype) {
-            case "QUERY_CLIENT_DETECTED":
-              setTanStackQueryDetected(true);
-              // Clear artificial states when TanStack Query is detected (page refresh/reload)
-              setArtificialStates(new Map());
-              break;
-            case "QUERY_CLIENT_NOT_FOUND":
-              setTanStackQueryDetected(false);
-              // Clear artificial states when TanStack Query is not found
-              setArtificialStates(new Map());
-              break;
-            case "QUERY_STATE_UPDATE":
-              break;
-            case "QUERY_DATA_UPDATE":
-              if (Array.isArray(payload)) {
-                setQueries(payload);
-              }
-              break;
-            case "MUTATION_DATA_UPDATE":
-              if (Array.isArray(payload)) {
-                setMutations(payload);
-              }
-              break;
-          }
-        } else if (message.type === "QUERY_ACTION_RESULT") {
-          // Update artificial states based on action results
-          if (
-            message.success &&
-            (message.action === "TRIGGER_LOADING" ||
-              message.action === "TRIGGER_ERROR")
-          ) {
-            setArtificialStates((prev) => {
-              const newStates = new Map(prev);
-              const queryHash = message.queryHash;
-
-              if (message.action === "TRIGGER_LOADING") {
-                if (newStates.get(queryHash) === "loading") {
-                  // Cancel loading state
-                  newStates.delete(queryHash);
-                } else {
-                  // Start loading state
-                  newStates.set(queryHash, "loading");
-                }
-              } else if (message.action === "TRIGGER_ERROR") {
-                if (newStates.get(queryHash) === "error") {
-                  // Cancel error state
-                  newStates.delete(queryHash);
-                } else {
-                  // Start error state
-                  newStates.set(queryHash, "error");
-                }
-              }
-
-              return newStates;
-            });
-          }
-        }
-      });
+      chrome.runtime.sendMessage(messageWithTab);
     } catch (error) {
-      console.error("Failed to connect to background script:", error);
+      console.error("Failed to send message:", error);
+      throw error;
     }
   }, []);
 
+  // Subscribe to storage changes
   useEffect(() => {
-    connectToBackground();
+    const unsubscribe = stateSync.subscribe((state) => {
+      // Only process updates for the current inspected tab
+      const currentTabId = chrome.devtools.inspectedWindow.tabId;
 
-    const reconnectTimeout = reconnectTimeoutRef.current;
+      // If state has a tabId and it doesn't match current tab, ignore it
+      // BUT if state has no tabId (initial/default state), process it
+      if (state.tabId && state.tabId !== currentTabId) {
+        return; // Ignore updates from other tabs
+      }
+
+      setTanStackQueryDetected(state.tanStackQueryDetected);
+      setQueries(state.queries);
+      setMutations(state.mutations);
+
+      // Update artificial states from storage
+      if (state.artificialStates) {
+        const artificialStatesMap = new Map(
+          Object.entries(state.artificialStates),
+        );
+        setArtificialStates(artificialStatesMap);
+      } else {
+        setArtificialStates(new Map());
+      }
+
+      // Clear artificial states when TanStack Query state changes
+      if (state.tanStackQueryDetected === false) {
+        setArtificialStates(new Map());
+      }
+    });
 
     // Cleanup function
     return () => {
-      portRef.current?.disconnect();
-      portRef.current = null;
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      unsubscribe();
     };
-  }, [connectToBackground]);
+  }, [stateSync]);
 
   return {
     // State

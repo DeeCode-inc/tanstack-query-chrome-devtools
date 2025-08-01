@@ -1,34 +1,47 @@
-// Content script - bridges between injected script and extension
-
-// Message types for communication with background script
-interface TanStackQueryMessage {
-  type: "QEVENT";
-  subtype:
-    | "QUERY_CLIENT_DETECTED"
-    | "QUERY_CLIENT_NOT_FOUND"
-    | "QUERY_STATE_UPDATE"
-    | "QUERY_DATA_UPDATE";
-  payload?: unknown;
-}
+// Content script - bridges between injected script and extension storage
 
 // Query action message types
 interface QueryActionMessage {
   type: "QUERY_ACTION";
-  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET";
-  queryKey: readonly unknown[];
+  action:
+    | "INVALIDATE"
+    | "REFETCH"
+    | "REMOVE"
+    | "RESET"
+    | "TRIGGER_LOADING"
+    | "TRIGGER_ERROR";
+  queryKey?: readonly unknown[];
+  queryHash?: string;
 }
 
 // Action result message
 interface QueryActionResult {
   type: "QUERY_ACTION_RESULT";
-  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET";
-  queryKey: readonly unknown[];
+  action:
+    | "INVALIDATE"
+    | "REFETCH"
+    | "REMOVE"
+    | "RESET"
+    | "TRIGGER_LOADING"
+    | "TRIGGER_ERROR";
+  queryKey?: readonly unknown[];
+  queryHash?: string;
   success: boolean;
   error?: string;
 }
 
-// Send message to background script
-function sendToBackground(message: TanStackQueryMessage) {
+// Update message for storage
+interface UpdateMessage {
+  type: "UPDATE_QUERY_STATE";
+  payload: {
+    queries?: unknown[];
+    mutations?: unknown[];
+    tanStackQueryDetected?: boolean;
+  };
+}
+
+// Send message to background script for storage update
+function sendToBackground(message: UpdateMessage | QueryActionResult) {
   chrome.runtime.sendMessage(message).catch((error) => {
     console.warn(
       "TanStack Query DevTools: Failed to send message to background:",
@@ -48,34 +61,51 @@ function sendActionToInjected(action: QueryActionMessage) {
   );
 }
 
-// Send action result to background script
-function sendActionResultToBackground(result: QueryActionResult) {
-  chrome.runtime.sendMessage(result).catch((error) => {
-    console.warn(
-      "TanStack Query DevTools: Failed to send action result to background:",
-      error,
-    );
-  });
-}
-
 // Listen for messages from injected script via postMessage
 window.addEventListener("message", (event) => {
   // Only accept messages from same origin and our injected script
   if (event.origin !== window.location.origin) return;
   if (event.data?.source !== "tanstack-query-devtools-injected") return;
 
-  // Forward the QEVENT to background script
+  // Forward state updates to background script for storage
   if (event.data.type === "QEVENT") {
-    sendToBackground({
-      type: "QEVENT",
-      subtype: event.data.subtype,
-      payload: event.data.payload,
-    });
+    const payload: UpdateMessage["payload"] = {};
+
+    switch (event.data.subtype) {
+      case "QUERY_CLIENT_DETECTED":
+        // Only send detection state change
+        payload.tanStackQueryDetected = true;
+        break;
+      case "QUERY_CLIENT_NOT_FOUND":
+        // Only send detection state change
+        payload.tanStackQueryDetected = false;
+        break;
+      case "QUERY_DATA_UPDATE":
+        if (event.data.payload) {
+          // Only send query data, don't modify tanStackQueryDetected
+          payload.queries = event.data.payload;
+        }
+        break;
+      case "MUTATION_DATA_UPDATE":
+        if (event.data.payload) {
+          // Only send mutation data, don't modify tanStackQueryDetected
+          payload.mutations = event.data.payload;
+        }
+        break;
+    }
+
+    // Only send message if we have something to update
+    if (Object.keys(payload).length > 0) {
+      sendToBackground({
+        type: "UPDATE_QUERY_STATE",
+        payload,
+      });
+    }
   }
 
-  // Forward action results to background script
+  // Forward action results to background script for storage
   if (event.data.type === "QUERY_ACTION_RESULT") {
-    sendActionResultToBackground(event.data);
+    sendToBackground(event.data);
   }
 });
 

@@ -1,206 +1,187 @@
-// Background service worker - handles extension lifecycle and message routing
+import "webextension-polyfill";
+import { StorageManager } from "../shared/storage-manager";
+import { safeDeserialize } from "../utils/serialization";
+import type { QueryState } from "../types/storage";
 
-// Track which tabs have TanStack Query detected
-const tabsWithTanStackQuery = new Set<number>();
-
-// Tab-specific connection tracking
-interface TabConnection {
-  devtoolsPort: chrome.runtime.Port | null;
-  inspectedTabId: number;
-  connectionId: string;
-  connectedAt: number;
-}
-
-// Track DevTools connections per inspected tab
-const tabConnections = new Map<number, TabConnection>();
-
-// Message types
-interface TanStackQueryMessage {
-  type: "QEVENT";
-  subtype:
-    | "QUERY_CLIENT_DETECTED"
-    | "QUERY_CLIENT_NOT_FOUND"
-    | "QUERY_STATE_UPDATE"
-    | "QUERY_DATA_UPDATE"
-    | "MUTATION_DATA_UPDATE";
-  payload?: unknown;
-}
-
-// Action result message
-interface QueryActionResult {
-  type: "QUERY_ACTION_RESULT";
-  action: "INVALIDATE" | "REFETCH" | "REMOVE" | "RESET";
-  queryKey: readonly unknown[];
-  success: boolean;
-  error?: string;
-}
-
-// Handle DevTools connections
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === "devtools") {
-    const connectionId = `devtools-${Date.now()}`;
-    let inspectedTabId: number | null = null;
-
-    port.onMessage.addListener(async (message) => {
-      // Handle DevTools connection with inspected tab ID
-      if (message.type === "DEVTOOLS_CONNECT") {
-        inspectedTabId = message.inspectedTabId;
-
-        // Validate that we have a valid tab ID
-        if (!inspectedTabId) {
-          console.error("Invalid inspected tab ID received");
-          return;
-        }
-
-        // Store this connection for the inspected tab
-        const connection: TabConnection = {
-          devtoolsPort: port,
-          inspectedTabId,
-          connectionId,
-          connectedAt: Date.now(),
-        };
-
-        tabConnections.set(inspectedTabId, connection);
-
-        // Send initial state for this specific tab
-        port.postMessage({
-          type: "INITIAL_STATE",
-          hasTanStackQuery: tabsWithTanStackQuery.has(inspectedTabId),
+// Handle messages from both content scripts and DevTools
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle DevTools messages (have inspectedTabId but no sender.tab.id)
+  if (message.inspectedTabId && !sender.tab?.id) {
+    // Forward DevTools actions to content script of the specified tab
+    if (message.type === "QUERY_ACTION") {
+      chrome.tabs
+        .sendMessage(message.inspectedTabId, message)
+        .then(() => {
+          sendResponse({ received: true });
+        })
+        .catch((error) => {
+          console.warn("Failed to send message to content script:", error);
+          sendResponse({ received: false, error: error.message });
         });
-
-        // Request immediate update from the inspected tab
-        try {
-          await chrome.tabs.sendMessage(inspectedTabId, {
-            type: "REQUEST_IMMEDIATE_UPDATE",
-          });
-        } catch (error: unknown) {
-          console.warn("Failed to request immediate update:", error);
-        }
-
-        // Send connection confirmation
-        port.postMessage({
-          type: "CONNECTION_ESTABLISHED",
-          connectionId,
-          inspectedTabId,
-          timestamp: Date.now(),
-        });
-
-        return;
-      }
-
-      // Forward other messages to the inspected tab's content script
-      if (inspectedTabId && message.type) {
-        chrome.tabs
-          .sendMessage(inspectedTabId, message)
-          .catch((error: unknown) => {
-            console.warn("Failed to send message to content script:", error);
-          });
-      }
-    });
-
-    port.onDisconnect.addListener(() => {
-      // Clean up this connection
-      if (inspectedTabId) {
-        tabConnections.delete(inspectedTabId);
-      }
-    });
-  }
-});
-
-// Handle messages from content scripts
-chrome.runtime.onMessage.addListener(
-  (message: TanStackQueryMessage | QueryActionResult, sender, sendResponse) => {
-    const tabId = sender.tab?.id;
-    if (!tabId) return;
-
-    // Get the DevTools connection for this specific tab
-    const connection = tabConnections.get(tabId);
-
-    if (message.type === "QEVENT") {
-      switch (message.subtype) {
-        case "QUERY_CLIENT_DETECTED":
-          tabsWithTanStackQuery.add(tabId);
-
-          // Forward to DevTools panel for this specific tab only
-          connection?.devtoolsPort?.postMessage({
-            type: "QEVENT",
-            subtype: "QUERY_CLIENT_DETECTED",
-            tabId: tabId,
-            payload: message.payload,
-          });
-          break;
-
-        case "QUERY_CLIENT_NOT_FOUND":
-          tabsWithTanStackQuery.delete(tabId);
-
-          // Forward to DevTools panel for this specific tab only
-          connection?.devtoolsPort?.postMessage({
-            type: "QEVENT",
-            subtype: "QUERY_CLIENT_NOT_FOUND",
-            tabId: tabId,
-            payload: message.payload,
-          });
-          break;
-
-        case "QUERY_STATE_UPDATE":
-          // Forward to DevTools panel for this specific tab only
-          connection?.devtoolsPort?.postMessage({
-            type: "QEVENT",
-            subtype: "QUERY_STATE_UPDATE",
-            tabId: tabId,
-            payload: message.payload,
-          });
-          break;
-
-        case "QUERY_DATA_UPDATE":
-          // Forward to DevTools panel for this specific tab only
-          connection?.devtoolsPort?.postMessage({
-            type: "QEVENT",
-            subtype: "QUERY_DATA_UPDATE",
-            tabId: tabId,
-            payload: message.payload,
-          });
-          break;
-
-        case "MUTATION_DATA_UPDATE":
-          // Forward to DevTools panel for this specific tab only
-          connection?.devtoolsPort?.postMessage({
-            type: "QEVENT",
-            subtype: "MUTATION_DATA_UPDATE",
-            tabId: tabId,
-            payload: message.payload,
-          });
-          break;
-      }
+      return true;
     }
 
-    // Handle query action results from content script
+    // Handle other DevTools messages
+    sendResponse({ received: true });
+    return true;
+  }
+
+  // Handle Content Script messages (have sender.tab.id)
+  const tabId = sender.tab?.id;
+  if (tabId) {
+    if (message.type === "UPDATE_QUERY_STATE") {
+      // Process and deserialize payload before storing
+      const processedPayload = { ...message.payload };
+
+      // Deserialize queries if they are serialized
+      if (processedPayload.queries) {
+        try {
+          if (
+            typeof processedPayload.queries === "object" &&
+            processedPayload.queries.isSerializedPayload
+          ) {
+            const deserializedQueries = safeDeserialize(
+              processedPayload.queries.serialized,
+            );
+            if (Array.isArray(deserializedQueries)) {
+              processedPayload.queries = deserializedQueries;
+            }
+          }
+        } catch (error) {
+          console.error(
+            "Failed to deserialize queries in background script:",
+            error,
+          );
+          // Keep original payload if deserialization fails
+        }
+      }
+
+      // Deserialize mutations if they are serialized
+      if (processedPayload.mutations) {
+        try {
+          if (
+            typeof processedPayload.mutations === "object" &&
+            processedPayload.mutations.isSerializedPayload
+          ) {
+            const deserializedMutations = safeDeserialize(
+              processedPayload.mutations.serialized,
+            );
+            if (Array.isArray(deserializedMutations)) {
+              processedPayload.mutations = deserializedMutations;
+            }
+          }
+        } catch (error) {
+          console.error(
+            "Failed to deserialize mutations in background script:",
+            error,
+          );
+          // Keep original payload if deserialization fails
+        }
+      }
+
+      // Update storage with the processed (deserialized) state
+      // Only include fields that are actually provided to avoid overwriting
+      const updateData: Partial<QueryState> = { tabId: tabId };
+
+      if (processedPayload.queries !== undefined) {
+        updateData.queries = processedPayload.queries as QueryState["queries"];
+      }
+      if (processedPayload.mutations !== undefined) {
+        updateData.mutations =
+          processedPayload.mutations as QueryState["mutations"];
+      }
+      if (processedPayload.tanStackQueryDetected !== undefined) {
+        updateData.tanStackQueryDetected =
+          processedPayload.tanStackQueryDetected;
+      }
+
+      StorageManager.updatePartialState(updateData)
+        .then(() => {
+          sendResponse({ received: true });
+        })
+        .catch((error) => {
+          console.error("Failed to update storage:", error);
+          sendResponse({ received: false, error: error.message });
+        });
+      return true;
+    }
+
+    // Handle action results from content scripts and forward to DevTools
     if (message.type === "QUERY_ACTION_RESULT") {
-      // Forward to DevTools panel for this specific tab only
-      connection?.devtoolsPort?.postMessage({
-        ...message,
-        tabId: tabId,
+      // Update artificial states in storage for TRIGGER_LOADING and TRIGGER_ERROR
+      if (
+        message.success &&
+        (message.action === "TRIGGER_LOADING" ||
+          message.action === "TRIGGER_ERROR") &&
+        message.queryHash
+      ) {
+        StorageManager.getState()
+          .then((currentState) => {
+            const artificialStates = {
+              ...(currentState.artificialStates || {}),
+            };
+            const queryHash = message.queryHash as string;
+
+            if (message.action === "TRIGGER_LOADING") {
+              if (artificialStates[queryHash] === "loading") {
+                // Cancel loading state
+                delete artificialStates[queryHash];
+              } else {
+                // Start loading state
+                artificialStates[queryHash] = "loading";
+              }
+            } else if (message.action === "TRIGGER_ERROR") {
+              if (artificialStates[queryHash] === "error") {
+                // Cancel error state
+                delete artificialStates[queryHash];
+              } else {
+                // Start error state
+                artificialStates[queryHash] = "error";
+              }
+            }
+
+            // Update storage with new artificial states
+            return StorageManager.updatePartialState({
+              artificialStates,
+              lastUpdated: Date.now(),
+            });
+          })
+          .catch((error) => {
+            console.error("Failed to update artificial states:", error);
+          });
+      }
+
+      // Forward to DevTools - they listen for these via chrome.runtime.onMessage
+      chrome.runtime.sendMessage(message).catch(() => {
+        // DevTools might not be open, that's fine
       });
+      sendResponse({ received: true });
+      return true;
     }
 
     sendResponse({ received: true });
-  },
-);
+    return true;
+  }
 
-// Clean up when tabs are closed
-chrome.tabs.onRemoved.addListener((tabId) => {
-  tabsWithTanStackQuery.delete(tabId);
-  tabConnections.delete(tabId);
+  // Fallback for unhandled messages
+  sendResponse({ received: false, error: "Invalid message source" });
+  return true;
 });
 
-// https://developer.chrome.com/docs/extensions/develop/migrate/to-service-workers#keep_a_service_worker_alive_continuously
-setInterval(
-  () =>
-    void chrome.storage.local.set({ "last-heartbeat": new Date().getTime() }),
-  20000,
-);
-
-// Extension lifecycle
-chrome.runtime.onStartup.addListener(() => {});
-
-chrome.runtime.onInstalled.addListener(() => {});
+// Clean up storage when tabs are closed
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  try {
+    const currentState = await StorageManager.getState();
+    if (currentState.tabId === tabId) {
+      // Clear state if it was from the closed tab
+      await StorageManager.setState({
+        queries: [],
+        mutations: [],
+        tanStackQueryDetected: false,
+        lastUpdated: Date.now(),
+      });
+    }
+  } catch (error) {
+    console.error("Failed to clean up state for closed tab:", error);
+  }
+});

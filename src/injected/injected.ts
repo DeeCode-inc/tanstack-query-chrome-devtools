@@ -532,9 +532,6 @@ window.addEventListener("message", async (event) => {
 
 // Check if we're in a valid context
 if (typeof window !== "undefined") {
-  // Mark that our injected script is present
-  window.__TANSTACK_QUERY_DEVTOOLS_INJECTED__ = true;
-
   // Perform initial detection
   if (!performEnhancedDetection()) {
     // Also check periodically in case TanStack Query is loaded dynamically
