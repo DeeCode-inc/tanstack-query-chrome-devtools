@@ -1,8 +1,10 @@
-# TanStack Query Chrome DevTools
+# TanStack Query DevTools
 
-A professional Chrome DevTools extension for debugging TanStack Query applications across all frameworks.
+A professional browser extension for debugging TanStack Query applications across all frameworks.
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Available-blue?style=flat-square&logo=google-chrome)](https://chromewebstore.google.com/detail/tanstack-query-devtools/annajfchloimdhceglpgglpeepfghfai)
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox%20Add--ons-Available-orange?style=flat-square&logo=firefox)](https://addons.mozilla.org/en-US/firefox/addon/tanstack-query-devtools/)
+[![Edge Add-ons](https://img.shields.io/badge/Edge%20Add--ons-Available-blue?style=flat-square&logo=microsoft-edge)](https://microsoftedge.microsoft.com/addons/detail/tanstack-query-devtools/edmdpkgkacmjopodhfolmphdenmddobj)
 
 ## ✨ Features
 
@@ -18,25 +20,32 @@ A professional Chrome DevTools extension for debugging TanStack Query applicatio
 
 ## Quick Start
 
-1. **Install** the extension from [Chrome Web Store](https://chromewebstore.google.com/detail/tanstack-query-devtools/annajfchloimdhceglpgglpeepfghfai)
+1. **Install** the extension from your browser's extension store:
+   - [Chrome Web Store](https://chromewebstore.google.com/detail/tanstack-query-devtools/annajfchloimdhceglpgglpeepfghfai)
+   - [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/tanstack-query-devtools/)
+   - [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tanstack-query-devtools/edmdpkgkacmjopodhfolmphdenmddobj)
+
 2. **Setup your application** to expose the query client globally:
 
    ```typescript
-   // Add this line where you create your query client
+   const queryClient = new QueryClient({
+     /* ... */
+   });
+
+   // This code is only for TypeScript
+   declare global {
+     interface Window {
+       __TANSTACK_QUERY_CLIENT__: import("@tanstack/query-core").QueryClient;
+     }
+   }
+
+   // This code is for all users
    window.__TANSTACK_QUERY_CLIENT__ = queryClient;
    ```
 
-3. **For TypeScript projects**, create a `global.d.ts` file in your project root:
-
-   ```typescript
-   interface Window {
-     __TANSTACK_QUERY_CLIENT__: import("@tanstack/query-core").QueryClient;
-   }
-   ```
-
-4. **Open** Chrome DevTools (F12) in your application
-5. **Navigate** to the "TanStack Query" tab
-6. **Start debugging** with real-time query inspection!
+3. **Open** browser DevTools (F12) in your application
+4. **Navigate** to the "TanStack Query" tab
+5. **Start debugging** with real-time query inspection!
 
 ## 🏗️ Technical Architecture
 
@@ -48,7 +57,7 @@ Web Application (TanStack Query)
 Injected Script (Application Context)
     ↓ Message Passing
 Content Script (Bridge)
-    ↓ Chrome APIs
+    ↓ Browser APIs
 Background Service Worker
     ↓ DevTools Connection
 React DevTools Panel
@@ -65,15 +74,21 @@ npm install
 # Build extension
 npm run build
 
-# Load extension in Chrome
-# 1. Open chrome://extensions/
-# 2. Enable "Developer mode"
-# 3. Click "Load unpacked"
-# 4. Select the `dist` folder
+# Load extension in your browser
+# Chrome: chrome://extensions/ → Enable "Developer mode" → "Load unpacked" → Select `dist` folder
+# Firefox: about:debugging → "This Firefox" → "Load Temporary Add-on" → Select `dist/manifest.json`
+# Edge: edge://extensions/ → Enable "Developer mode" → "Load unpacked" → Select `dist` folder
 ```
 
 ## 🔗 Links
 
+### Extension Stores
+
 - [Chrome Web Store](https://chromewebstore.google.com/detail/tanstack-query-devtools/annajfchloimdhceglpgglpeepfghfai)
+- [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/tanstack-query-devtools/)
+- [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tanstack-query-devtools/edmdpkgkacmjopodhfolmphdenmddobj)
+
+### Documentation
+
 - [TanStack Query Documentation](https://tanstack.com/query)
-- [Chrome Extension Development](https://developer.chrome.com/docs/extensions/)
+- [Browser Extension Development](https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions)

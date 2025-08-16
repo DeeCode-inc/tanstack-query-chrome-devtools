@@ -204,6 +204,84 @@ chrome.runtime.onMessage.addListener(
   },
 );
 
+// Update extension icon based on TanStack Query detection
+function updateExtensionIcon(tanStackQueryDetected: boolean) {
+  const iconPath = tanStackQueryDetected
+    ? {
+        "16": "icon-16.png",
+        "48": "icon-48.png",
+        "128": "icon-128.png",
+      }
+    : {
+        "16": "icon-16-gray.png",
+        "48": "icon-48-gray.png",
+        "128": "icon-128-gray.png",
+      };
+
+  chrome.action.setIcon({ path: iconPath }).catch((error) => {
+    console.warn("Failed to update extension icon:", error);
+  });
+}
+
+// Update icon based on specific tab's TanStack Query status
+async function updateIconForActiveTab(tabId?: number): Promise<void> {
+  try {
+    // If no tabId provided, get the currently active tab
+    if (!tabId) {
+      const tabs = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tabs[0]?.id) {
+        updateExtensionIcon(false);
+        return;
+      }
+      tabId = tabs[0].id;
+    }
+
+    const state = await StorageManager.getState();
+
+    // Check if the current tab has TanStack Query detected
+    const hasQueryForThisTab =
+      state.tabId === tabId && state.tanStackQueryDetected;
+    updateExtensionIcon(hasQueryForThisTab);
+  } catch (error) {
+    console.warn("Failed to update icon for active tab:", error);
+    updateExtensionIcon(false);
+  }
+}
+
+// Listen to storage changes and update icon for the currently active tab
+StorageManager.onStateChange(async () => {
+  await updateIconForActiveTab();
+});
+
+// Listen to tab activation (when user switches tabs)
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  await updateIconForActiveTab(activeInfo.tabId);
+});
+
+// Listen to window focus changes (when user switches between browser windows)
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  if (windowId !== chrome.windows.WINDOW_ID_NONE) {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, windowId });
+      if (tabs[0]?.id) {
+        await updateIconForActiveTab(tabs[0].id);
+      }
+    } catch (error) {
+      console.warn("Failed to handle window focus change:", error);
+    }
+  }
+});
+
+// Set initial icon state on startup for the currently active tab
+updateIconForActiveTab().catch((error) => {
+  console.warn("Failed to set initial icon state:", error);
+  // Default to grayscale icon on error
+  updateExtensionIcon(false);
+});
+
 // Clean up storage when tabs are closed
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   try {

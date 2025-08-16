@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.8.0",
   "type": "module",
-  "description": "TanStack Query Chrome DevTools",
+  "description": "TanStack Query DevTools",
   "homepage": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools#readme",
   "repository": {
     "type": "git",
@@ -53,7 +53,7 @@
     "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.12",
-    "typescript": "~5.9.2",
+    "typescript": "^5.9.2",
     "typescript-eslint": "^8.40.0",
     "vite": "^7.1.3"
   }
