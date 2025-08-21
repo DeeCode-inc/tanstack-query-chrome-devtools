@@ -448,7 +448,7 @@ window.addEventListener("message", async (event) => {
 
   // Handle immediate update requests from DevTools
   if (event.data.type === "REQUEST_IMMEDIATE_UPDATE") {
-    if (detectTanStackQuery()) {
+    if (performEnhancedDetection()) {
       sendQueryDataUpdate();
       sendMutationDataUpdate();
     }

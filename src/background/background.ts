@@ -3,7 +3,11 @@ import { z } from "zod";
 import { StorageManager } from "../shared/storage-manager";
 import { safeDeserialize } from "../utils/serialization";
 import type { QueryState } from "../types/storage";
-import type { UpdateMessage, QueryActionResult } from "../types/messages";
+import type {
+  UpdateMessage,
+  QueryActionResult,
+  RequestImmediateUpdateMessage,
+} from "../types/messages";
 
 // Zod schema for serialized payload validation
 const SerializedPayloadSchema = z.object({
@@ -12,17 +16,17 @@ const SerializedPayloadSchema = z.object({
   isSerializedPayload: z.literal(true),
 });
 
+// Track preservation flags per tab
+const preserveArtificialStatesForTab = new Map<number, boolean>();
+
 // Define possible background messages
 type BackgroundMessage =
   | UpdateMessage
   | QueryActionResult
+  | (RequestImmediateUpdateMessage & { inspectedTabId?: number })
   | {
       type: "QUERY_ACTION";
       inspectedTabId?: number;
-      [key: string]: unknown;
-    }
-  | {
-      type: "REQUEST_IMMEDIATE_UPDATE";
       [key: string]: unknown;
     };
 
@@ -36,7 +40,18 @@ chrome.runtime.onMessage.addListener(
       !sender.tab?.id
     ) {
       // Forward DevTools actions to content script of the specified tab
-      if (message.type === "QUERY_ACTION") {
+      if (
+        message.type === "QUERY_ACTION" ||
+        message.type === "REQUEST_IMMEDIATE_UPDATE"
+      ) {
+        // Track preservation flag for REQUEST_IMMEDIATE_UPDATE messages
+        if (
+          message.type === "REQUEST_IMMEDIATE_UPDATE" &&
+          message.preserveArtificialStates
+        ) {
+          preserveArtificialStatesForTab.set(message.inspectedTabId, true);
+        }
+
         chrome.tabs
           .sendMessage(message.inspectedTabId, message)
           .then(() => {
@@ -124,9 +139,34 @@ chrome.runtime.onMessage.addListener(
             processedPayload.tanStackQueryDetected;
 
           // Clear artificial states when QueryClient is freshly detected
-          // This handles page refreshes and navigations
+          // Only clear if this tab doesn't have preservation flag set
           if (processedPayload.tanStackQueryDetected === true) {
-            updateData.artificialStates = {};
+            const shouldPreserve = preserveArtificialStatesForTab.get(tabId);
+            if (!shouldPreserve) {
+              // Clear artificial states for this tab only on fresh page loads/navigations
+              StorageManager.getState()
+                .then((currentState) => {
+                  const artificialStates = {
+                    ...(currentState.artificialStates || {}),
+                  };
+                  delete artificialStates[tabId];
+                  return StorageManager.updatePartialState({
+                    ...updateData,
+                    artificialStates,
+                  });
+                })
+                .then(() => {
+                  sendResponse({ received: true });
+                })
+                .catch((error) => {
+                  console.error("Failed to update storage:", error);
+                  sendResponse({ received: false, error: error.message });
+                });
+              return true;
+            } else {
+              // Clear the preservation flag after using it
+              preserveArtificialStatesForTab.delete(tabId);
+            }
           }
         }
 
@@ -157,21 +197,26 @@ chrome.runtime.onMessage.addListener(
               };
               const queryHash = message.queryHash as string;
 
+              // Ensure this tab has an entry in artificial states
+              if (!artificialStates[tabId]) {
+                artificialStates[tabId] = {};
+              }
+
               if (message.action === "TRIGGER_LOADING") {
-                if (artificialStates[queryHash] === "loading") {
+                if (artificialStates[tabId][queryHash] === "loading") {
                   // Cancel loading state
-                  delete artificialStates[queryHash];
+                  delete artificialStates[tabId][queryHash];
                 } else {
                   // Start loading state
-                  artificialStates[queryHash] = "loading";
+                  artificialStates[tabId][queryHash] = "loading";
                 }
               } else if (message.action === "TRIGGER_ERROR") {
-                if (artificialStates[queryHash] === "error") {
+                if (artificialStates[tabId][queryHash] === "error") {
                   // Cancel error state
-                  delete artificialStates[queryHash];
+                  delete artificialStates[tabId][queryHash];
                 } else {
                   // Start error state
-                  artificialStates[queryHash] = "error";
+                  artificialStates[tabId][queryHash] = "error";
                 }
               }
 
@@ -258,7 +303,24 @@ StorageManager.onStateChange(async () => {
 
 // Listen to tab activation (when user switches tabs)
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  // First update icon based on current storage (may be stale)
   await updateIconForActiveTab(activeInfo.tabId);
+
+  // Set preservation flag and request immediate update from the newly active tab
+  preserveArtificialStatesForTab.set(activeInfo.tabId, true);
+  try {
+    await chrome.tabs.sendMessage(activeInfo.tabId, {
+      type: "REQUEST_IMMEDIATE_UPDATE",
+      preserveArtificialStates: true,
+    });
+  } catch (error) {
+    // Tab might not have the content script loaded, that's fine
+    console.warn(
+      "Could not request immediate update for tab",
+      activeInfo.tabId,
+      error,
+    );
+  }
 });
 
 // Listen to window focus changes (when user switches between browser windows)
@@ -267,7 +329,24 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
     try {
       const tabs = await chrome.tabs.query({ active: true, windowId });
       if (tabs[0]?.id) {
+        // First update icon based on current storage (may be stale)
         await updateIconForActiveTab(tabs[0].id);
+
+        // Set preservation flag and request immediate update from the newly focused tab
+        preserveArtificialStatesForTab.set(tabs[0].id, true);
+        try {
+          await chrome.tabs.sendMessage(tabs[0].id, {
+            type: "REQUEST_IMMEDIATE_UPDATE",
+            preserveArtificialStates: true,
+          });
+        } catch (error) {
+          // Tab might not have the content script loaded, that's fine
+          console.warn(
+            "Could not request immediate update for focused tab",
+            tabs[0].id,
+            error,
+          );
+        }
       }
     } catch (error) {
       console.warn("Failed to handle window focus change:", error);
@@ -286,6 +365,14 @@ updateIconForActiveTab().catch((error) => {
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   try {
     const currentState = await StorageManager.getState();
+
+    // Clean up artificial states for closed tab
+    if (currentState.artificialStates && currentState.artificialStates[tabId]) {
+      const artificialStates = { ...currentState.artificialStates };
+      delete artificialStates[tabId];
+      await StorageManager.updatePartialState({ artificialStates });
+    }
+
     if (currentState.tabId === tabId) {
       // Clear state if it was from the closed tab
       await StorageManager.setState({
@@ -295,6 +382,9 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
         lastUpdated: Date.now(),
       });
     }
+
+    // Clean up preservation flag for closed tab
+    preserveArtificialStatesForTab.delete(tabId);
   } catch (error) {
     console.error("Failed to clean up state for closed tab:", error);
   }

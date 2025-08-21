@@ -11,6 +11,8 @@ export default defineConfig({
         panel: "index.html",
         // DevTools entry point
         devtools: "devtools.html",
+        // Popup (React app)
+        popup: "popup.html",
         // Content script
         content: "src/content/content.ts",
         // Background service worker

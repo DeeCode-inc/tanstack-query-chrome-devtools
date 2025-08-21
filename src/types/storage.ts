@@ -6,5 +6,5 @@ export interface QueryState {
   tanStackQueryDetected: boolean;
   lastUpdated: number;
   tabId?: number;
-  artificialStates?: Record<string, "loading" | "error">;
+  artificialStates?: Record<number, Record<string, "loading" | "error">>;
 }

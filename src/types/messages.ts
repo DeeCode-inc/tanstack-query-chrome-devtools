@@ -62,3 +62,9 @@ export interface QueryActionMessage {
   queryHash: string;
   newData?: unknown;
 }
+
+// Request Immediate Update Message Type
+export interface RequestImmediateUpdateMessage {
+  type: "REQUEST_IMMEDIATE_UPDATE";
+  preserveArtificialStates?: boolean;
+}

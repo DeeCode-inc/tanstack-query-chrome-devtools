@@ -1,8 +1,8 @@
 import "webextension-polyfill";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import type { QueryData, MutationData } from "../types/query";
-import { StateSync } from "../shared/state-sync";
+import { stateSync } from "../shared/state-sync";
 
 interface UseConnectionReturn {
   // State
@@ -15,6 +15,22 @@ interface UseConnectionReturn {
   sendMessage: (message: unknown) => void;
 }
 
+// Send message function - now sends through background to content script
+const sendMessage = (message: unknown) => {
+  try {
+    // Add inspected tab ID for proper routing
+    const messageWithTab = {
+      ...(message as Record<string, unknown>),
+      inspectedTabId: chrome.devtools.inspectedWindow.tabId,
+    };
+
+    chrome.runtime.sendMessage(messageWithTab);
+  } catch (error) {
+    console.error("Failed to send message:", error);
+    throw error;
+  }
+};
+
 export const useConnection = (): UseConnectionReturn => {
   const [tanStackQueryDetected, setTanStackQueryDetected] = useState<
     boolean | null
@@ -25,25 +41,6 @@ export const useConnection = (): UseConnectionReturn => {
   const [artificialStates, setArtificialStates] = useState<
     Map<string, "loading" | "error">
   >(new Map());
-
-  // State sync instance - DevTools only listens to storage, not messages
-  const [stateSync] = useState(() => new StateSync(false));
-
-  // Send message function - now sends through background to content script
-  const sendMessage = useCallback((message: unknown) => {
-    try {
-      // Add inspected tab ID for proper routing
-      const messageWithTab = {
-        ...(message as Record<string, unknown>),
-        inspectedTabId: chrome.devtools.inspectedWindow.tabId,
-      };
-
-      chrome.runtime.sendMessage(messageWithTab);
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      throw error;
-    }
-  }, []);
 
   // Subscribe to storage changes
   useEffect(() => {
@@ -61,10 +58,11 @@ export const useConnection = (): UseConnectionReturn => {
       setQueries(state.queries);
       setMutations(state.mutations);
 
-      // Update artificial states from storage
-      if (state.artificialStates) {
+      // Update artificial states from storage - extract only current tab's states
+      if (state.artificialStates?.[currentTabId]) {
+        const currentTabArtificialStates = state.artificialStates[currentTabId];
         const artificialStatesMap = new Map(
-          Object.entries(state.artificialStates),
+          Object.entries(currentTabArtificialStates),
         );
         setArtificialStates(artificialStatesMap);
       } else {
@@ -81,7 +79,7 @@ export const useConnection = (): UseConnectionReturn => {
     return () => {
       unsubscribe();
     };
-  }, [stateSync]);
+  }, []);
 
   return {
     // State

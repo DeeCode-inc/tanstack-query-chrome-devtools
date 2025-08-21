@@ -50,9 +50,10 @@ export const useViewState = (): UseViewStateReturn => {
     },
   });
 
-  // Handle view changes with automatic selection clearing
+  // Handle view changes with automatic selection clearing and search term clearing
   const handleViewChange = (view: ViewType) => {
     setCurrentView(view);
+    setSearchTerm(""); // Clear search term when switching views
     if (view === "queries") {
       setSelectedMutationIndex(null);
     } else {

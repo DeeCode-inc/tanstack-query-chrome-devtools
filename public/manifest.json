@@ -41,6 +41,7 @@
       "48": "icon-48-gray.png",
       "128": "icon-128-gray.png"
     },
-    "default_title": "TanStack Query DevTools"
+    "default_title": "TanStack Query DevTools",
+    "default_popup": "popup.html"
   }
 }

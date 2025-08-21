@@ -66,3 +66,5 @@ export class StateSync {
     });
   }
 }
+
+export const stateSync = new StateSync(false);
