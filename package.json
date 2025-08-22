@@ -1,7 +1,7 @@
 {
   "name": "tanstack-query-chrome-devtools",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "description": "TanStack Query DevTools",
   "homepage": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools#readme",
