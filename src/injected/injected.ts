@@ -5,6 +5,8 @@ import type {
   TanStackQueryEvent,
   QueryActionMessage,
   QueryActionResult,
+  BulkQueryActionMessage,
+  BulkQueryActionResult,
 } from "../types/messages";
 import type { QueryData, MutationData } from "../types/query";
 
@@ -421,8 +423,67 @@ async function handleQueryAction(
   }
 }
 
+// Bulk query action handlers
+async function handleBulkQueryAction(
+  action: BulkQueryActionMessage,
+): Promise<BulkQueryActionResult> {
+  const queryClient = getQueryClient();
+
+  if (!queryClient) {
+    return {
+      type: "BULK_QUERY_ACTION_RESULT",
+      action: action.action,
+      success: false,
+      error: "QueryClient not found",
+    };
+  }
+
+  try {
+    switch (action.action) {
+      case "REMOVE_ALL_QUERIES": {
+        // Get all queries from the cache
+        const queryCache = queryClient.getQueryCache();
+        const allQueries = queryCache.getAll();
+        const queryCount = allQueries.length;
+
+        // Remove all queries
+        queryClient.removeQueries();
+
+        // Also clear artificial states for this tab
+        window.postMessage(
+          {
+            source: "tanstack-query-devtools-injected",
+            type: "CLEAR_ARTIFICIAL_STATES",
+          },
+          "*",
+        );
+
+        return {
+          type: "BULK_QUERY_ACTION_RESULT",
+          action: action.action,
+          success: true,
+          affectedCount: queryCount,
+        };
+      }
+
+      default:
+        throw new Error(`Unknown bulk action: ${action.action}`);
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("TanStack Query DevTools: Bulk action failed:", error);
+
+    return {
+      type: "BULK_QUERY_ACTION_RESULT",
+      action: action.action,
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
 // Send action result to content script
-function sendActionResult(result: QueryActionResult) {
+function sendActionResult(result: QueryActionResult | BulkQueryActionResult) {
   window.postMessage(
     {
       source: "tanstack-query-devtools-injected",
@@ -443,6 +504,14 @@ window.addEventListener("message", async (event) => {
     sendActionResult(result);
 
     // Trigger query data update after action
+    setTimeout(sendQueryDataUpdate, 100);
+  }
+
+  if (event.data.type === "BULK_QUERY_ACTION") {
+    const result = await handleBulkQueryAction(event.data);
+    sendActionResult(result);
+
+    // Trigger query data update after bulk action
     setTimeout(sendQueryDataUpdate, 100);
   }
 

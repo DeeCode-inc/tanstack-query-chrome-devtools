@@ -22,6 +22,14 @@ function App() {
     sendMessage,
   } = useConnection();
   const { handleQueryAction } = useUIState(sendMessage);
+
+  // Handler for removing all queries
+  const handleRemoveAllQueries = () => {
+    sendMessage({
+      type: "BULK_QUERY_ACTION",
+      action: "REMOVE_ALL_QUERIES",
+    });
+  };
   const {
     currentView,
     searchTerm,
@@ -82,6 +90,7 @@ function App() {
                   selectedMutationIndex={selectedMutationIndex}
                   onSelectQuery={setSelectedQueryIndex}
                   onSelectMutation={setSelectedMutationIndex}
+                  onRemoveAllQueries={handleRemoveAllQueries}
                   queryKeyboardNavigation={queryKeyboardNavigation}
                   mutationKeyboardNavigation={mutationKeyboardNavigation}
                 />

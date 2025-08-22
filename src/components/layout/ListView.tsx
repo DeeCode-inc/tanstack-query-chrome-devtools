@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { QueryListItem } from "../query/QueryListItem";
 import { MutationListItem } from "../mutation/MutationListItem";
+import { RemoveAllQueriesButton } from "../common/RemoveAllQueriesButton";
 import type { QueryData, MutationData, ViewType } from "../../types/query";
 import type { useKeyboardNavigation } from "../../hooks/useKeyboardNavigation";
 
@@ -13,6 +14,7 @@ interface ListViewProps {
   selectedMutationIndex: number | null;
   onSelectQuery: (index: number | null) => void;
   onSelectMutation: (index: number | null) => void;
+  onRemoveAllQueries?: () => void;
   // Keyboard navigation props
   queryKeyboardNavigation?: ReturnType<typeof useKeyboardNavigation>;
   mutationKeyboardNavigation?: ReturnType<typeof useKeyboardNavigation>;
@@ -27,6 +29,7 @@ export function ListView({
   selectedMutationIndex,
   onSelectQuery,
   onSelectMutation,
+  onRemoveAllQueries,
   queryKeyboardNavigation,
   mutationKeyboardNavigation,
 }: ListViewProps) {
@@ -90,9 +93,17 @@ export function ListView({
       tabIndex={0}
     >
       <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 flex-shrink-0">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {currentView === "queries" ? "Query List" : "Mutation List"}
-        </h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {currentView === "queries" ? "Query List" : "Mutation List"}
+          </h4>
+          {currentView === "queries" && onRemoveAllQueries && (
+            <RemoveAllQueriesButton
+              disabled={queries.length === 0}
+              onRemoveAll={onRemoveAllQueries}
+            />
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 p-1">

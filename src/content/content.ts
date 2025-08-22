@@ -72,6 +72,16 @@ window.addEventListener("message", (event) => {
   if (event.data.type === "QUERY_ACTION_RESULT") {
     sendToBackground(event.data);
   }
+
+  // Forward clear artificial states message to background script
+  if (event.data.type === "CLEAR_ARTIFICIAL_STATES") {
+    chrome.runtime.sendMessage(event.data).catch((error) => {
+      console.warn(
+        "TanStack Query DevTools: Failed to send CLEAR_ARTIFICIAL_STATES to background:",
+        error,
+      );
+    });
+  }
 });
 
 // Inject the injected script into the page context
@@ -95,7 +105,7 @@ if (document.readyState === "loading") {
 // Listen for messages from DevTools and background script
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Handle query actions from DevTools
-  if (message.type === "QUERY_ACTION") {
+  if (message.type === "QUERY_ACTION" || message.type === "BULK_QUERY_ACTION") {
     sendActionToInjected(message);
     sendResponse({ received: true });
     return true;

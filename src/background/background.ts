@@ -7,6 +7,8 @@ import type {
   UpdateMessage,
   QueryActionResult,
   RequestImmediateUpdateMessage,
+  BulkQueryActionMessage,
+  ClearArtificialStatesMessage,
 } from "../types/messages";
 
 // Zod schema for serialized payload validation
@@ -24,6 +26,8 @@ type BackgroundMessage =
   | UpdateMessage
   | QueryActionResult
   | (RequestImmediateUpdateMessage & { inspectedTabId?: number })
+  | (BulkQueryActionMessage & { inspectedTabId?: number })
+  | ClearArtificialStatesMessage
   | {
       type: "QUERY_ACTION";
       inspectedTabId?: number;
@@ -42,6 +46,7 @@ chrome.runtime.onMessage.addListener(
       // Forward DevTools actions to content script of the specified tab
       if (
         message.type === "QUERY_ACTION" ||
+        message.type === "BULK_QUERY_ACTION" ||
         message.type === "REQUEST_IMMEDIATE_UPDATE"
       ) {
         // Track preservation flag for REQUEST_IMMEDIATE_UPDATE messages
@@ -176,6 +181,30 @@ chrome.runtime.onMessage.addListener(
           })
           .catch((error) => {
             console.error("Failed to update storage:", error);
+            sendResponse({ received: false, error: error.message });
+          });
+        return true;
+      }
+
+      // Handle clear artificial states message from content script
+      if (message.type === "CLEAR_ARTIFICIAL_STATES") {
+        StorageManager.getState()
+          .then((currentState) => {
+            const artificialStates = {
+              ...(currentState.artificialStates || {}),
+            };
+            // Clear artificial states for this tab only
+            delete artificialStates[tabId];
+            return StorageManager.updatePartialState({
+              artificialStates,
+              lastUpdated: Date.now(),
+            });
+          })
+          .then(() => {
+            sendResponse({ received: true });
+          })
+          .catch((error) => {
+            console.error("Failed to clear artificial states:", error);
             sendResponse({ received: false, error: error.message });
           });
         return true;

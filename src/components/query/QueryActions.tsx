@@ -1,6 +1,5 @@
 import type { QueryData } from "../../types/query";
 import type { QueryAction } from "../../types/messages";
-import { formatQueryKeyShort } from "../../utils/formatters";
 import { buttonVariants } from "../../lib/variants";
 
 interface QueryActionsProps {
@@ -67,15 +66,7 @@ export function QueryActions({
         </button>
 
         <button
-          onClick={() => {
-            if (
-              confirm(
-                `Are you sure you want to remove this query from cache?\n\nQuery: ${formatQueryKeyShort(selectedQuery.queryKey)}`,
-              )
-            ) {
-              handleAction("REMOVE");
-            }
-          }}
+          onClick={() => handleAction("REMOVE")}
           disabled={shouldDisableButtons}
           className={buttonVariants({ variant: "pink" })}
         >

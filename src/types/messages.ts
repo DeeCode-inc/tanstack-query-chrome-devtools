@@ -14,6 +14,9 @@ export type QueryAction = { queryHash: string } & (
   | { type: "SET_QUERY_DATA"; newData: unknown }
 );
 
+// Bulk Query Action Types - For operations affecting all queries
+export type BulkQueryAction = { type: "REMOVE_ALL_QUERIES" };
+
 // Base interface for action results
 interface BaseQueryActionResult {
   type: "QUERY_ACTION_RESULT";
@@ -35,6 +38,15 @@ export type QueryActionResult = BaseQueryActionResult &
     | { action: "CANCEL_ERROR" }
     | { action: "SET_QUERY_DATA"; newData?: unknown }
   );
+
+// Bulk action result type
+export interface BulkQueryActionResult {
+  type: "BULK_QUERY_ACTION_RESULT";
+  action: BulkQueryAction["type"];
+  success: boolean;
+  error?: string;
+  affectedCount?: number;
+}
 
 // TanStack Query Event Types - Discriminated unions
 export type TanStackQueryEvent = { type: "QEVENT" } & (
@@ -63,8 +75,19 @@ export interface QueryActionMessage {
   newData?: unknown;
 }
 
+// Bulk Query Action Message Type
+export interface BulkQueryActionMessage {
+  type: "BULK_QUERY_ACTION";
+  action: BulkQueryAction["type"];
+}
+
 // Request Immediate Update Message Type
 export interface RequestImmediateUpdateMessage {
   type: "REQUEST_IMMEDIATE_UPDATE";
   preserveArtificialStates?: boolean;
+}
+
+// Clear Artificial States Message Type
+export interface ClearArtificialStatesMessage {
+  type: "CLEAR_ARTIFICIAL_STATES";
 }

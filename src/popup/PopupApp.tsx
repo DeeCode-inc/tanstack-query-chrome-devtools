@@ -24,6 +24,14 @@ function PopupApp() {
     sendMessage,
   } = usePopupConnection();
   const { handleQueryAction } = useUIState(sendMessage);
+
+  // Handle remove all queries action
+  const handleRemoveAllQueries = () => {
+    sendMessage({
+      type: "BULK_QUERY_ACTION",
+      action: "REMOVE_ALL_QUERIES",
+    });
+  };
   const {
     currentView,
     searchTerm,
@@ -94,6 +102,7 @@ function PopupApp() {
                   onSelectMutation={setSelectedMutationIndex}
                   queryKeyboardNavigation={queryKeyboardNavigation}
                   mutationKeyboardNavigation={mutationKeyboardNavigation}
+                  onRemoveAllQueries={handleRemoveAllQueries}
                 />
               </div>
             ) : (
@@ -116,7 +125,11 @@ function PopupApp() {
                         ? queries[selectedQueryIndex]
                         : null
                     }
-                    onAction={handleQueryAction}
+                    onAction={(action, queryHash, newState) => {
+                      if (action === "REMOVE") setSelectedQueryIndex(null);
+
+                      handleQueryAction(action, queryHash, newState);
+                    }}
                     artificialStates={artificialStates}
                   />
                 ) : (
