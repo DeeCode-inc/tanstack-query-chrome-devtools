@@ -25,7 +25,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@tanstack/query-core": "^5.86.0",
+    "@tanstack/query-core": "^5.87.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "highlight.js": "^11.11.1",
