@@ -8,7 +8,7 @@
       "strict_min_version": "112.0"
     }
   },
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "DevTools extension for debugging TanStack Query applications. Inspect queries, mutations, and cache state in real-time.",
   "homepage_url": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools",
 
