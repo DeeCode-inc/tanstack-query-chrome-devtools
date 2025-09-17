@@ -10,14 +10,40 @@ import type {
 } from "../types/messages";
 import type { QueryData, MutationData } from "../types/query";
 
-// Check for TanStack Query in the application's window context
-function detectTanStackQuery(): boolean {
-  // Only check for __TANSTACK_QUERY_CLIENT__
-  if (window.__TANSTACK_QUERY_CLIENT__) {
-    return true;
+// Global subscription tracking for cleanup
+let querySubscriptionCleanup: (() => void) | null = null;
+let mutationSubscriptionCleanup: (() => void) | null = null;
+
+// Cleanup all active subscriptions
+function cleanupSubscriptions() {
+  if (querySubscriptionCleanup) {
+    try {
+      querySubscriptionCleanup();
+      querySubscriptionCleanup = null;
+    } catch (error) {
+      console.warn(
+        "TanStack Query DevTools: Error cleaning up query subscription:",
+        error,
+      );
+    }
   }
 
-  return false;
+  if (mutationSubscriptionCleanup) {
+    try {
+      mutationSubscriptionCleanup();
+      mutationSubscriptionCleanup = null;
+    } catch (error) {
+      console.warn(
+        "TanStack Query DevTools: Error cleaning up mutation subscription:",
+        error,
+      );
+    }
+  }
+}
+
+// Check for TanStack Query in the application's window context
+function detectTanStackQuery(): boolean {
+  return !!window.__TANSTACK_QUERY_CLIENT__;
 }
 
 // Get the active QueryClient
@@ -136,6 +162,7 @@ function sendToContentScript(event: TanStackQueryEvent) {
 // Send query data update
 function sendQueryDataUpdate() {
   const queryData = getQueryData();
+
   sendToContentScript({
     type: "QEVENT",
     subtype: "QUERY_DATA_UPDATE",
@@ -146,6 +173,7 @@ function sendQueryDataUpdate() {
 // Send mutation data update
 function sendMutationDataUpdate() {
   const mutationData = getMutationData();
+
   sendToContentScript({
     type: "QEVENT",
     subtype: "MUTATION_DATA_UPDATE",
@@ -163,8 +191,14 @@ function setupQuerySubscription() {
   try {
     const queryCache = queryClient.getQueryCache();
     if (typeof queryCache.subscribe === "function") {
-      // Subscribe to cache changes
-      queryCache.subscribe(() => {
+      // Clean up existing subscription before creating a new one
+      if (querySubscriptionCleanup) {
+        querySubscriptionCleanup();
+        querySubscriptionCleanup = null;
+      }
+
+      // Subscribe to cache changes and store cleanup function
+      querySubscriptionCleanup = queryCache.subscribe(() => {
         sendQueryDataUpdate();
       });
 
@@ -189,8 +223,14 @@ function setupMutationSubscription() {
   try {
     const mutationCache = queryClient.getMutationCache();
     if (typeof mutationCache.subscribe === "function") {
-      // Subscribe to mutation cache changes
-      mutationCache.subscribe(() => {
+      // Clean up existing subscription before creating a new one
+      if (mutationSubscriptionCleanup) {
+        mutationSubscriptionCleanup();
+        mutationSubscriptionCleanup = null;
+      }
+
+      // Subscribe to mutation cache changes and store cleanup function
+      mutationSubscriptionCleanup = mutationCache.subscribe(() => {
         sendMutationDataUpdate();
       });
 
@@ -215,10 +255,22 @@ function performEnhancedDetection() {
       subtype: "QUERY_CLIENT_DETECTED",
     });
 
-    // Set up subscriptions for real-time updates
+    // Clean up any existing subscriptions before setting up new ones
+    // This is handled within setupQuerySubscription and setupMutationSubscription
+    // but we call it here for completeness in case of detection changes
     setupQuerySubscription();
     setupMutationSubscription();
+
+    // Add a small delay to ensure subscription setup completes, then send immediate data
+    // This fixes the race condition where queries exist in cache before subscription setup
+    setTimeout(() => {
+      sendQueryDataUpdate();
+      sendMutationDataUpdate();
+    }, 0);
   } else {
+    // Clean up subscriptions when TanStack Query is not found
+    cleanupSubscriptions();
+
     sendToContentScript({
       type: "QEVENT",
       subtype: "QUERY_CLIENT_NOT_FOUND",
@@ -502,17 +554,11 @@ window.addEventListener("message", async (event) => {
   if (event.data.type === "QUERY_ACTION") {
     const result = await handleQueryAction(event.data);
     sendActionResult(result);
-
-    // Trigger query data update after action
-    setTimeout(sendQueryDataUpdate, 100);
   }
 
   if (event.data.type === "BULK_QUERY_ACTION") {
     const result = await handleBulkQueryAction(event.data);
     sendActionResult(result);
-
-    // Trigger query data update after bulk action
-    setTimeout(sendQueryDataUpdate, 100);
   }
 
   // Handle immediate update requests from DevTools
@@ -546,4 +592,26 @@ if (typeof window !== "undefined") {
       }
     }, 120000);
   }
+  // Note: Data updates are now handled within setupQuerySubscription() and setupMutationSubscription()
+  // when called from performEnhancedDetection(), eliminating duplicate sends
+
+  // Clean up subscriptions on page unload to prevent memory leaks
+  window.addEventListener("beforeunload", () => {
+    cleanupSubscriptions();
+  });
+
+  // Clean up subscriptions on page visibility change (when tab becomes hidden)
+  // This helps with cleanup in some edge cases where beforeunload might not fire
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      // Don't cleanup on visibility change as it's too aggressive
+      // Page might become visible again. Only cleanup on actual unload.
+    }
+  });
+
+  // Clean up subscriptions when the page is about to be unloaded (pagehide event)
+  // This is more reliable than beforeunload in some browsers
+  window.addEventListener("pagehide", () => {
+    cleanupSubscriptions();
+  });
 }

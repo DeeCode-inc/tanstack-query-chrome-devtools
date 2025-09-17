@@ -8,7 +8,7 @@ import { QueryDetails } from "./components/query/QueryDetails";
 import { MutationDetails } from "./components/mutation/MutationDetails";
 
 // Import our custom hooks
-import { useConnection } from "./hooks/useConnection";
+import { useDevToolsData } from "./hooks/useDevToolsData";
 import { useUIState } from "./hooks/useUIState";
 import { useViewState } from "./hooks/useViewState";
 
@@ -20,8 +20,11 @@ function App() {
     mutations,
     artificialStates,
     sendMessage,
-  } = useConnection();
-  const { handleQueryAction } = useUIState(sendMessage);
+  } = useDevToolsData();
+  const { handleQueryAction } = useUIState(
+    sendMessage,
+    chrome.devtools.inspectedWindow.tabId,
+  );
 
   // Handler for removing all queries
   const handleRemoveAllQueries = () => {
@@ -91,6 +94,7 @@ function App() {
                   onSelectQuery={setSelectedQueryIndex}
                   onSelectMutation={setSelectedMutationIndex}
                   onRemoveAllQueries={handleRemoveAllQueries}
+                  artificialStates={artificialStates}
                   queryKeyboardNavigation={queryKeyboardNavigation}
                   mutationKeyboardNavigation={mutationKeyboardNavigation}
                 />

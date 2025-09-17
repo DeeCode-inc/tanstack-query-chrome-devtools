@@ -1,5 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type { QueryAction, QueryActionMessage } from "../types/messages";
+import { createArtificialStateManager } from "../utils/artificialStateManager";
 
 interface UseUIStateReturn {
   handleQueryAction: (
@@ -11,7 +12,13 @@ interface UseUIStateReturn {
 
 export const useUIState = (
   sendMessage: (message: QueryActionMessage) => void,
+  tabId: number,
 ): UseUIStateReturn => {
+  // Create centralized artificial state manager
+  const stateManager = useMemo(
+    () => createArtificialStateManager(tabId),
+    [tabId],
+  );
   // Handle query actions
   const handleQueryAction = useCallback(
     async (
@@ -20,6 +27,28 @@ export const useUIState = (
       newValue?: unknown,
     ) => {
       try {
+        // Handle artificial states using centralized manager for immediate UI feedback
+        if (action === "TRIGGER_LOADING") {
+          const currentState = stateManager.getState(queryHash);
+          if (currentState === "loading") {
+            // Remove artificial loading state
+            await stateManager.clearState(queryHash);
+          } else {
+            // Add artificial loading state
+            await stateManager.updateState(queryHash, "loading");
+          }
+        } else if (action === "TRIGGER_ERROR") {
+          const currentState = stateManager.getState(queryHash);
+          if (currentState === "error") {
+            // Remove artificial error state
+            await stateManager.clearState(queryHash);
+          } else {
+            // Add artificial error state
+            await stateManager.updateState(queryHash, "error");
+          }
+        }
+
+        // Still send message to injected script for actual TanStack Query manipulation
         const message: QueryActionMessage = {
           type: "QUERY_ACTION",
           action: action,
@@ -36,7 +65,7 @@ export const useUIState = (
         console.error("Failed to send action:", error);
       }
     },
-    [sendMessage],
+    [sendMessage, stateManager],
   );
 
   return {

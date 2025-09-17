@@ -5,10 +5,16 @@ import { StatusText } from "../status/StatusText";
 
 interface QueryHeaderProps {
   selectedQuery: QueryData;
+  artificialStates: Map<string, "loading" | "error">;
 }
 
-export function QueryHeader({ selectedQuery }: QueryHeaderProps) {
-  const status = getQueryStatusDisplay(selectedQuery);
+export function QueryHeader({
+  selectedQuery,
+  artificialStates,
+}: QueryHeaderProps) {
+  // Get artificial state for this specific query
+  const artificialState = artificialStates.get(selectedQuery.queryHash) || null;
+  const status = getQueryStatusDisplay(selectedQuery, artificialState);
   const lastUpdated = Math.max(
     selectedQuery.state.dataUpdatedAt,
     selectedQuery.state.errorUpdatedAt,

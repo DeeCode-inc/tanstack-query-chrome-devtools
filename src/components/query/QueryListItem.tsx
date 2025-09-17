@@ -12,6 +12,7 @@ interface QueryListItemProps {
   isSelected: boolean;
   onSelect: (index: number) => void;
   staggerIndex?: number;
+  artificialStates: Map<string, "loading" | "error">;
   // Keyboard navigation props
   isFocused?: boolean;
   isKeyboardFocused?: boolean;
@@ -27,6 +28,7 @@ export function QueryListItem({
   isSelected,
   onSelect,
   staggerIndex,
+  artificialStates,
   isFocused = false,
   isKeyboardFocused = false,
   tabIndex = -1,
@@ -34,7 +36,9 @@ export function QueryListItem({
   onMouseEnter,
   itemRef,
 }: QueryListItemProps) {
-  const status = getQueryStatusDisplay(query);
+  // Get artificial state for this specific query
+  const artificialState = artificialStates.get(query.queryHash) || null;
+  const status = getQueryStatusDisplay(query, artificialState);
   const [staggerAnimationComplete, setStaggerAnimationComplete] =
     useState(false);
 

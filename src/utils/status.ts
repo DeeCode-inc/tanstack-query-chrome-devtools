@@ -1,7 +1,32 @@
 import type { QueryData, MutationData, StatusDisplay } from "../types/query";
 
 // Helper function to get status display with state-based colors
-export function getQueryStatusDisplay(query: QueryData): StatusDisplay {
+export function getQueryStatusDisplay(
+  query: QueryData,
+  artificialState?: "loading" | "error" | null,
+): StatusDisplay {
+  // Check artificial state first - it takes priority over actual query state
+  if (artificialState === "loading") {
+    return {
+      icon: "RotateCw",
+      text: "Loading",
+      bgColor: "status status-blue",
+      textColor: "text-blue-600",
+      variant: "blue",
+    };
+  }
+
+  if (artificialState === "error") {
+    return {
+      icon: "XCircle",
+      text: "Error",
+      bgColor: "status status-red",
+      textColor: "text-red-600",
+      variant: "red",
+    };
+  }
+
+  // Fall back to actual query state if no artificial state
   if (query.state.isFetching) {
     return {
       icon: "RotateCw",

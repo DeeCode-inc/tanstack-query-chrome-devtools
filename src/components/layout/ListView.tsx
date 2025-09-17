@@ -15,6 +15,7 @@ interface ListViewProps {
   onSelectQuery: (index: number | null) => void;
   onSelectMutation: (index: number | null) => void;
   onRemoveAllQueries?: () => void;
+  artificialStates: Map<string, "loading" | "error">;
   // Keyboard navigation props
   queryKeyboardNavigation?: ReturnType<typeof useKeyboardNavigation>;
   mutationKeyboardNavigation?: ReturnType<typeof useKeyboardNavigation>;
@@ -30,6 +31,7 @@ export function ListView({
   onSelectQuery,
   onSelectMutation,
   onRemoveAllQueries,
+  artificialStates,
   queryKeyboardNavigation,
   mutationKeyboardNavigation,
 }: ListViewProps) {
@@ -125,6 +127,7 @@ export function ListView({
                     isSelected={selectedQueryIndex === originalIndex}
                     onSelect={onSelectQuery}
                     staggerIndex={index}
+                    artificialStates={artificialStates}
                     // Keyboard navigation props
                     isFocused={queryKeyboardNavigation?.focusedIndex === index}
                     isKeyboardFocused={

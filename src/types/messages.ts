@@ -91,3 +91,10 @@ export interface RequestImmediateUpdateMessage {
 export interface ClearArtificialStatesMessage {
   type: "CLEAR_ARTIFICIAL_STATES";
 }
+
+// Icon Update Message Type - For content script to background script communication
+export interface IconUpdateMessage {
+  type: "ICON_UPDATE";
+  tanStackQueryDetected: boolean;
+  tabId: number;
+}

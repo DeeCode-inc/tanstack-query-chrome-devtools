@@ -48,7 +48,10 @@ export function QueryDetails({
 
   return (
     <div className={`h-full overflow-y-auto ${animationClass}`}>
-      <QueryHeader selectedQuery={selectedQuery} />
+      <QueryHeader
+        selectedQuery={selectedQuery}
+        artificialStates={artificialStates}
+      />
 
       <QueryActions
         selectedQuery={selectedQuery}

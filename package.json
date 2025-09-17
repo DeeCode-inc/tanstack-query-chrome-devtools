@@ -17,7 +17,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --mode main && vite build --mode content",
     "lint": "eslint .",
     "preview": "vite preview",
     "prettier:format": "prettier --write .",

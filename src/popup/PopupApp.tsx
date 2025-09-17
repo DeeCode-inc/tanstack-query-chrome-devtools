@@ -7,7 +7,7 @@ import { QueryDetails } from "../components/query/QueryDetails";
 import { MutationDetails } from "../components/mutation/MutationDetails";
 
 // Import our custom hooks
-import { usePopupConnection } from "../hooks/usePopupConnection";
+import { usePopupData } from "../hooks/usePopupData";
 import { useUIState } from "../hooks/useUIState";
 import { useViewState } from "../hooks/useViewState";
 
@@ -21,9 +21,10 @@ function PopupApp() {
     queries,
     mutations,
     artificialStates,
+    tabId,
     sendMessage,
-  } = usePopupConnection();
-  const { handleQueryAction } = useUIState(sendMessage);
+  } = usePopupData();
+  const { handleQueryAction } = useUIState(sendMessage, tabId || 0);
 
   // Handle remove all queries action
   const handleRemoveAllQueries = () => {
@@ -103,6 +104,7 @@ function PopupApp() {
                   queryKeyboardNavigation={queryKeyboardNavigation}
                   mutationKeyboardNavigation={mutationKeyboardNavigation}
                   onRemoveAllQueries={handleRemoveAllQueries}
+                  artificialStates={artificialStates}
                 />
               </div>
             ) : (
