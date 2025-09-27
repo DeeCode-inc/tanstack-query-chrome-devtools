@@ -16,7 +16,7 @@ A professional browser extension for debugging TanStack Query applications acros
 - **Complete Cache Management** - Invalidate, refetch, reset, and remove queries with one-click actions
 - **Mutation Tracking** - Monitor mutations with variables, status, and result inspection
 
-![TanStack Query DevTools Screenshot](store-assets/screenshots/screenshot-1280x800.png)
+![TanStack Query DevTools Screenshot](store-assets/screenshots/devtools.png)
 
 ## Quick Start
 
