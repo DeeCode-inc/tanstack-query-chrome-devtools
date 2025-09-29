@@ -36,11 +36,13 @@ chrome.runtime.onMessage.addListener(
 
       // Handle action results from content scripts - update artificial states in storage
       if (message.type === "QUERY_ACTION_RESULT") {
-        // Update artificial states in storage for TRIGGER_LOADING and TRIGGER_ERROR
+        // Update artificial states in storage for all artificial state actions
         if (
           message.success &&
           (message.action === "TRIGGER_LOADING" ||
-            message.action === "TRIGGER_ERROR") &&
+            message.action === "TRIGGER_ERROR" ||
+            message.action === "CANCEL_LOADING" ||
+            message.action === "CANCEL_ERROR") &&
           message.queryHash
         ) {
           (async () => {
@@ -54,21 +56,17 @@ chrome.runtime.onMessage.addListener(
               const artificialStates = { ...currentData.artificialStates };
 
               if (message.action === "TRIGGER_LOADING") {
-                if (artificialStates[queryHash] === "loading") {
-                  // Cancel loading state
-                  delete artificialStates[queryHash];
-                } else {
-                  // Start loading state
-                  artificialStates[queryHash] = "loading";
-                }
+                // Start loading state
+                artificialStates[queryHash] = "loading";
+              } else if (message.action === "CANCEL_LOADING") {
+                // Cancel loading state
+                delete artificialStates[queryHash];
               } else if (message.action === "TRIGGER_ERROR") {
-                if (artificialStates[queryHash] === "error") {
-                  // Cancel error state
-                  delete artificialStates[queryHash];
-                } else {
-                  // Start error state
-                  artificialStates[queryHash] = "error";
-                }
+                // Start error state
+                artificialStates[queryHash] = "error";
+              } else if (message.action === "CANCEL_ERROR") {
+                // Cancel error state
+                delete artificialStates[queryHash];
               }
 
               // Update storage with new artificial states

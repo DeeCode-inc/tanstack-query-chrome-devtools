@@ -10,7 +10,6 @@ import type {
   RequestImmediateUpdateMessage,
 } from "../types/messages";
 import { useState, useEffect } from "react";
-import type { TanstackQueryStateType } from "../storage/base/types";
 
 type ActionMessage =
   | QueryActionMessage
@@ -71,10 +70,8 @@ const sendMessage = async (message: ActionMessage) => {
  */
 export const usePopupData = (): UsePopupDataReturn => {
   const [currentTabId, setCurrentTabId] = useState<number | null>(null);
-  const [refreshedData, setRefreshedData] =
-    useState<TanstackQueryStateType | null>(null);
   const storage = useTabStorage(currentTabId || 0); // Use 0 as fallback, will be replaced
-  const data = refreshedData || (currentTabId ? storage.getSnapshot() : null);
+  const data = currentTabId ? storage.getSnapshot() : null;
 
   // Use the new artificial states hook for proper reactivity (only when we have a tab ID)
   const { artificialStates } = useArtificialStates(currentTabId || 0);
@@ -84,15 +81,16 @@ export const usePopupData = (): UsePopupDataReturn => {
     getCurrentActiveTab().then(async (tabId) => {
       setCurrentTabId(tabId);
 
-      // Force refresh data from storage when popup opens
+      // Request immediate update when popup opens to ensure fresh data
       if (tabId) {
         try {
           const tabStorage = tabScopedStorageManager.getStorageForTab(tabId);
-          const freshData = await tabStorage.get();
-
-          setRefreshedData(freshData);
+          await tabStorage.enqueueAction({
+            type: "REQUEST_IMMEDIATE_UPDATE",
+            payload: { type: "REQUEST_IMMEDIATE_UPDATE" },
+          });
         } catch (error) {
-          console.error("Failed to force refresh data:", error);
+          console.error("Failed to request immediate update:", error);
         }
       }
     });

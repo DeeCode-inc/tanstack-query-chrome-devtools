@@ -37,6 +37,9 @@ export const useUIState = (
             // Add artificial loading state
             await stateManager.updateState(queryHash, "loading");
           }
+        } else if (action === "CANCEL_LOADING") {
+          // Remove artificial loading state
+          await stateManager.clearState(queryHash);
         } else if (action === "TRIGGER_ERROR") {
           const currentState = stateManager.getState(queryHash);
           if (currentState === "error") {
@@ -46,6 +49,9 @@ export const useUIState = (
             // Add artificial error state
             await stateManager.updateState(queryHash, "error");
           }
+        } else if (action === "CANCEL_ERROR") {
+          // Remove artificial error state
+          await stateManager.clearState(queryHash);
         }
 
         // Still send message to injected script for actual TanStack Query manipulation

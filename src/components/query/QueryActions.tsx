@@ -33,7 +33,8 @@ export function QueryActions({
     artificialStates.get(selectedQuery.queryHash) === "error";
 
   // Disable all buttons when any action is loading or when artificial loading is active
-  const shouldDisableButtons = actionLoading !== null || isArtificialLoading;
+  const shouldDisableButtons =
+    actionLoading !== null || isArtificialLoading || isArtificialError;
 
   return (
     <div className="p-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
@@ -74,21 +75,30 @@ export function QueryActions({
         </button>
 
         <button
-          onClick={() => handleAction("TRIGGER_LOADING")}
+          onClick={() =>
+            handleAction(
+              isArtificialLoading ? "CANCEL_LOADING" : "TRIGGER_LOADING",
+            )
+          }
+          disabled={isArtificialError}
           className={buttonVariants({
             variant: isArtificialLoading ? "gray" : "green",
           })}
         >
           {actionLoading === "TRIGGER_LOADING"
             ? "Triggering..."
-            : isArtificialLoading
-              ? "Cancel Loading"
-              : "Trigger Loading"}
+            : actionLoading === "CANCEL_LOADING"
+              ? "Canceling..."
+              : isArtificialLoading
+                ? "Cancel Loading"
+                : "Trigger Loading"}
         </button>
 
         <button
-          onClick={() => handleAction("TRIGGER_ERROR")}
-          disabled={shouldDisableButtons}
+          onClick={() =>
+            handleAction(isArtificialError ? "CANCEL_ERROR" : "TRIGGER_ERROR")
+          }
+          disabled={isArtificialLoading}
           className={buttonVariants({
             variant: isArtificialError ? "gray" : "red",
           })}
