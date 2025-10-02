@@ -6,7 +6,15 @@ import type {
 } from "../storage/base/types";
 import type { QueryData, MutationData } from "../types/query";
 import { tabScopedStorageManager } from "../storage/impl/tab-scoped-manager";
-import { SerializationManager, DataValidator } from "./serialization-manager";
+
+// Simple array validation helper
+function ensureArray<T>(data: unknown, fallback: T[] = []): T[] {
+  if (Array.isArray(data)) {
+    return data;
+  }
+  console.warn("Expected array but got:", typeof data, data);
+  return fallback;
+}
 
 // Enhanced storage wrapper with better error handling and validation
 export class EnhancedStorageManager {
@@ -36,8 +44,8 @@ export class EnhancedStorageManager {
     return this.tabId;
   }
 
-  // Safe storage update with validation and error handling
-  async safeUpdate(
+  // Safe update with error handling and validation
+  private async safeUpdate(
     updates: Partial<TanstackQueryStateType>,
     options: {
       validateData?: boolean;
@@ -50,16 +58,16 @@ export class EnhancedStorageManager {
       // Validate data before update if requested
       if (options.validateData) {
         if (updates.queries) {
-          updates.queries = DataValidator.ensureArray(updates.queries);
+          updates.queries = ensureArray(updates.queries);
         }
         if (updates.mutations) {
-          updates.mutations = DataValidator.ensureArray(updates.mutations);
+          updates.mutations = ensureArray(updates.mutations);
         }
         if (updates.tanStackQueryDetected !== undefined) {
-          updates.tanStackQueryDetected = DataValidator.ensureBoolean(
-            updates.tanStackQueryDetected,
-            false,
-          );
+          // Ensure boolean value
+          if (typeof updates.tanStackQueryDetected !== "boolean") {
+            updates.tanStackQueryDetected = false;
+          }
         }
       }
 
@@ -85,25 +93,16 @@ export class EnhancedStorageManager {
     }
   }
 
-  // Enhanced query data update with deserialization
+  // Enhanced query data update with validation
   async updateQueries(
     queries: QueryData[] | unknown,
     options: { validate?: boolean } = {},
   ): Promise<boolean> {
     try {
-      // Handle different input types
-      let processedQueries: QueryData[];
-
-      if (Array.isArray(queries)) {
-        processedQueries = queries as QueryData[];
-      } else {
-        const deserializedQueries = SerializationManager.deserializeArray(
-          queries as never,
-        );
-        processedQueries = options.validate
-          ? DataValidator.ensureArray<QueryData>(deserializedQueries)
-          : (deserializedQueries as QueryData[]);
-      }
+      // Handle different input types - structured clone handles everything
+      const processedQueries = options.validate
+        ? ensureArray<QueryData>(queries)
+        : (queries as QueryData[]);
 
       return this.safeUpdate(
         { queries: processedQueries },
@@ -115,25 +114,16 @@ export class EnhancedStorageManager {
     }
   }
 
-  // Enhanced mutation data update with deserialization
+  // Enhanced mutation data update with validation
   async updateMutations(
     mutations: MutationData[] | unknown,
     options: { validate?: boolean } = {},
   ): Promise<boolean> {
     try {
-      // Handle different input types
-      let processedMutations: MutationData[];
-
-      if (Array.isArray(mutations)) {
-        processedMutations = mutations as MutationData[];
-      } else {
-        const deserializedMutations = SerializationManager.deserializeArray(
-          mutations as never,
-        );
-        processedMutations = options.validate
-          ? DataValidator.ensureArray<MutationData>(deserializedMutations)
-          : (deserializedMutations as MutationData[]);
-      }
+      // Handle different input types - structured clone handles everything
+      const processedMutations = options.validate
+        ? ensureArray<MutationData>(mutations)
+        : (mutations as MutationData[]);
 
       return this.safeUpdate(
         { mutations: processedMutations },
@@ -161,38 +151,24 @@ export class EnhancedStorageManager {
     try {
       const processedUpdates: Partial<TanstackQueryStateType> = {};
 
-      // Process queries
+      // Process queries - structured clone handles everything
       if (updates.queries !== undefined) {
-        if (Array.isArray(updates.queries)) {
-          processedUpdates.queries = updates.queries as QueryData[];
-        } else {
-          const deserializedQueries = SerializationManager.deserializeArray(
-            updates.queries as never,
-          );
-          processedUpdates.queries =
-            DataValidator.ensureArray<QueryData>(deserializedQueries);
-        }
+        processedUpdates.queries = ensureArray<QueryData>(updates.queries);
       }
 
-      // Process mutations
+      // Process mutations - structured clone handles everything
       if (updates.mutations !== undefined) {
-        if (Array.isArray(updates.mutations)) {
-          processedUpdates.mutations = updates.mutations as MutationData[];
-        } else {
-          const deserializedMutations = SerializationManager.deserializeArray(
-            updates.mutations as never,
-          );
-          processedUpdates.mutations = DataValidator.ensureArray<MutationData>(
-            deserializedMutations,
-          );
-        }
+        processedUpdates.mutations = ensureArray<MutationData>(
+          updates.mutations,
+        );
       }
 
       // Process detection status
       if (updates.tanStackQueryDetected !== undefined) {
-        processedUpdates.tanStackQueryDetected = DataValidator.ensureBoolean(
-          updates.tanStackQueryDetected,
-        );
+        processedUpdates.tanStackQueryDetected =
+          typeof updates.tanStackQueryDetected === "boolean"
+            ? updates.tanStackQueryDetected
+            : false;
       }
 
       // Handle artificial states

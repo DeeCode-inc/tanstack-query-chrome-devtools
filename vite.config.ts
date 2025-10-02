@@ -17,23 +17,17 @@ export default defineConfig(({ mode }) =>
               popup: "popup.html",
               // Background service worker
               background: "src/background/background.ts",
-              injected: "src/injected/injected.ts",
             },
             output: {
               entryFileNames: (chunkInfo) => {
                 switch (chunkInfo.name) {
                   case "background":
                     return "background.js";
-                  case "injected":
-                    return "injected.js";
                   default:
                     return "assets/[name]-[hash].js";
                 }
               },
-              chunkFileNames: ({ name }) => {
-                if (name === "serialization") return "assets/serialization.js";
-                return "assets/[name]-[hash].js";
-              },
+              chunkFileNames: () => "assets/[name]-[hash].js",
               assetFileNames: "assets/[name]-[hash].[ext]",
             },
           },
@@ -51,5 +45,17 @@ export default defineConfig(({ mode }) =>
             },
           },
         }
-      : {},
+      : mode === "injected"
+        ? {
+            build: {
+              emptyOutDir: false,
+              lib: {
+                entry: "src/injected/injected.ts",
+                formats: ["iife"],
+                fileName: () => "injected.js",
+                name: "injectedScript",
+              },
+            },
+          }
+        : {},
 );

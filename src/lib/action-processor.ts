@@ -7,7 +7,6 @@ import type {
   ClearArtificialStatesMessage,
 } from "../types/messages";
 import { EnhancedStorageManager } from "./enhanced-storage";
-import { MessageSerializer } from "./serialization-manager";
 
 // Extended storage action with retry information
 interface ExtendedStorageAction extends StorageAction {
@@ -148,14 +147,14 @@ export class ActionProcessor {
     action: ExtendedStorageAction,
   ): Promise<boolean> {
     try {
-      // Prepare message for transmission
-      const message = MessageSerializer.prepareForPostMessage({
+      // Prepare message for transmission - structured clone handles everything
+      const message = {
         ...action.payload,
         source: "tanstack-query-devtools-content",
         actionId: action.id,
-      });
+      };
 
-      // Send via postMessage
+      // Send via postMessage - uses structured clone algorithm
       window.postMessage(message, window.location.origin);
 
       return true;

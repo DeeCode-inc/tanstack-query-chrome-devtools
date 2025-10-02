@@ -1,5 +1,4 @@
 // Message communication with content script
-import { MessageSerializer } from "../../lib/serialization-manager";
 import type {
   TanStackQueryEvent,
   UpdateMessage,
@@ -10,11 +9,12 @@ import type {
 export class InjectedScriptMessageCommunicator {
   sendEvent(event: TanStackQueryEvent): void {
     try {
-      const message = MessageSerializer.prepareForPostMessage({
+      const message = {
         ...event,
         source: "tanstack-query-devtools-injected",
-      });
+      };
 
+      // postMessage uses structured clone algorithm - no serialization needed
       window.postMessage(message, window.location.origin);
     } catch (error) {
       console.error("Error sending event to content script:", error);
@@ -23,12 +23,13 @@ export class InjectedScriptMessageCommunicator {
 
   sendUpdate(payload: UpdateMessage["payload"]): void {
     try {
-      const message = MessageSerializer.prepareForPostMessage({
+      const message = {
         type: "UPDATE_QUERY_STATE",
         payload,
         source: "tanstack-query-devtools-injected",
-      });
+      };
 
+      // postMessage uses structured clone algorithm - no serialization needed
       window.postMessage(message, window.location.origin);
     } catch (error) {
       console.error("Error sending update to content script:", error);
@@ -37,11 +38,12 @@ export class InjectedScriptMessageCommunicator {
 
   sendActionResult(result: QueryActionResult | BulkQueryActionResult): void {
     try {
-      const message = MessageSerializer.prepareForPostMessage({
+      const message = {
         ...result,
         source: "tanstack-query-devtools-injected",
-      });
+      };
 
+      // postMessage uses structured clone algorithm - no serialization needed
       window.postMessage(message, window.location.origin);
     } catch (error) {
       console.error("Error sending action result to content script:", error);

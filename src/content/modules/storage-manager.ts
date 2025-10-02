@@ -1,6 +1,5 @@
 // Content script storage manager implementation
 import type { EnhancedStorageManager } from "../../lib/enhanced-storage";
-import { SerializationManager } from "../../lib/serialization-manager";
 import type { QueryData, MutationData } from "../../types/query";
 import type { TanstackQueryStateType } from "../../storage/base/types";
 
@@ -58,14 +57,12 @@ export class ContentScriptStorageManager {
       throw new Error("Storage manager not initialized");
     }
 
-    // Process the payload to handle serialized data
-    const processedPayload = SerializationManager.processPayload(payload);
-
-    // Batch update all fields
+    // No deserialization needed - postMessage uses structured clone
+    // Data is already in correct format
     await this.storageManager.batchUpdate({
-      queries: processedPayload.queries,
-      mutations: processedPayload.mutations,
-      tanStackQueryDetected: processedPayload.tanStackQueryDetected,
+      queries: payload.queries,
+      mutations: payload.mutations,
+      tanStackQueryDetected: payload.tanStackQueryDetected,
     });
   }
 

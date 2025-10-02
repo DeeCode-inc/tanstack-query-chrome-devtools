@@ -7,7 +7,6 @@ import {
 } from "../lib/message-validation";
 import { EnhancedStorageManager, TabManager } from "../lib/enhanced-storage";
 import { ActionProcessorFactory } from "../lib/action-processor";
-import { SerializationManager } from "../lib/serialization-manager";
 import type {
   TanStackQueryEvent,
   UpdateMessage,
@@ -167,16 +166,12 @@ class ContentScript {
     if (!this.storageManager) return;
 
     try {
-      // Process the payload to handle serialized data
-      const processedPayload = SerializationManager.processPayload(
-        message.payload,
-      );
-
-      // Batch update all fields
+      // No processing needed - postMessage uses structured clone
+      // Data is already in correct format
       await this.storageManager.batchUpdate({
-        queries: processedPayload.queries,
-        mutations: processedPayload.mutations,
-        tanStackQueryDetected: processedPayload.tanStackQueryDetected,
+        queries: message.payload.queries,
+        mutations: message.payload.mutations,
+        tanStackQueryDetected: message.payload.tanStackQueryDetected,
       });
     } catch (error) {
       console.error("Error handling update message:", error);
