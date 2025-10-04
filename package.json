@@ -39,7 +39,7 @@
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@tailwindcss/vite": "^4.1.13",
-    "@types/chrome": "^0.1.17",
+    "@types/chrome": "^0.1.22",
     "@types/node": "^24.6.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
