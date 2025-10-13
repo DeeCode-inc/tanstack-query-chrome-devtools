@@ -4,7 +4,6 @@
 interface MessageHandler<T> {
   validate: (message: unknown) => message is T;
   handle: (message: T) => Promise<void> | void;
-  batchable?: boolean; // Whether this handler supports batching
 }
 
 // Error handler interface for message handling errors

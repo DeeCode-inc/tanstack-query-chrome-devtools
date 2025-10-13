@@ -30,6 +30,12 @@ class InjectedScript {
   });
   private isInitialized = false;
 
+  // Debounce timers for observer count changes (to handle virtualized lists)
+  private queryObserverDebounceTimer: ReturnType<typeof setTimeout> | null =
+    null;
+  private mutationObserverDebounceTimer: ReturnType<typeof setTimeout> | null =
+    null;
+
   // Initialize injected script
   initialize(): void {
     if (this.isInitialized) return;
@@ -131,7 +137,37 @@ class InjectedScript {
       }
 
       // Subscribe to cache changes
-      this.queryUnsubscribe = queryClient.getQueryCache().subscribe(() => {
+      // Filter events carefully to prevent infinite loops while still tracking subscriber count
+      this.queryUnsubscribe = queryClient.getQueryCache().subscribe((event) => {
+        // Ignore observer result/option updates as these can cause infinite loops
+        // when storage updates trigger React component re-renders
+        if (
+          event.type === "observerResultsUpdated" ||
+          event.type === "observerOptionsUpdated"
+        ) {
+          return;
+        }
+
+        // For observer add/remove events (e.g., virtualized lists scrolling),
+        // debounce to avoid hundreds of updates per second
+        if (
+          event.type === "observerAdded" ||
+          event.type === "observerRemoved"
+        ) {
+          // Clear existing timer
+          if (this.queryObserverDebounceTimer) {
+            clearTimeout(this.queryObserverDebounceTimer);
+          }
+
+          // Debounce: wait 150ms after last observer change before updating
+          this.queryObserverDebounceTimer = setTimeout(() => {
+            this.sendQueryDataUpdate();
+            this.queryObserverDebounceTimer = null;
+          }, 150);
+          return;
+        }
+
+        // Send updates immediately for real cache changes: 'added', 'removed', 'updated'
         this.sendQueryDataUpdate();
       });
     } catch (error) {
@@ -151,9 +187,35 @@ class InjectedScript {
       }
 
       // Subscribe to mutation cache changes
+      // Filter events carefully to prevent infinite loops while still tracking subscriber count
       this.mutationUnsubscribe = queryClient
         .getMutationCache()
-        .subscribe(() => {
+        .subscribe((event) => {
+          // Ignore observer option updates as these can cause infinite loops
+          // when storage updates trigger React component re-renders
+          if (event.type === "observerOptionsUpdated") {
+            return;
+          }
+
+          // For observer add/remove events, debounce to avoid excessive updates
+          if (
+            event.type === "observerAdded" ||
+            event.type === "observerRemoved"
+          ) {
+            // Clear existing timer
+            if (this.mutationObserverDebounceTimer) {
+              clearTimeout(this.mutationObserverDebounceTimer);
+            }
+
+            // Debounce: wait 150ms after last observer change before updating
+            this.mutationObserverDebounceTimer = setTimeout(() => {
+              this.sendMutationDataUpdate();
+              this.mutationObserverDebounceTimer = null;
+            }, 150);
+            return;
+          }
+
+          // Send updates immediately for real cache changes: 'added', 'removed', 'updated'
           this.sendMutationDataUpdate();
         });
     } catch (error) {
@@ -277,6 +339,17 @@ class InjectedScript {
 
   // Cleanup subscriptions
   private cleanupSubscriptions(): void {
+    // Clear any pending debounce timers
+    if (this.queryObserverDebounceTimer) {
+      clearTimeout(this.queryObserverDebounceTimer);
+      this.queryObserverDebounceTimer = null;
+    }
+
+    if (this.mutationObserverDebounceTimer) {
+      clearTimeout(this.mutationObserverDebounceTimer);
+      this.mutationObserverDebounceTimer = null;
+    }
+
     if (this.queryUnsubscribe) {
       try {
         this.queryUnsubscribe();
