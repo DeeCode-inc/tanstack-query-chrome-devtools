@@ -18,6 +18,8 @@ export type QueryAction = { queryHash: string } & (
 export type BulkQueryAction = { type: "REMOVE_ALL_QUERIES" };
 
 // Base interface for action results
+// Used for error logging and debugging only
+// Artificial states are handled directly by React components via artificialStateManager
 interface BaseQueryActionResult {
   type: "QUERY_ACTION_RESULT";
   queryHash: string;
@@ -26,6 +28,8 @@ interface BaseQueryActionResult {
 }
 
 // Union of all action result types
+// Note: Background script only uses these for error logging
+// All artificial state management happens in React layer
 export type QueryActionResult = BaseQueryActionResult &
   (
     | { action: "INVALIDATE" }
@@ -38,15 +42,6 @@ export type QueryActionResult = BaseQueryActionResult &
     | { action: "CANCEL_ERROR" }
     | { action: "SET_QUERY_DATA"; newData?: unknown }
   );
-
-// Bulk action result type
-export interface BulkQueryActionResult {
-  type: "BULK_QUERY_ACTION_RESULT";
-  action: BulkQueryAction["type"];
-  success: boolean;
-  error?: string;
-  affectedCount?: number;
-}
 
 // TanStack Query Event Types - Discriminated unions
 export type TanStackQueryEvent = { type: "QEVENT" } & (
@@ -79,17 +74,6 @@ export interface QueryActionMessage {
 export interface BulkQueryActionMessage {
   type: "BULK_QUERY_ACTION";
   action: BulkQueryAction["type"];
-}
-
-// Request Immediate Update Message Type
-export interface RequestImmediateUpdateMessage {
-  type: "REQUEST_IMMEDIATE_UPDATE";
-  preserveArtificialStates?: boolean;
-}
-
-// Clear Artificial States Message Type
-export interface ClearArtificialStatesMessage {
-  type: "CLEAR_ARTIFICIAL_STATES";
 }
 
 // Icon Update Message Type - For content script to background script communication

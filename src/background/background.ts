@@ -1,6 +1,11 @@
 import "webextension-polyfill";
 import { tabScopedStorageManager } from "../storage/impl/tab-scoped-manager";
-import type { QueryActionResult, IconUpdateMessage } from "../types/messages";
+import type {
+  QueryActionResult,
+  IconUpdateMessage,
+  QueryActionMessage,
+  BulkQueryActionMessage,
+} from "../types/messages";
 
 // Track preservation flags per tab
 const preserveArtificialStatesForTab = new Map<number, boolean>();
@@ -9,7 +14,12 @@ const preserveArtificialStatesForTab = new Map<number, boolean>();
 type BackgroundMessage =
   | QueryActionResult
   | IconUpdateMessage
-  | { type: "GET_TAB_ID" };
+  | { type: "GET_TAB_ID" }
+  | {
+      type: "QUERY_ACTION";
+      tabId: number;
+      action: QueryActionMessage | BulkQueryActionMessage; // Correct type
+    };
 
 // Handle all essential messages - simplified for minimal background script
 chrome.runtime.onMessage.addListener(
@@ -19,6 +29,27 @@ chrome.runtime.onMessage.addListener(
       // sender.tab may be undefined for some callers — check
       sendResponse({ tabId: sender.tab ? sender.tab.id : null });
       return;
+    }
+
+    // Handle QUERY_ACTION messages from DevTools/Popup - forward to content script
+    if (message?.type === "QUERY_ACTION") {
+      const { tabId, action } = message;
+
+      chrome.tabs
+        .sendMessage(tabId, {
+          type: "QUERY_ACTION",
+          action,
+          source: "tanstack-query-devtools-background",
+        })
+        .then(() => {
+          sendResponse({ success: true });
+        })
+        .catch((error) => {
+          console.warn(`Failed to send action to tab ${tabId}:`, error);
+          sendResponse({ success: false, error: error.message });
+        });
+
+      return true; // Keep channel open for async response
     }
 
     // Handle Content Script messages (have sender.tab.id)
@@ -34,49 +65,19 @@ chrome.runtime.onMessage.addListener(
         return true;
       }
 
-      // Handle action results from content scripts - update artificial states in storage
+      // Handle action results from content scripts
+      // Note: Artificial state updates are handled directly by React components
+      // via artificialStateManager, so no need to process them here
       if (message.type === "QUERY_ACTION_RESULT") {
-        // Update artificial states in storage for all artificial state actions
-        if (
-          message.success &&
-          (message.action === "TRIGGER_LOADING" ||
-            message.action === "TRIGGER_ERROR" ||
-            message.action === "CANCEL_LOADING" ||
-            message.action === "CANCEL_ERROR") &&
-          message.queryHash
-        ) {
-          (async () => {
-            try {
-              const tabStorage =
-                tabScopedStorageManager.getStorageForTab(tabId);
-              const queryHash = message.queryHash as string;
-
-              // Get current artificial states
-              const currentData = await tabStorage.get();
-              const artificialStates = { ...currentData.artificialStates };
-
-              if (message.action === "TRIGGER_LOADING") {
-                // Start loading state
-                artificialStates[queryHash] = "loading";
-              } else if (message.action === "CANCEL_LOADING") {
-                // Cancel loading state
-                delete artificialStates[queryHash];
-              } else if (message.action === "TRIGGER_ERROR") {
-                // Start error state
-                artificialStates[queryHash] = "error";
-              } else if (message.action === "CANCEL_ERROR") {
-                // Cancel error state
-                delete artificialStates[queryHash];
-              }
-
-              // Update storage with new artificial states
-              await tabStorage.updateArtificialStates(artificialStates);
-            } catch (error) {
-              console.error("Failed to update artificial states:", error);
-            }
-          })();
+        // Log errors for debugging (optional - can be removed if not needed)
+        if (!message.success) {
+          console.error(
+            `Action ${message.action} failed for query ${message.queryHash}:`,
+            message.error,
+          );
         }
 
+        // Just acknowledge receipt - no processing needed
         sendResponse({ received: true });
         return true;
       }

@@ -4,7 +4,6 @@ import type {
   StorageConfigType,
   ValueOrUpdateType,
 } from "./types";
-import { globalStorageMutex } from "./mutex";
 
 /**
  * Chrome reference error while running `processTailwindFeatures` in tailwindcss.
@@ -106,16 +105,13 @@ export const createStorage = <D = string>(
   };
 
   const set = async (valueOrUpdate: ValueOrUpdateType<D>) => {
-    // Use mutex to prevent race conditions in concurrent set operations
-    return await globalStorageMutex.withLock(key, async () => {
-      if (!initialCache) {
-        cache = await get();
-      }
-      cache = await updateCache(valueOrUpdate, cache);
+    if (!initialCache) {
+      cache = await get();
+    }
+    cache = await updateCache(valueOrUpdate, cache);
 
-      await chrome?.storage[storageEnum].set({ [key]: serialize(cache) });
-      _emitChange();
-    });
+    await chrome?.storage[storageEnum].set({ [key]: serialize(cache) });
+    _emitChange();
   };
 
   const subscribe = (listener: () => void) => {

@@ -1,8 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import {
-  createArtificialStateManager,
-  type ArtificialStateManager,
-} from "../utils/artificialStateManager";
+import { tabScopedStorageManager } from "../storage/impl/tab-scoped-manager";
 
 export interface UIStateSync {
   artificialStates: Map<string, "loading" | "error">;
@@ -20,21 +17,24 @@ export function useArtificialStates(tabId: number): UIStateSync {
     Record<string, "loading" | "error">
   >({});
 
-  // Create stable artificial state manager instance
-  const stateManager: ArtificialStateManager = useMemo(
-    () => createArtificialStateManager(tabId),
+  // Get storage directly - no factory needed
+  const storage = useMemo(
+    () => tabScopedStorageManager.getStorageForTab(tabId),
     [tabId],
   );
 
   // Subscribe to artificial state changes
   useEffect(() => {
-    // Subscribe to changes - the subscription callback will provide initial state
-    const unsubscribe = stateManager.subscribe((states) => {
-      setArtificialStatesRecord(states);
+    // Subscribe to storage changes and update when artificial states change
+    const unsubscribe = storage.subscribe(() => {
+      const currentData = storage.getSnapshot();
+      if (currentData?.artificialStates) {
+        setArtificialStatesRecord(currentData.artificialStates);
+      }
     });
 
     return unsubscribe;
-  }, [stateManager]);
+  }, [storage]);
 
   // Convert to Map for component compatibility
   const artificialStatesMap = useMemo(
@@ -55,14 +55,23 @@ export function useArtificialStates(tabId: number): UIStateSync {
     queryHash: string,
     type: "loading" | "error",
   ): Promise<void> => {
-    const currentState = stateManager.getState(queryHash);
+    try {
+      const currentData = await storage.get();
+      const currentState = currentData.artificialStates?.[queryHash];
+      const newArtificialStates = { ...currentData.artificialStates };
 
-    if (currentState === type) {
-      // Remove the artificial state if it's currently active
-      await stateManager.clearState(queryHash);
-    } else {
-      // Set the artificial state
-      await stateManager.updateState(queryHash, type);
+      if (currentState === type) {
+        // Remove the artificial state if it's currently active
+        delete newArtificialStates[queryHash];
+      } else {
+        // Set the artificial state
+        newArtificialStates[queryHash] = type;
+      }
+
+      await storage.updateArtificialStates(newArtificialStates);
+    } catch (error) {
+      console.error("Failed to toggle artificial state:", error);
+      throw error;
     }
   };
 

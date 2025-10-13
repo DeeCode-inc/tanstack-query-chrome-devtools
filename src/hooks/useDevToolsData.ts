@@ -2,18 +2,13 @@ import "webextension-polyfill";
 
 import { useTabStorage } from "./useTabStorage";
 import { useArtificialStates } from "./useArtificialStates";
-import { tabScopedStorageManager } from "../storage/impl/tab-scoped-manager";
 import type { QueryData, MutationData } from "../types/query";
 import type {
   QueryActionMessage,
   BulkQueryActionMessage,
-  RequestImmediateUpdateMessage,
 } from "../types/messages";
 
-type ActionMessage =
-  | QueryActionMessage
-  | BulkQueryActionMessage
-  | RequestImmediateUpdateMessage;
+type ActionMessage = QueryActionMessage | BulkQueryActionMessage;
 
 interface UseDevToolsDataReturn {
   // State
@@ -26,24 +21,22 @@ interface UseDevToolsDataReturn {
   sendMessage: (message: ActionMessage) => void;
 }
 
-// Send message function - now enqueues actions in storage instead of sending messages
+// Send message function - now uses direct Chrome messaging instead of storage queue
 const sendMessage = (message: ActionMessage) => {
   try {
     const currentTabId = chrome.devtools.inspectedWindow.tabId;
 
-    const tabStorage = tabScopedStorageManager.getStorageForTab(currentTabId);
-
-    // Convert message to action and enqueue in storage
-    tabStorage
-      .enqueueAction({
-        type: message.type,
-        payload: message,
+    chrome.runtime
+      .sendMessage({
+        type: "QUERY_ACTION",
+        tabId: currentTabId,
+        action: message, // Send QueryActionMessage directly without wrapping
       })
       .catch((error) => {
-        console.error("Failed to enqueue action in storage:", error);
+        console.error("Failed to send action:", error);
       });
   } catch (error) {
-    console.error("Failed to enqueue action:", error);
+    console.error("Failed to send action:", error);
     throw error;
   }
 };

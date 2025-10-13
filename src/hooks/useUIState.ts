@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { QueryAction, QueryActionMessage } from "../types/messages";
-import { createArtificialStateManager } from "../utils/artificialStateManager";
+import { tabScopedStorageManager } from "../storage/impl/tab-scoped-manager";
 
 interface UseUIStateReturn {
   handleQueryAction: (
@@ -14,11 +14,12 @@ export const useUIState = (
   sendMessage: (message: QueryActionMessage) => void,
   tabId: number,
 ): UseUIStateReturn => {
-  // Create centralized artificial state manager
-  const stateManager = useMemo(
-    () => createArtificialStateManager(tabId),
+  // Get storage directly - no factory needed
+  const storage = useMemo(
+    () => tabScopedStorageManager.getStorageForTab(tabId),
     [tabId],
   );
+
   // Handle query actions
   const handleQueryAction = useCallback(
     async (
@@ -27,31 +28,47 @@ export const useUIState = (
       newValue?: unknown,
     ) => {
       try {
-        // Handle artificial states using centralized manager for immediate UI feedback
+        // Handle artificial states with direct storage access for immediate UI feedback
         if (action === "TRIGGER_LOADING") {
-          const currentState = stateManager.getState(queryHash);
+          const currentData = await storage.get();
+          const currentState = currentData.artificialStates?.[queryHash];
+          const newArtificialStates = { ...currentData.artificialStates };
+
           if (currentState === "loading") {
             // Remove artificial loading state
-            await stateManager.clearState(queryHash);
+            delete newArtificialStates[queryHash];
           } else {
             // Add artificial loading state
-            await stateManager.updateState(queryHash, "loading");
+            newArtificialStates[queryHash] = "loading";
           }
+
+          await storage.updateArtificialStates(newArtificialStates);
         } else if (action === "CANCEL_LOADING") {
           // Remove artificial loading state
-          await stateManager.clearState(queryHash);
+          const currentData = await storage.get();
+          const newArtificialStates = { ...currentData.artificialStates };
+          delete newArtificialStates[queryHash];
+          await storage.updateArtificialStates(newArtificialStates);
         } else if (action === "TRIGGER_ERROR") {
-          const currentState = stateManager.getState(queryHash);
+          const currentData = await storage.get();
+          const currentState = currentData.artificialStates?.[queryHash];
+          const newArtificialStates = { ...currentData.artificialStates };
+
           if (currentState === "error") {
             // Remove artificial error state
-            await stateManager.clearState(queryHash);
+            delete newArtificialStates[queryHash];
           } else {
             // Add artificial error state
-            await stateManager.updateState(queryHash, "error");
+            newArtificialStates[queryHash] = "error";
           }
+
+          await storage.updateArtificialStates(newArtificialStates);
         } else if (action === "CANCEL_ERROR") {
           // Remove artificial error state
-          await stateManager.clearState(queryHash);
+          const currentData = await storage.get();
+          const newArtificialStates = { ...currentData.artificialStates };
+          delete newArtificialStates[queryHash];
+          await storage.updateArtificialStates(newArtificialStates);
         }
 
         // Still send message to injected script for actual TanStack Query manipulation
@@ -71,7 +88,7 @@ export const useUIState = (
         console.error("Failed to send action:", error);
       }
     },
-    [sendMessage, stateManager],
+    [sendMessage, storage],
   );
 
   return {

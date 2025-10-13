@@ -2,34 +2,27 @@
 import {
   isUpdateMessage,
   isTanStackQueryEvent,
-  isRequestImmediateUpdateMessage,
-  isClearArtificialStatesMessage,
 } from "../lib/message-validation";
 import { EnhancedStorageManager, TabManager } from "../lib/enhanced-storage";
-import { ActionProcessorFactory } from "../lib/action-processor";
 import type {
   TanStackQueryEvent,
   UpdateMessage,
-  RequestImmediateUpdateMessage,
+  QueryActionMessage,
+  BulkQueryActionMessage,
 } from "../types/messages";
+import { createPostMessageRouter } from "../lib/message-router";
 
 // Import modular components
-import { ContentScriptMessageRouter } from "./modules/message-router";
-import { ContentScriptStorageManager } from "./modules/storage-manager";
-import { ContentScriptActionProcessor } from "./modules/action-processor";
 import { ContentScriptIconManager } from "./modules/icon-manager";
-import { ContentScriptInjector } from "./modules/script-injector";
-import { ContentScriptMessageCommunicator } from "./modules/message-communicator";
+import { injectScript } from "./modules/inject-script";
 
 // Content script main class
 class ContentScript {
-  private enhancedStorage: EnhancedStorageManager | null = null;
-  private storageManager = new ContentScriptStorageManager();
-  private actionProcessor = new ContentScriptActionProcessor();
-  private messageRouter = new ContentScriptMessageRouter();
+  private storage: EnhancedStorageManager | null = null;
+  private messageRouter = createPostMessageRouter({
+    requireInjectedSource: true,
+  });
   private iconManager = new ContentScriptIconManager();
-  private scriptInjector = new ContentScriptInjector();
-  private messageCommunicator = new ContentScriptMessageCommunicator();
   private isInitialized = false;
 
   // Initialize content script
@@ -38,42 +31,23 @@ class ContentScript {
 
     try {
       // Initialize enhanced storage manager
-      this.enhancedStorage = await TabManager.createEnhancedStorage();
-      if (!this.enhancedStorage) {
+      this.storage = await TabManager.createEnhancedStorage();
+      if (!this.storage) {
         throw new Error("Failed to initialize enhanced storage manager");
       }
 
-      // Initialize modular storage manager
-      this.storageManager.initialize(this.enhancedStorage);
-
-      // Initialize action processor
-      const actionProcessorInstance =
-        await ActionProcessorFactory.createForCurrentTab({
-          processingInterval: 100,
-          maxRetries: 3,
-          retryDelay: 500,
-          batchSize: 10,
-        });
-
-      if (!actionProcessorInstance) {
-        throw new Error("Failed to initialize action processor");
-      }
-
-      this.actionProcessor.initialize(actionProcessorInstance);
-
       // Initialize icon manager
-      this.iconManager.initialize(this.storageManager);
+      this.iconManager.initialize(this.storage);
 
       // Set up message handlers
       this.setupMessageHandlers();
 
       // Start components
       this.messageRouter.start();
-      this.actionProcessor.start();
       await this.iconManager.start();
 
       // Inject the injected script
-      await this.scriptInjector.injectScript();
+      await injectScript(chrome.runtime.getURL("injected.js"));
 
       this.isInitialized = true;
     } catch (error) {
@@ -102,42 +76,57 @@ class ContentScript {
       },
     });
 
-    // Handle immediate update requests from injected script
-    this.messageRouter.register("immediate-update", {
-      validate: isRequestImmediateUpdateMessage,
-      handle: async (message: RequestImmediateUpdateMessage) => {
-        await this.handleImmediateUpdateRequest(message);
-      },
-    });
-
-    // Handle clear artificial states from injected script
+    // Handle one-way notification to clear artificial states from injected script
     this.messageRouter.register("clear-artificial", {
-      validate: isClearArtificialStatesMessage,
+      validate: (
+        message: unknown,
+      ): message is { type: "CLEAR_ARTIFICIAL_STATES" } => {
+        return (
+          typeof message === "object" &&
+          message !== null &&
+          "type" in message &&
+          message.type === "CLEAR_ARTIFICIAL_STATES"
+        );
+      },
       handle: async () => {
         await this.handleClearArtificialStates();
       },
     });
+
+    // Handle QUERY_ACTION messages from background script (DevTools/Popup → Background → here)
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message?.type === "QUERY_ACTION" && message?.action) {
+        this.handleQueryAction(message.action)
+          .then(() => sendResponse({ success: true }))
+          .catch((error: Error) => {
+            console.error("Error handling query action:", error);
+            sendResponse({ success: false, error: error.message });
+          });
+        return true; // Keep channel open for async response
+      }
+    });
   }
 
+  // Inject the injected script into the page
   // Handle TanStack Query events
   private async handleTanStackQueryEvent(
     event: TanStackQueryEvent,
   ): Promise<void> {
-    if (!this.storageManager) return;
+    if (!this.storage) return;
 
     try {
       switch (event.subtype) {
         case "QUERY_CLIENT_DETECTED":
-          await this.storageManager.setDetectionStatus(true);
+          await this.storage.setDetectionStatus(true);
           break;
 
         case "QUERY_CLIENT_NOT_FOUND":
-          await this.storageManager.setDetectionStatus(false);
+          await this.storage.setDetectionStatus(false);
           break;
 
         case "QUERY_DATA_UPDATE":
           if (event.payload) {
-            await this.storageManager.updateQueries(event.payload, {
+            await this.storage.updateQueries(event.payload, {
               validate: true,
             });
           }
@@ -145,15 +134,15 @@ class ContentScript {
 
         case "MUTATION_DATA_UPDATE":
           if (event.payload) {
-            await this.storageManager.updateMutations(event.payload, {
+            await this.storage.updateMutations(event.payload, {
               validate: true,
             });
           }
           break;
 
         case "QUERY_STATE_UPDATE":
-          // General state update - trigger a fresh data request
-          this.requestImmediateUpdate();
+          // General state update - data will be updated via subscriptions
+          // No need to request immediate update with reactive storage
           break;
       }
     } catch (error) {
@@ -163,12 +152,12 @@ class ContentScript {
 
   // Handle update messages with mixed data
   private async handleUpdateMessage(message: UpdateMessage): Promise<void> {
-    if (!this.storageManager) return;
+    if (!this.storage) return;
 
     try {
       // No processing needed - postMessage uses structured clone
       // Data is already in correct format
-      await this.storageManager.batchUpdate({
+      await this.storage.batchUpdate({
         queries: message.payload.queries,
         mutations: message.payload.mutations,
         tanStackQueryDetected: message.payload.tanStackQueryDetected,
@@ -178,49 +167,48 @@ class ContentScript {
     }
   }
 
-  // Handle immediate update requests
-  private async handleImmediateUpdateRequest(
-    message: RequestImmediateUpdateMessage,
+  // Handle one-way notification to clear artificial states from storage
+  // (No response needed - injected script already cleared its local state)
+  private async handleClearArtificialStates(): Promise<void> {
+    if (!this.storage) return;
+
+    try {
+      // Clear artificial states from storage
+      const tabStorage = this.storage.getStorage();
+      await tabStorage.clearArtificialStates();
+    } catch (error) {
+      console.error("Error clearing artificial states from storage:", error);
+    }
+  }
+
+  // Handle query actions from DevTools/Popup via background script
+  private async handleQueryAction(
+    action: QueryActionMessage | BulkQueryActionMessage,
   ): Promise<void> {
     try {
-      this.requestImmediateUpdate(message.preserveArtificialStates);
+      // Forward action directly to injected script with source marker
+      window.postMessage(
+        {
+          ...action, // Spread the QueryActionMessage/BulkQueryActionMessage
+          source: "tanstack-query-devtools-content", // Add source for validation
+        },
+        window.location.origin,
+      );
     } catch (error) {
-      console.error("Error handling immediate update request:", error);
+      console.error("Error forwarding query action to injected script:", error);
+      throw error;
     }
-  }
-
-  // Handle clear artificial states
-  private async handleClearArtificialStates(): Promise<void> {
-    if (!this.storageManager || !this.enhancedStorage) return;
-
-    try {
-      // Clear artificial states from storage using the underlying storage
-      const storage = this.enhancedStorage.getStorage();
-      await storage.clearArtificialStates();
-
-      // Send message to injected script to clear artificial states
-      this.messageCommunicator.requestClearArtificialStates();
-    } catch (error) {
-      console.error("Error clearing artificial states:", error);
-    }
-  }
-
-  // Request immediate data update from injected script
-  private requestImmediateUpdate(preserveArtificialStates?: boolean): void {
-    this.messageCommunicator.requestImmediateUpdate(preserveArtificialStates);
   }
 
   // Cleanup when content script is unloaded
   cleanup(): void {
     try {
       this.messageRouter.stop();
-      this.actionProcessor.cleanup();
       this.iconManager.cleanup();
-      this.storageManager.cleanup();
 
-      if (this.enhancedStorage) {
-        this.enhancedStorage.cleanup();
-        this.enhancedStorage = null;
+      if (this.storage) {
+        this.storage.cleanup();
+        this.storage = null;
       }
 
       this.isInitialized = false;
@@ -228,17 +216,6 @@ class ContentScript {
     } catch (error) {
       console.error("Error during content script cleanup:", error);
     }
-  } // Get current status
-  get status() {
-    return {
-      initialized: this.isInitialized,
-      injectedScriptLoaded: this.scriptInjector.isLoaded,
-      storageReady: this.storageManager.isInitialized,
-      actionProcessorReady: this.actionProcessor.isInitialized,
-      messageRouterActive: this.messageRouter.active,
-      actionProcessorRunning: this.actionProcessor.isRunning,
-      iconManagerReady: this.iconManager.isInitialized,
-    };
   }
 }
 
@@ -270,34 +247,3 @@ if (document.readyState === "loading") {
 
 // Cleanup on page unload
 window.addEventListener("beforeunload", cleanupContentScript);
-
-// Handle navigation events in SPAs
-let lastUrl = location.href;
-new MutationObserver(() => {
-  const currentUrl = location.href;
-  if (currentUrl !== lastUrl) {
-    lastUrl = currentUrl;
-    // Reinitialize on navigation
-    setTimeout(initializeContentScript, 100);
-  }
-}).observe(document, { subtree: true, childList: true });
-
-// Export for debugging
-declare global {
-  interface Window {
-    __TANSTACK_QUERY_DEVTOOLS_CONTENT__?: {
-      getInstance: () => ContentScript | null;
-      getStatus: () => unknown;
-      reinitialize: () => void;
-    };
-  }
-}
-
-window.__TANSTACK_QUERY_DEVTOOLS_CONTENT__ = {
-  getInstance: () => contentScriptInstance,
-  getStatus: () => contentScriptInstance?.status,
-  reinitialize: () => {
-    cleanupContentScript();
-    initializeContentScript();
-  },
-};

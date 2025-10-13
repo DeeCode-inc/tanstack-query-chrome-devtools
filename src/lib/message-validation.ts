@@ -1,13 +1,10 @@
 // Message validation system with runtime type checking
 import { z } from "zod";
 import type {
-  TanStackQueryEvent,
-  QueryActionMessage,
   BulkQueryActionMessage,
+  QueryActionMessage,
+  TanStackQueryEvent,
   UpdateMessage,
-  IconUpdateMessage,
-  RequestImmediateUpdateMessage,
-  ClearArtificialStatesMessage,
 } from "../types/messages";
 
 // Schema definitions for runtime validation
@@ -54,21 +51,6 @@ const UpdateMessageSchema = z.object({
   }),
 });
 
-const IconUpdateMessageSchema = z.object({
-  type: z.literal("ICON_UPDATE"),
-  tanStackQueryDetected: z.boolean(),
-  tabId: z.number(),
-});
-
-const RequestImmediateUpdateMessageSchema = z.object({
-  type: z.literal("REQUEST_IMMEDIATE_UPDATE"),
-  preserveArtificialStates: z.boolean().optional(),
-});
-
-const ClearArtificialStatesMessageSchema = z.object({
-  type: z.literal("CLEAR_ARTIFICIAL_STATES"),
-});
-
 // Type guards with runtime validation
 export function isQueryActionMessage(
   message: unknown,
@@ -90,95 +72,4 @@ export function isTanStackQueryEvent(
 
 export function isUpdateMessage(message: unknown): message is UpdateMessage {
   return UpdateMessageSchema.safeParse(message).success;
-}
-
-export function isIconUpdateMessage(
-  message: unknown,
-): message is IconUpdateMessage {
-  return IconUpdateMessageSchema.safeParse(message).success;
-}
-
-export function isRequestImmediateUpdateMessage(
-  message: unknown,
-): message is RequestImmediateUpdateMessage {
-  return RequestImmediateUpdateMessageSchema.safeParse(message).success;
-}
-
-export function isClearArtificialStatesMessage(
-  message: unknown,
-): message is ClearArtificialStatesMessage {
-  return ClearArtificialStatesMessageSchema.safeParse(message).success;
-}
-
-// Message validation helper
-export function validateMessage<T>(
-  message: unknown,
-  validator: (msg: unknown) => msg is T,
-  context?: string,
-): T | null {
-  try {
-    if (validator(message)) {
-      return message;
-    }
-
-    if (context) {
-      console.warn(`Invalid message format in ${context}:`, message);
-    }
-    return null;
-  } catch (error) {
-    if (context) {
-      console.error(`Message validation error in ${context}:`, error);
-    }
-    return null;
-  }
-}
-
-// Origin validation for postMessage events
-export function isValidOrigin(
-  event: MessageEvent,
-  expectedOrigin?: string,
-): boolean {
-  const origin = expectedOrigin || window.location.origin;
-  return event.origin === origin;
-}
-
-// Source validation for extension messages
-export function isFromInjectedScript(data: unknown): boolean {
-  return (
-    (data as { source?: string })?.source === "tanstack-query-devtools-injected"
-  );
-}
-
-export function isFromContentScript(data: unknown): boolean {
-  return (
-    (data as { source?: string })?.source === "tanstack-query-devtools-content"
-  );
-}
-
-// Combined validation for postMessage events
-export function validatePostMessage<T>(
-  event: MessageEvent,
-  validator: (msg: unknown) => msg is T,
-  options: {
-    requireInjectedSource?: boolean;
-    requireContentSource?: boolean;
-    expectedOrigin?: string;
-  } = {},
-): T | null {
-  // Origin validation
-  if (!isValidOrigin(event, options.expectedOrigin)) {
-    return null;
-  }
-
-  // Source validation
-  if (options.requireInjectedSource && !isFromInjectedScript(event.data)) {
-    return null;
-  }
-
-  if (options.requireContentSource && !isFromContentScript(event.data)) {
-    return null;
-  }
-
-  // Message validation
-  return validateMessage(event.data, validator, "postMessage");
 }

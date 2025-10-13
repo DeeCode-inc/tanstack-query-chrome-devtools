@@ -1,8 +1,7 @@
 // Enhanced storage interface and utilities for the refactored content/injected scripts
 import type {
-  TanstackQueryStorageTypeWithActions,
+  TanstackQueryStorageType,
   TanstackQueryStateType,
-  StorageAction,
 } from "../storage/base/types";
 import type { QueryData, MutationData } from "../types/query";
 import { tabScopedStorageManager } from "../storage/impl/tab-scoped-manager";
@@ -18,7 +17,7 @@ function ensureArray<T>(data: unknown, fallback: T[] = []): T[] {
 
 // Enhanced storage wrapper with better error handling and validation
 export class EnhancedStorageManager {
-  private tabStorage: TanstackQueryStorageTypeWithActions | null = null;
+  private tabStorage: TanstackQueryStorageType | null = null;
   private tabId: number | null = null;
   private subscriptions: Array<() => void> = [];
 
@@ -29,7 +28,7 @@ export class EnhancedStorageManager {
   }
 
   // Get current storage instance
-  getStorage(): TanstackQueryStorageTypeWithActions {
+  getStorage(): TanstackQueryStorageType {
     if (!this.tabStorage) {
       throw new Error("Storage not initialized. Call initialize() first.");
     }
@@ -44,210 +43,80 @@ export class EnhancedStorageManager {
     return this.tabId;
   }
 
-  // Safe update with error handling and validation
-  private async safeUpdate(
-    updates: Partial<TanstackQueryStateType>,
-    options: {
-      validateData?: boolean;
-      retryOnFailure?: boolean;
-    } = {},
-  ): Promise<boolean> {
-    try {
-      const storage = this.getStorage();
-
-      // Validate data before update if requested
-      if (options.validateData) {
-        if (updates.queries) {
-          updates.queries = ensureArray(updates.queries);
-        }
-        if (updates.mutations) {
-          updates.mutations = ensureArray(updates.mutations);
-        }
-        if (updates.tanStackQueryDetected !== undefined) {
-          // Ensure boolean value
-          if (typeof updates.tanStackQueryDetected !== "boolean") {
-            updates.tanStackQueryDetected = false;
-          }
-        }
-      }
-
-      await storage.batchUpdate(updates);
-
-      return true;
-    } catch (error) {
-      console.error("Storage update failed:", error);
-
-      // Retry once if requested
-      if (options.retryOnFailure) {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          const storage = this.getStorage();
-          await storage.batchUpdate(updates);
-          return true;
-        } catch (retryError) {
-          console.error("Storage update retry failed:", retryError);
-        }
-      }
-
-      return false;
-    }
-  }
-
-  // Enhanced query data update with validation
+  // Update queries - simplified
   async updateQueries(
     queries: QueryData[] | unknown,
     options: { validate?: boolean } = {},
-  ): Promise<boolean> {
-    try {
-      // Handle different input types - structured clone handles everything
-      const processedQueries = options.validate
-        ? ensureArray<QueryData>(queries)
-        : (queries as QueryData[]);
+  ): Promise<void> {
+    const processedQueries = options.validate
+      ? ensureArray<QueryData>(queries)
+      : (queries as QueryData[]);
 
-      return this.safeUpdate(
-        { queries: processedQueries },
-        { validateData: true },
-      );
-    } catch (error) {
-      console.error("Failed to update queries:", error);
-      return false;
-    }
+    await this.tabStorage!.batchUpdate({ queries: processedQueries });
   }
 
-  // Enhanced mutation data update with validation
+  // Update mutations - simplified
   async updateMutations(
     mutations: MutationData[] | unknown,
     options: { validate?: boolean } = {},
-  ): Promise<boolean> {
-    try {
-      // Handle different input types - structured clone handles everything
-      const processedMutations = options.validate
-        ? ensureArray<MutationData>(mutations)
-        : (mutations as MutationData[]);
+  ): Promise<void> {
+    const processedMutations = options.validate
+      ? ensureArray<MutationData>(mutations)
+      : (mutations as MutationData[]);
 
-      return this.safeUpdate(
-        { mutations: processedMutations },
-        { validateData: true },
-      );
-    } catch (error) {
-      console.error("Failed to update mutations:", error);
-      return false;
-    }
+    await this.tabStorage!.batchUpdate({ mutations: processedMutations });
   }
 
-  // Update detection status
-  async setDetectionStatus(detected: boolean): Promise<boolean> {
-    return this.safeUpdate({ tanStackQueryDetected: detected });
+  // Update detection status - simplified
+  async setDetectionStatus(detected: boolean): Promise<void> {
+    await this.tabStorage!.batchUpdate({ tanStackQueryDetected: detected });
   }
 
-  // Enhanced batch update with mixed data types
+  // Batch update - simplified
   async batchUpdate(updates: {
     queries?: QueryData[] | unknown;
     mutations?: MutationData[] | unknown;
     tanStackQueryDetected?: boolean;
     artificialStates?: Record<string, "loading" | "error">;
     clearArtificialStates?: boolean;
-  }): Promise<boolean> {
-    try {
-      const processedUpdates: Partial<TanstackQueryStateType> = {};
+  }): Promise<void> {
+    const processedUpdates: Partial<TanstackQueryStateType> = {};
 
-      // Process queries - structured clone handles everything
-      if (updates.queries !== undefined) {
-        processedUpdates.queries = ensureArray<QueryData>(updates.queries);
-      }
-
-      // Process mutations - structured clone handles everything
-      if (updates.mutations !== undefined) {
-        processedUpdates.mutations = ensureArray<MutationData>(
-          updates.mutations,
-        );
-      }
-
-      // Process detection status
-      if (updates.tanStackQueryDetected !== undefined) {
-        processedUpdates.tanStackQueryDetected =
-          typeof updates.tanStackQueryDetected === "boolean"
-            ? updates.tanStackQueryDetected
-            : false;
-      }
-
-      // Handle artificial states
-      if (updates.clearArtificialStates) {
-        processedUpdates.artificialStates = {};
-      } else if (updates.artificialStates) {
-        const currentState = await this.getStorage().get();
-        processedUpdates.artificialStates = {
-          ...currentState.artificialStates,
-          ...updates.artificialStates,
-        };
-      }
-
-      return this.safeUpdate(processedUpdates, {
-        validateData: true,
-        retryOnFailure: true,
-      });
-    } catch (error) {
-      console.error("Batch update failed:", error);
-      return false;
+    // Process queries
+    if (updates.queries !== undefined) {
+      processedUpdates.queries = ensureArray<QueryData>(updates.queries);
     }
-  }
 
-  // Enhanced action queue management
-  async enqueueAction(
-    action: Omit<StorageAction, "id" | "timestamp">,
-  ): Promise<boolean> {
-    try {
-      const storage = this.getStorage();
-      await storage.enqueueAction(action);
-      return true;
-    } catch (error) {
-      console.error("Failed to enqueue action:", error);
-      return false;
+    // Process mutations
+    if (updates.mutations !== undefined) {
+      processedUpdates.mutations = ensureArray<MutationData>(updates.mutations);
     }
-  }
 
-  // Get pending actions with error handling
-  async getPendingActions(): Promise<StorageAction[]> {
-    try {
-      const storage = this.getStorage();
-      return await storage.dequeueActions();
-    } catch (error) {
-      console.error("Failed to get pending actions:", error);
-      return [];
+    // Process detection status
+    if (updates.tanStackQueryDetected !== undefined) {
+      processedUpdates.tanStackQueryDetected =
+        typeof updates.tanStackQueryDetected === "boolean"
+          ? updates.tanStackQueryDetected
+          : false;
     }
-  }
 
-  // Mark action as processed
-  async markActionProcessed(actionId: string): Promise<boolean> {
-    try {
-      const storage = this.getStorage();
-      await storage.markActionProcessed(actionId);
-      return true;
-    } catch (error) {
-      console.error("Failed to mark action as processed:", error);
-      return false;
+    // Handle artificial states
+    if (updates.clearArtificialStates) {
+      processedUpdates.artificialStates = {};
+    } else if (updates.artificialStates) {
+      const currentState = await this.tabStorage!.get();
+      processedUpdates.artificialStates = {
+        ...currentState.artificialStates,
+        ...updates.artificialStates,
+      };
     }
-  }
 
-  // Clear processed actions
-  async clearProcessedActions(): Promise<boolean> {
-    try {
-      const storage = this.getStorage();
-      await storage.clearProcessedActions();
-      return true;
-    } catch (error) {
-      console.error("Failed to clear processed actions:", error);
-      return false;
-    }
+    await this.tabStorage!.batchUpdate(processedUpdates);
   }
 
   // Subscribe to storage changes with cleanup tracking
   subscribe(callback: () => void | Promise<void>): () => void {
-    if (!this.tabStorage) {
-      throw new Error("Storage not initialized");
-    }
-
-    const unsubscribe = this.tabStorage.subscribe(callback);
+    const unsubscribe = this.tabStorage!.subscribe(callback);
     this.subscriptions.push(unsubscribe);
 
     return () => {
@@ -259,27 +128,9 @@ export class EnhancedStorageManager {
     };
   }
 
-  // Get current storage state safely
+  // Get current storage state
   async getCurrentState(): Promise<TanstackQueryStateType | null> {
-    try {
-      const storage = this.getStorage();
-      return await storage.get();
-    } catch (error) {
-      console.error("Failed to get current state:", error);
-      return null;
-    }
-  }
-
-  // Reset storage to initial state
-  async reset(): Promise<boolean> {
-    try {
-      const storage = this.getStorage();
-      await storage.reset();
-      return true;
-    } catch (error) {
-      console.error("Failed to reset storage:", error);
-      return false;
-    }
+    return await this.tabStorage!.get();
   }
 
   // Cleanup all subscriptions
@@ -352,23 +203,6 @@ export class TabManager {
       return storage;
     } catch (error) {
       console.error("Failed to create enhanced storage:", error);
-      return null;
-    }
-  }
-
-  // Create enhanced storage with explicit tab ID (useful when tab ID is known)
-  static async createEnhancedStorageForTab(
-    tabId: number,
-  ): Promise<EnhancedStorageManager | null> {
-    try {
-      const storage = new EnhancedStorageManager();
-      await storage.initialize(tabId);
-      return storage;
-    } catch (error) {
-      console.error(
-        `Failed to create enhanced storage for tab ${tabId}:`,
-        error,
-      );
       return null;
     }
   }

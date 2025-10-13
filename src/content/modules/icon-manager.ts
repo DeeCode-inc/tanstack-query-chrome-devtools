@@ -1,25 +1,25 @@
 // Content script icon manager implementation
 import type { IconUpdateMessage } from "../../types/messages";
-import type { ContentScriptStorageManager } from "./storage-manager";
+import type { EnhancedStorageManager } from "../../lib/enhanced-storage";
 
 export class ContentScriptIconManager {
   private previousDetectionState: boolean | undefined = undefined;
   private unsubscribe: (() => void) | null = null;
-  private storageManager: ContentScriptStorageManager | null = null;
+  private storage: EnhancedStorageManager | null = null;
   private tabId: number | null = null;
 
-  initialize(storageManager: ContentScriptStorageManager): void {
-    this.storageManager = storageManager;
-    this.tabId = storageManager.getTabId();
+  initialize(storage: EnhancedStorageManager): void {
+    this.storage = storage;
+    this.tabId = storage.getTabId();
   }
 
   async start(): Promise<void> {
-    if (!this.storageManager || this.tabId === null) {
+    if (!this.storage || this.tabId === null) {
       throw new Error("Icon manager not properly initialized");
     }
 
     // Subscribe to storage changes for icon updates
-    this.unsubscribe = this.storageManager.subscribe(async () => {
+    this.unsubscribe = this.storage.subscribe(async () => {
       await this.handleStorageChange();
     });
 
@@ -28,10 +28,10 @@ export class ContentScriptIconManager {
   }
 
   private async handleStorageChange(): Promise<void> {
-    if (!this.storageManager || this.tabId === null) return;
+    if (!this.storage || this.tabId === null) return;
 
     try {
-      const currentState = await this.storageManager.getCurrentState();
+      const currentState = await this.storage.getCurrentState();
       if (!currentState) return;
 
       // Only update icon if detection state changed
@@ -45,10 +45,10 @@ export class ContentScriptIconManager {
   }
 
   private async setInitialIconState(): Promise<void> {
-    if (!this.storageManager || this.tabId === null) return;
+    if (!this.storage || this.tabId === null) return;
 
     try {
-      const initialState = await this.storageManager.getCurrentState();
+      const initialState = await this.storage.getCurrentState();
       if (initialState) {
         this.sendIconUpdate(initialState.tanStackQueryDetected, this.tabId);
         this.previousDetectionState = initialState.tanStackQueryDetected;
@@ -70,17 +70,13 @@ export class ContentScriptIconManager {
     });
   }
 
-  get isInitialized(): boolean {
-    return !!this.storageManager && this.tabId !== null;
-  }
-
   cleanup(): void {
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = null;
     }
 
-    this.storageManager = null;
+    this.storage = null;
     this.tabId = null;
     this.previousDetectionState = undefined;
   }

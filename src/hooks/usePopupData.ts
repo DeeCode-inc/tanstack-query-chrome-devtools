@@ -2,19 +2,14 @@ import "webextension-polyfill";
 
 import { useTabStorage } from "./useTabStorage";
 import { useArtificialStates } from "./useArtificialStates";
-import { tabScopedStorageManager } from "../storage/impl/tab-scoped-manager";
 import type { QueryData, MutationData } from "../types/query";
 import type {
   QueryActionMessage,
   BulkQueryActionMessage,
-  RequestImmediateUpdateMessage,
 } from "../types/messages";
 import { useState, useEffect } from "react";
 
-type ActionMessage =
-  | QueryActionMessage
-  | BulkQueryActionMessage
-  | RequestImmediateUpdateMessage;
+type ActionMessage = QueryActionMessage | BulkQueryActionMessage;
 
 interface UsePopupDataReturn {
   // State
@@ -42,24 +37,23 @@ const getCurrentActiveTab = async (): Promise<number | null> => {
   }
 };
 
-// Send message function - now enqueues actions in storage instead of sending messages
+// Send message function - now uses direct Chrome messaging instead of storage queue
 const sendMessage = async (message: ActionMessage) => {
   try {
     const activeTabId = await getCurrentActiveTab();
     if (!activeTabId) {
-      console.warn("No active tab found, cannot enqueue action");
+      console.warn("No active tab found, cannot send action");
       return;
     }
 
-    const tabStorage = tabScopedStorageManager.getStorageForTab(activeTabId);
-
-    // Convert message to action and enqueue in storage
-    await tabStorage.enqueueAction({
-      type: message.type,
-      payload: message,
+    // Send action directly to background script for forwarding to content script
+    await chrome.runtime.sendMessage({
+      type: "QUERY_ACTION",
+      tabId: activeTabId,
+      action: message, // Send QueryActionMessage directly without wrapping
     });
   } catch (error) {
-    console.error("Failed to enqueue action from popup:", error);
+    console.error("Failed to send action from popup:", error);
     throw error;
   }
 };
@@ -80,19 +74,8 @@ export const usePopupData = (): UsePopupDataReturn => {
   useEffect(() => {
     getCurrentActiveTab().then(async (tabId) => {
       setCurrentTabId(tabId);
-
-      // Request immediate update when popup opens to ensure fresh data
-      if (tabId) {
-        try {
-          const tabStorage = tabScopedStorageManager.getStorageForTab(tabId);
-          await tabStorage.enqueueAction({
-            type: "REQUEST_IMMEDIATE_UPDATE",
-            payload: { type: "REQUEST_IMMEDIATE_UPDATE" },
-          });
-        } catch (error) {
-          console.error("Failed to request immediate update:", error);
-        }
-      }
+      // Note: No need to request immediate update - reactive storage subscriptions
+      // keep Chrome Storage fresh automatically via TanStack Query subscriptions
     });
   }, []);
 

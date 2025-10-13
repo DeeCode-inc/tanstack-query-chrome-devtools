@@ -3,39 +3,32 @@ import type {
   QueryActionMessage,
   BulkQueryActionMessage,
 } from "../types/messages";
+import type { Query, Mutation } from "@tanstack/query-core";
+import type { QueryData, MutationData } from "../types/query";
 import {
   isQueryActionMessage,
   isBulkQueryActionMessage,
-  isRequestImmediateUpdateMessage,
-  isClearArtificialStatesMessage,
 } from "../lib/message-validation";
 import { createPostMessageRouter } from "../lib/message-router";
 
 // Import modular components
-import { TanStackQueryDetectionManager } from "./modules/detection-manager";
-import { TanStackQueryDataExtractor } from "./modules/data-extractor";
-import { TanStackQuerySubscriptionManager } from "./modules/subscription-manager";
+import {
+  monitorQueryClientDetection,
+  isQueryClientDetected,
+} from "./modules/detection-monitor";
 import { TanStackQueryActionExecutor } from "./modules/action-executor";
-import { InjectedScriptMessageCommunicator } from "./modules/message-communicator";
+import { sendToContentScript } from "./modules/message-sender";
 
 // Main injected script class
 class InjectedScript {
-  private detectionManager = new TanStackQueryDetectionManager();
-  private dataExtractor = new TanStackQueryDataExtractor();
-  private subscriptionManager: TanStackQuerySubscriptionManager;
+  private detectionCleanup: (() => void) | null = null;
+  private queryUnsubscribe: (() => void) | null = null;
+  private mutationUnsubscribe: (() => void) | null = null;
   private actionExecutor = new TanStackQueryActionExecutor();
-  private messageCommunicator = new InjectedScriptMessageCommunicator();
   private messageRouter = createPostMessageRouter({
     requireContentSource: true,
   });
   private isInitialized = false;
-
-  constructor() {
-    this.subscriptionManager = new TanStackQuerySubscriptionManager(
-      this.dataExtractor,
-      this.messageCommunicator,
-    );
-  }
 
   // Initialize injected script
   initialize(): void {
@@ -50,9 +43,6 @@ class InjectedScript {
 
       // Set up detection monitoring
       this.setupDetectionMonitoring();
-
-      // Start monitoring
-      this.detectionManager.startMonitoring();
 
       this.isInitialized = true;
     } catch (error) {
@@ -70,7 +60,10 @@ class InjectedScript {
       validate: isQueryActionMessage,
       handle: async (message: QueryActionMessage) => {
         const result = await this.actionExecutor.executeQueryAction(message);
-        this.messageCommunicator.sendActionResult(result);
+        // Only send result if it exists (artificial state actions return void)
+        if (result) {
+          sendToContentScript(result);
+        }
       },
     });
 
@@ -78,35 +71,18 @@ class InjectedScript {
     this.messageRouter.register("bulk-query-action", {
       validate: isBulkQueryActionMessage,
       handle: async (message: BulkQueryActionMessage) => {
-        const result =
-          await this.actionExecutor.executeBulkQueryAction(message);
-        this.messageCommunicator.sendActionResult(result);
-      },
-    });
-
-    // Handle immediate update requests
-    this.messageRouter.register("immediate-update", {
-      validate: isRequestImmediateUpdateMessage,
-      handle: () => {
-        this.sendImmediateUpdate();
-      },
-    });
-
-    // Handle clear artificial states
-    this.messageRouter.register("clear-artificial", {
-      validate: isClearArtificialStatesMessage,
-      handle: () => {
-        this.clearAllArtificialStates();
+        await this.actionExecutor.executeBulkQueryAction(message);
+        // No result sent - nobody is listening, subscriptions update UI
       },
     });
   }
 
   // Set up detection monitoring and callbacks
   private setupDetectionMonitoring(): void {
-    this.detectionManager.onDetectionChange((detected) => {
+    this.detectionCleanup = monitorQueryClientDetection((detected) => {
       if (detected) {
         // TanStack Query detected
-        this.messageCommunicator.sendEvent({
+        sendToContentScript({
           type: "QEVENT",
           subtype: "QUERY_CLIENT_DETECTED",
         });
@@ -125,48 +101,198 @@ class InjectedScript {
         );
 
         // Set up subscriptions
-        this.subscriptionManager.subscribeToQueries();
-        this.subscriptionManager.subscribeToMutations();
+        this.subscribeToQueries();
+        this.subscribeToMutations();
 
         // Send initial data
         this.sendImmediateUpdate();
       } else {
         // TanStack Query not found
-        this.messageCommunicator.sendEvent({
+        sendToContentScript({
           type: "QEVENT",
           subtype: "QUERY_CLIENT_NOT_FOUND",
         });
 
         // Clean up subscriptions
-        this.subscriptionManager.cleanup();
+        this.cleanupSubscriptions();
       }
     });
+  }
+
+  // Subscribe to query cache for real-time updates
+  private subscribeToQueries(): void {
+    const queryClient = window.__TANSTACK_QUERY_CLIENT__;
+    if (!queryClient?.getQueryCache) return;
+
+    try {
+      // Clean up existing subscription
+      if (this.queryUnsubscribe) {
+        this.queryUnsubscribe();
+      }
+
+      // Subscribe to cache changes
+      this.queryUnsubscribe = queryClient.getQueryCache().subscribe(() => {
+        this.sendQueryDataUpdate();
+      });
+    } catch (error) {
+      console.error("Error subscribing to query cache:", error);
+    }
+  }
+
+  // Subscribe to mutation cache for real-time updates
+  private subscribeToMutations(): void {
+    const queryClient = window.__TANSTACK_QUERY_CLIENT__;
+    if (!queryClient?.getMutationCache) return;
+
+    try {
+      // Clean up existing subscription
+      if (this.mutationUnsubscribe) {
+        this.mutationUnsubscribe();
+      }
+
+      // Subscribe to mutation cache changes
+      this.mutationUnsubscribe = queryClient
+        .getMutationCache()
+        .subscribe(() => {
+          this.sendMutationDataUpdate();
+        });
+    } catch (error) {
+      console.error("Error subscribing to mutation cache:", error);
+    }
+  }
+
+  // Send query data update to content script
+  private sendQueryDataUpdate(): void {
+    try {
+      const queries = this.getQueryData();
+      sendToContentScript({
+        type: "QEVENT",
+        subtype: "QUERY_DATA_UPDATE",
+        payload: queries,
+      });
+    } catch (error) {
+      console.error("Error sending query data update:", error);
+    }
+  }
+
+  // Send mutation data update to content script
+  private sendMutationDataUpdate(): void {
+    try {
+      const mutations = this.getMutationData();
+      sendToContentScript({
+        type: "QEVENT",
+        subtype: "MUTATION_DATA_UPDATE",
+        payload: mutations,
+      });
+    } catch (error) {
+      console.error("Error sending mutation data update:", error);
+    }
+  }
+
+  // Extract query data from QueryClient
+  private getQueryData(): QueryData[] {
+    const queryClient = window.__TANSTACK_QUERY_CLIENT__;
+    if (!queryClient?.getQueryCache) return [];
+
+    try {
+      const queries = queryClient.getQueryCache().getAll();
+      return queries.map(this.mapQueryToData.bind(this));
+    } catch (error) {
+      console.error("Error extracting query data:", error);
+      return [];
+    }
+  }
+
+  // Extract mutation data from QueryClient
+  private getMutationData(): MutationData[] {
+    const queryClient = window.__TANSTACK_QUERY_CLIENT__;
+    if (!queryClient?.getMutationCache) return [];
+
+    try {
+      const mutations = queryClient.getMutationCache().getAll();
+      return mutations.map(this.mapMutationToData.bind(this));
+    } catch (error) {
+      console.error("Error extracting mutation data:", error);
+      return [];
+    }
+  }
+
+  // Map Query object to QueryData format
+  private mapQueryToData(query: Query): QueryData {
+    return {
+      queryKey: query.queryKey,
+      queryHash: query.queryHash,
+      state: {
+        data: query.state.data,
+        error: query.state.error,
+        status: query.state.status,
+        isFetching: query.state.fetchStatus === "fetching",
+        isPending: query.state.status === "pending",
+        isLoading:
+          query.state.fetchStatus === "fetching" &&
+          query.state.status === "pending",
+        isStale: query.isStale(),
+        dataUpdatedAt: query.state.dataUpdatedAt,
+        errorUpdatedAt: query.state.errorUpdatedAt,
+        fetchStatus: query.state.fetchStatus,
+      },
+      meta: query.meta || {},
+      isActive: query.getObserversCount() > 0,
+      observersCount: query.getObserversCount(),
+    };
+  }
+
+  // Map Mutation object to MutationData format
+  private mapMutationToData(mutation: Mutation): MutationData {
+    return {
+      mutationId: mutation.mutationId,
+      state: mutation.state.status,
+      variables: mutation.state.variables,
+      context: mutation.state.context,
+      data: mutation.state.data,
+      error: mutation.state.error,
+      submittedAt: mutation.state.submittedAt,
+      isPending: mutation.state.status === "pending",
+    };
   }
 
   // Send immediate data update
   private sendImmediateUpdate(): void {
     try {
-      const queries = this.dataExtractor.getQueryData();
-      const mutations = this.dataExtractor.getMutationData();
+      const queries = this.getQueryData();
+      const mutations = this.getMutationData();
 
-      this.messageCommunicator.sendUpdate({
-        queries,
-        mutations,
-        tanStackQueryDetected: this.detectionManager.isDetected,
+      sendToContentScript({
+        type: "UPDATE_QUERY_STATE",
+        payload: {
+          queries,
+          mutations,
+          tanStackQueryDetected: isQueryClientDetected(),
+        },
       });
     } catch (error) {
       console.error("Error sending immediate update:", error);
     }
   }
 
-  // Clear all artificial states
-  private clearAllArtificialStates(): void {
-    try {
-      this.actionExecutor.clearAllArtificialStates();
-      // Send updated data
-      this.sendImmediateUpdate();
-    } catch (error) {
-      console.error("Error clearing artificial states:", error);
+  // Cleanup subscriptions
+  private cleanupSubscriptions(): void {
+    if (this.queryUnsubscribe) {
+      try {
+        this.queryUnsubscribe();
+      } catch (error) {
+        console.warn("Error cleaning up query subscription:", error);
+      }
+      this.queryUnsubscribe = null;
+    }
+
+    if (this.mutationUnsubscribe) {
+      try {
+        this.mutationUnsubscribe();
+      } catch (error) {
+        console.warn("Error cleaning up mutation subscription:", error);
+      }
+      this.mutationUnsubscribe = null;
     }
   }
 
@@ -174,22 +300,16 @@ class InjectedScript {
   cleanup(): void {
     try {
       this.messageRouter.stop();
-      this.detectionManager.cleanup();
-      this.subscriptionManager.cleanup();
+      if (this.detectionCleanup) {
+        this.detectionCleanup();
+        this.detectionCleanup = null;
+      }
+      this.cleanupSubscriptions();
 
       this.isInitialized = false;
     } catch (error) {
       console.error("Error during injected script cleanup:", error);
     }
-  }
-
-  // Get current status
-  get status() {
-    return {
-      initialized: this.isInitialized,
-      tanStackQueryDetected: this.detectionManager.isDetected,
-      messageRouterActive: this.messageRouter.active,
-    };
   }
 }
 

@@ -1,10 +1,5 @@
 import type { StorageEnum } from "./enums";
 import type { QueryData, MutationData } from "../../types/query";
-import type {
-  QueryActionMessage,
-  BulkQueryActionMessage,
-  RequestImmediateUpdateMessage,
-} from "../../types/messages";
 
 export type ValueOrUpdateType<D> = D | ((prev: D) => Promise<D> | D);
 
@@ -78,35 +73,8 @@ export interface TanstackQueryStorageType
   }) => Promise<void>;
 }
 
-// Action queue types for storage-based communication
-export interface StorageAction {
-  id: string;
-  timestamp: number;
-  type: "QUERY_ACTION" | "BULK_QUERY_ACTION" | "REQUEST_IMMEDIATE_UPDATE";
-  payload:
-    | QueryActionMessage
-    | BulkQueryActionMessage
-    | RequestImmediateUpdateMessage;
-  processed?: boolean;
-}
-
-export interface ActionQueueState {
-  actions: StorageAction[];
-  lastProcessed: number;
-}
-
-// Enhanced storage interface with action queue support
-export interface TanstackQueryStorageTypeWithActions
-  extends TanstackQueryStorageType {
-  enqueueAction(action: Omit<StorageAction, "id" | "timestamp">): Promise<void>;
-  dequeueActions(): Promise<StorageAction[]>;
-  markActionProcessed(actionId: string): Promise<void>;
-  clearProcessedActions(): Promise<void>;
-}
-
 // Helper type for tab-scoped storage management
 export interface TabScopedStorageManager {
-  getStorageForTab: (tabId: number) => TanstackQueryStorageTypeWithActions;
+  getStorageForTab: (tabId: number) => TanstackQueryStorageType;
   cleanupTab: (tabId: number) => Promise<void>;
-  getAllTabIds: () => Promise<number[]>;
 }

@@ -4,7 +4,6 @@ import type {
   QueryActionMessage,
   QueryActionResult,
   BulkQueryActionMessage,
-  BulkQueryActionResult,
 } from "../../types/messages";
 
 export class TanStackQueryActionExecutor {
@@ -25,7 +24,7 @@ export class TanStackQueryActionExecutor {
 
   async executeQueryAction(
     action: QueryActionMessage,
-  ): Promise<QueryActionResult> {
+  ): Promise<QueryActionResult | void> {
     const queryClient = window.__TANSTACK_QUERY_CLIENT__;
     if (!queryClient) {
       return this.createErrorResult(action, "QueryClient not found");
@@ -62,19 +61,23 @@ export class TanStackQueryActionExecutor {
           break;
 
         case "TRIGGER_LOADING":
+          // Artificial state already updated by React - no result needed
           await this.triggerArtificialLoading(query);
-          break;
+          return; // Don't send result - nobody is listening
         case "TRIGGER_ERROR":
+          // Artificial state already updated by React - no result needed
           await this.triggerArtificialError(query);
-          break;
+          return; // Don't send result - nobody is listening
 
         case "CANCEL_LOADING":
+          // Artificial state already updated by React - no result needed
           await this.cancelArtificialLoading(query);
-          break;
+          return; // Don't send result - nobody is listening
 
         case "CANCEL_ERROR":
+          // Artificial state already updated by React - no result needed
           await this.cancelArtificialError(query);
-          break;
+          return; // Don't send result - nobody is listening
 
         case "SET_QUERY_DATA":
           queryClient.setQueryData(query.queryKey, action.newData);
@@ -93,47 +96,26 @@ export class TanStackQueryActionExecutor {
     }
   }
 
-  async executeBulkQueryAction(
-    action: BulkQueryActionMessage,
-  ): Promise<BulkQueryActionResult> {
+  async executeBulkQueryAction(action: BulkQueryActionMessage): Promise<void> {
     const queryClient = window.__TANSTACK_QUERY_CLIENT__;
     if (!queryClient) {
-      return {
-        type: "BULK_QUERY_ACTION_RESULT",
-        action: action.action,
-        success: false,
-        error: "QueryClient not found",
-      };
+      console.error("QueryClient not found for bulk action");
+      return;
     }
 
     try {
       switch (action.action) {
         case "REMOVE_ALL_QUERIES": {
-          const queries = queryClient.getQueryCache().getAll();
           queryClient.removeQueries();
-          return {
-            type: "BULK_QUERY_ACTION_RESULT",
-            action: action.action,
-            success: true,
-            affectedCount: queries.length,
-          };
+          // Success - no result needed, subscriptions will update UI
+          break;
         }
 
         default:
-          return {
-            type: "BULK_QUERY_ACTION_RESULT",
-            action: action.action,
-            success: false,
-            error: `Unknown bulk action: ${action.action}`,
-          };
+          console.error(`Unknown bulk action: ${action.action}`);
       }
     } catch (error) {
-      return {
-        type: "BULK_QUERY_ACTION_RESULT",
-        action: action.action,
-        success: false,
-        error: String(error),
-      };
+      console.error(`Bulk action ${action.action} failed:`, error);
     }
   }
 

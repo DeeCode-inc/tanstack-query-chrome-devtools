@@ -1,20 +1,20 @@
 // Type-safe message router for handling different message types
 
 // Handler interface for type-safe message handling
-export interface MessageHandler<T> {
+interface MessageHandler<T> {
   validate: (message: unknown) => message is T;
   handle: (message: T) => Promise<void> | void;
   batchable?: boolean; // Whether this handler supports batching
 }
 
 // Error handler interface for message handling errors
-export interface ErrorHandler {
+interface ErrorHandler {
   onValidationError?: (message: unknown, error: Error) => void;
   onHandlingError?: (message: unknown, error: Error) => void;
 }
 
 // Type-safe message router for handling different message types
-export class TypeSafeMessageRouter {
+class TypeSafeMessageRouter {
   private handlers = new Map<string, MessageHandler<unknown>>();
   private errorHandler?: ErrorHandler;
 
@@ -56,25 +56,10 @@ export class TypeSafeMessageRouter {
       return false;
     }
   }
-
-  // Clear all handlers
-  clear(): void {
-    this.handlers.clear();
-  }
-
-  // Remove a specific handler
-  remove(key: string): boolean {
-    return this.handlers.delete(key);
-  }
-
-  // Get list of registered handler keys
-  getRegisteredHandlers(): string[] {
-    return Array.from(this.handlers.keys());
-  }
 }
 
 // PostMessage router for window.postMessage events
-export class PostMessageRouter extends TypeSafeMessageRouter {
+class PostMessageRouter extends TypeSafeMessageRouter {
   private listener?: (event: MessageEvent) => void;
   private isActive = false;
 
@@ -147,47 +132,6 @@ export class PostMessageRouter extends TypeSafeMessageRouter {
   }
 }
 
-// Chrome runtime message router
-export class ChromeRuntimeRouter extends TypeSafeMessageRouter {
-  private listener?: (
-    message: unknown,
-    sender: chrome.runtime.MessageSender,
-    sendResponse: (response?: unknown) => void,
-  ) => void;
-  private isActive = false;
-
-  // Start listening to chrome.runtime.onMessage events
-  start(): void {
-    if (this.isActive) return;
-
-    this.listener = async (message, _sender, sendResponse) => {
-      const handled = await this.route(message);
-
-      // Send response to indicate message was handled
-      if (sendResponse) {
-        sendResponse({ handled });
-      }
-    };
-
-    chrome.runtime.onMessage.addListener(this.listener);
-    this.isActive = true;
-  }
-
-  // Stop listening to chrome.runtime.onMessage events
-  stop(): void {
-    if (!this.isActive || !this.listener) return;
-
-    chrome.runtime.onMessage.removeListener(this.listener);
-    this.listener = undefined;
-    this.isActive = false;
-  }
-
-  // Check if currently listening
-  get active(): boolean {
-    return this.isActive;
-  }
-}
-
 // Utility functions for creating common routers
 export function createPostMessageRouter(
   options: {
@@ -202,27 +146,6 @@ export function createPostMessageRouter(
     },
     onHandlingError: (message, error) => {
       console.error("PostMessage handling error:", error, "Message:", message);
-    },
-  });
-}
-
-export function createChromeRuntimeRouter(): ChromeRuntimeRouter {
-  return new ChromeRuntimeRouter({
-    onValidationError: (message, error) => {
-      console.warn(
-        "Chrome runtime validation error:",
-        error,
-        "Message:",
-        message,
-      );
-    },
-    onHandlingError: (message, error) => {
-      console.error(
-        "Chrome runtime handling error:",
-        error,
-        "Message:",
-        message,
-      );
     },
   });
 }
