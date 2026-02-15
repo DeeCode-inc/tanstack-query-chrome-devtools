@@ -19,6 +19,20 @@ import {
 import { TanStackQueryActionExecutor } from "./modules/action-executor";
 import { sendToContentScript } from "./modules/message-sender";
 
+/**
+ * Safely deep-clone a value into a plain, structured-cloneable object.
+ * Frameworks like Vue 3, MobX, and Solid wrap state in Proxy objects that
+ * cannot be passed through `window.postMessage` (structured clone algorithm).
+ * JSON round-tripping reads through Proxy getters, producing plain objects.
+ */
+function safeClone<T>(value: T): T {
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return "[Unserializable]" as T;
+  }
+}
+
 // Main injected script class
 class InjectedScript {
   private detectionCleanup: (() => void) | null = null;
@@ -282,11 +296,11 @@ class InjectedScript {
   // Map Query object to QueryData format
   private mapQueryToData(query: Query): QueryData {
     return {
-      queryKey: query.queryKey,
+      queryKey: safeClone(query.queryKey),
       queryHash: query.queryHash,
       state: {
-        data: query.state.data,
-        error: query.state.error,
+        data: safeClone(query.state.data),
+        error: safeClone(query.state.error),
         status: query.state.status,
         isFetching: query.state.fetchStatus === "fetching",
         isPending: query.state.status === "pending",
@@ -298,7 +312,7 @@ class InjectedScript {
         errorUpdatedAt: query.state.errorUpdatedAt,
         fetchStatus: query.state.fetchStatus,
       },
-      meta: query.meta || {},
+      meta: safeClone(query.meta || {}),
       isActive: query.getObserversCount() > 0,
       observersCount: query.getObserversCount(),
     };
@@ -309,10 +323,10 @@ class InjectedScript {
     return {
       mutationId: mutation.mutationId,
       state: mutation.state.status,
-      variables: mutation.state.variables,
-      context: mutation.state.context,
-      data: mutation.state.data,
-      error: mutation.state.error,
+      variables: safeClone(mutation.state.variables),
+      context: safeClone(mutation.state.context),
+      data: safeClone(mutation.state.data),
+      error: safeClone(mutation.state.error),
       submittedAt: mutation.state.submittedAt,
       isPending: mutation.state.status === "pending",
     };
