@@ -1,8 +1,0 @@
-@import "tailwindcss";
-@import "./styles/base.css";
-@import "./styles/components.css";
-@import "./styles/cards.css";
-@import "./styles/animations.css";
-
-/* Modern CSS Architecture with Cascade Layers */
-@layer base, components, cards, animations;
