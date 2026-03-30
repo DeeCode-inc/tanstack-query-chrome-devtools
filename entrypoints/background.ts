@@ -121,9 +121,7 @@ export default defineBackground(() => {
 
   // === Service worker recovery: restore icon on tab switch ===
   browser.tabs.onActivated.addListener(({ tabId }) => {
-    if (contentPorts.has(tabId)) {
-      updateIcon(tabId, "colored");
-    }
+    updateIcon(tabId, snapshotCache.has(tabId) ? "colored" : "gray");
   });
 
   // === Port connection handling ===

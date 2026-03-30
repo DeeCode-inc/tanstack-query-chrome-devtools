@@ -126,6 +126,12 @@ function startSync(client: NonNullable<Window["__TANSTACK_QUERY_CLIENT__"]>) {
       return;
     }
 
+    // Skip events for queries that have been removed from the cache
+    // (e.g., observerRemoved firing after removeQueries was called)
+    if (!queryCache.get(query.queryHash)) {
+      return;
+    }
+
     // added, updated, observerAdded, observerRemoved all map to entry updates
     const changeType = type === "added" ? "added" : "updated";
     postChange({

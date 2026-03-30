@@ -1,6 +1,6 @@
 # tanstack-query-chrome-devtools-3 Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-03-28
+Auto-generated from all feature plans. Last updated: 2026-03-30
 
 ## Active Technologies
 - TypeScript 5.9 (strict mode) + React 19, WXT 0.20, Tailwind CSS v4, lucide-react (for mutation status icons) (002-page-layout-placeholders)
@@ -40,6 +40,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-28
 - N/A (no storage changes in this feature) (021-ui-layout-fixes)
 - TypeScript 5.9 (strict mode) + React 19, WXT (web extension framework), @tanstack/query-core (022-action-button-fetch-state)
 - N/A (in-memory state synced via message passing) (022-action-button-fetch-state)
+- TypeScript (strict mode) on React 19 + WXT + `@tanstack/query-core`, WXT, `lucide-react`, `highlight.js` (023-icon-stale-query-bugs)
+- N/A (ephemeral in-memory state + browser.storage.session for SW recovery) (023-icon-stale-query-bugs)
 
 - TypeScript 5.9 (strict mode) + React 19, WXT 0.20, Tailwind CSS v4, highlight.js 11, lucide-react, @tanstack/query-core (001-setup-connection-message)
 
@@ -59,9 +61,9 @@ npm test && npm run lint
 TypeScript 5.9 (strict mode): Follow standard conventions
 
 ## Recent Changes
+- 023-icon-stale-query-bugs: Added TypeScript (strict mode) on React 19 + WXT + `@tanstack/query-core`, WXT, `lucide-react`, `highlight.js`
 - 022-action-button-fetch-state: Added TypeScript 5.9 (strict mode) + React 19, WXT (web extension framework), @tanstack/query-core
 - 021-ui-layout-fixes: Added TypeScript (strict mode), React 19 + WXT (web extension framework), Tailwind CSS v4 (`@tailwindcss/vite`), `@tanstack/query-core`, `lucide-react`, `highlight.js`, `@tanstack/react-virtual` (to be removed)
-- 020-filter-relative-time: Added TypeScript (strict mode) + React 19.2 + React 19, @tanstack/react-virtual 3.13, WXT 0.20, Tailwind CSS v4
 
 
 <!-- MANUAL ADDITIONS START -->
