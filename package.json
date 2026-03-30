@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@eslint/css": "^1.0.0",
-    "@eslint/markdown": "^8.0.0",
+    "@eslint/markdown": "^8.0.1",
     "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
