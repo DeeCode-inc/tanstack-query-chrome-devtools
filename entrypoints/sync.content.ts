@@ -10,7 +10,7 @@ const MAX_POLL_MS = 30_000;
 
 function deriveQueryStatus(query: Query): QueryDisplayStatus {
   if (query.state.fetchStatus === "fetching") return "fetching";
-  if (query.observers.length === 0) return "inactive";
+  if (query.getObserversCount() === 0) return "inactive";
   if (query.state.fetchStatus === "paused") return "paused";
   if (query.isStale()) return "stale";
   return "fresh";
@@ -47,7 +47,7 @@ function extractQuery(query: Query): QueryEntry {
   return {
     queryHash: query.queryHash,
     queryKey: [...query.queryKey],
-    observerCount: query.observers.length,
+    observerCount: query.getObserversCount(),
     status: deriveQueryStatus(query),
     dataUpdatedAt: query.state.dataUpdatedAt,
     data: query.state.data,

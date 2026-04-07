@@ -4,88 +4,237 @@ interface TypeSentinel {
   readonly entries?: readonly unknown[];
 }
 
+type WriteTarget = Record<string, unknown> | unknown[];
+
+function writeSlot(target: WriteTarget, key: string | number, val: unknown): void {
+  if (typeof key === "number") {
+    (target as unknown[])[key] = val;
+  } else {
+    (target as Record<string, unknown>)[key] = val;
+  }
+}
+
+interface EncodeFrame {
+  value: unknown;
+  target: WriteTarget;
+  key: string | number;
+}
+
 export function encodeBigInts(value: unknown): unknown {
-  if (typeof value === "bigint") {
-    return { __tqcd_type: "bigint", value: String(value) } as TypeSentinel;
-  }
-  if (typeof value === "symbol") {
-    return { __tqcd_type: "symbol", value: value.description ?? "" } as TypeSentinel;
-  }
-  if (typeof value === "function") {
-    return { __tqcd_type: "function" } as TypeSentinel;
-  }
-  if (Array.isArray(value)) {
-    return value.map(encodeBigInts);
-  }
-  if (value instanceof Map) {
-    return {
-      __tqcd_type: "map",
-      entries: Array.from(value.entries()).map(
-        ([k, v]) => [encodeBigInts(k), encodeBigInts(v)] as const,
-      ),
-    } as TypeSentinel;
-  }
-  if (value instanceof Set) {
-    return {
-      __tqcd_type: "set",
-      entries: Array.from(value.values()).map(encodeBigInts),
-    } as TypeSentinel;
-  }
-  if (value instanceof Date) {
-    return { __tqcd_type: "date", value: value.toISOString() } as TypeSentinel;
-  }
-  if (typeof value === "object" && value !== null) {
-    const result: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      result[k] = encodeBigInts(v);
+  const root: [unknown] = [undefined];
+  const stack: EncodeFrame[] = [{ value, target: root, key: 0 }];
+  const seen = new WeakSet<object>();
+
+  while (stack.length > 0) {
+    const frame = stack.pop()!;
+    const v = frame.value;
+
+    if (v === null || v === undefined) {
+      writeSlot(frame.target, frame.key, v);
+      continue;
     }
-    return result;
+
+    switch (typeof v) {
+      case "bigint":
+        writeSlot(frame.target, frame.key, { __tqcd_type: "bigint", value: String(v) } as TypeSentinel);
+        continue;
+      case "symbol":
+        writeSlot(frame.target, frame.key, { __tqcd_type: "symbol", value: v.description ?? "" } as TypeSentinel);
+        continue;
+      case "function":
+        writeSlot(frame.target, frame.key, { __tqcd_type: "function" } as TypeSentinel);
+        continue;
+      case "string":
+      case "number":
+      case "boolean":
+        writeSlot(frame.target, frame.key, v);
+        continue;
+    }
+
+    const obj = v as object;
+    if (seen.has(obj)) {
+      writeSlot(frame.target, frame.key, undefined);
+      continue;
+    }
+    seen.add(obj);
+
+    if (obj instanceof Date) {
+      writeSlot(frame.target, frame.key, { __tqcd_type: "date", value: obj.toISOString() } as TypeSentinel);
+      continue;
+    }
+
+    if (Array.isArray(obj)) {
+      const result = new Array<unknown>(obj.length);
+      writeSlot(frame.target, frame.key, result);
+      for (let i = obj.length - 1; i >= 0; i--) {
+        stack.push({ value: obj[i], target: result, key: i });
+      }
+      continue;
+    }
+
+    if (obj instanceof Map) {
+      const entries: [unknown, unknown][] = [];
+      const sentinel = { __tqcd_type: "map" as const, entries };
+      writeSlot(frame.target, frame.key, sentinel);
+      const mapEntries = Array.from(obj.entries());
+      for (let i = mapEntries.length - 1; i >= 0; i--) {
+        const pair: [unknown, unknown] = [undefined, undefined];
+        entries.push(pair);
+        stack.push({ value: mapEntries[i][1], target: pair, key: 1 });
+        stack.push({ value: mapEntries[i][0], target: pair, key: 0 });
+      }
+      entries.reverse();
+      continue;
+    }
+
+    if (obj instanceof Set) {
+      const entries: unknown[] = [];
+      const sentinel = { __tqcd_type: "set" as const, entries };
+      writeSlot(frame.target, frame.key, sentinel);
+      const setValues = Array.from(obj.values());
+      entries.length = setValues.length;
+      for (let i = setValues.length - 1; i >= 0; i--) {
+        stack.push({ value: setValues[i], target: entries, key: i });
+      }
+      continue;
+    }
+
+    const result: Record<string, unknown> = {};
+    writeSlot(frame.target, frame.key, result);
+    const objEntries = Object.entries(obj as Record<string, unknown>);
+    for (let i = objEntries.length - 1; i >= 0; i--) {
+      stack.push({ value: objEntries[i][1], target: result, key: objEntries[i][0] });
+    }
   }
-  return value;
+
+  return root[0];
+}
+
+interface DecodeFrame {
+  kind: "decode";
+  value: unknown;
+  target: WriteTarget;
+  key: string | number;
+}
+
+interface FinalizeMapFrame {
+  kind: "finalize-map";
+  entries: [unknown, unknown][];
+  target: WriteTarget;
+  key: string | number;
+}
+
+interface FinalizeSetFrame {
+  kind: "finalize-set";
+  entries: unknown[];
+  target: WriteTarget;
+  key: string | number;
 }
 
 export function decodeBigInts(value: unknown): unknown {
-  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-    const obj = value as Record<string, unknown>;
+  const root: [unknown] = [undefined];
+  const stack: (DecodeFrame | FinalizeMapFrame | FinalizeSetFrame)[] = [
+    { kind: "decode", value, target: root, key: 0 },
+  ];
+  const seen = new WeakSet<object>();
+
+  while (stack.length > 0) {
+    const frame = stack.pop()!;
+
+    if (frame.kind === "finalize-map") {
+      writeSlot(frame.target, frame.key, new Map(frame.entries));
+      continue;
+    }
+    if (frame.kind === "finalize-set") {
+      writeSlot(frame.target, frame.key, new Set(frame.entries));
+      continue;
+    }
+
+    const v = frame.value;
+
+    if (typeof v !== "object" || v === null) {
+      writeSlot(frame.target, frame.key, v);
+      continue;
+    }
+
+    if (seen.has(v)) {
+      writeSlot(frame.target, frame.key, undefined);
+      continue;
+    }
+    seen.add(v);
+
+    if (Array.isArray(v)) {
+      const result = new Array<unknown>(v.length);
+      writeSlot(frame.target, frame.key, result);
+      for (let i = v.length - 1; i >= 0; i--) {
+        stack.push({ kind: "decode", value: v[i], target: result, key: i });
+      }
+      continue;
+    }
+
+    const obj = v as Record<string, unknown>;
+
     switch (obj.__tqcd_type) {
       case "bigint":
-        if (typeof obj.value === "string") return BigInt(obj.value);
-        break;
+        if (typeof obj.value === "string") {
+          writeSlot(frame.target, frame.key, BigInt(obj.value));
+        } else {
+          writeSlot(frame.target, frame.key, undefined);
+        }
+        continue;
       case "date":
-        if (typeof obj.value === "string") return new Date(obj.value);
-        break;
+        if (typeof obj.value === "string") {
+          writeSlot(frame.target, frame.key, new Date(obj.value));
+        } else {
+          writeSlot(frame.target, frame.key, undefined);
+        }
+        continue;
       case "function":
-        return () => undefined;
+        writeSlot(frame.target, frame.key, () => undefined);
+        continue;
       case "symbol":
-        if (typeof obj.value === "string") return Symbol(obj.value);
-        break;
+        if (typeof obj.value === "string") {
+          writeSlot(frame.target, frame.key, Symbol(obj.value));
+        } else {
+          writeSlot(frame.target, frame.key, undefined);
+        }
+        continue;
       case "map":
         if (Array.isArray(obj.entries)) {
-          return new Map(
-            (obj.entries as [unknown, unknown][]).map(
-              ([k, v]) => [decodeBigInts(k), decodeBigInts(v)] as const,
-            ),
-          );
+          const pairs = obj.entries as [unknown, unknown][];
+          const entries: [unknown, unknown][] = [];
+          stack.push({ kind: "finalize-map", entries, target: frame.target, key: frame.key });
+          for (let i = pairs.length - 1; i >= 0; i--) {
+            const pair: [unknown, unknown] = [undefined, undefined];
+            entries.push(pair);
+            stack.push({ kind: "decode", value: pairs[i][1], target: pair, key: 1 });
+            stack.push({ kind: "decode", value: pairs[i][0], target: pair, key: 0 });
+          }
+          entries.reverse();
         }
-        break;
+        continue;
       case "set":
         if (Array.isArray(obj.entries)) {
-          return new Set(
-            (obj.entries as unknown[]).map(decodeBigInts),
-          );
+          const items = obj.entries as unknown[];
+          const entries: unknown[] = [];
+          entries.length = items.length;
+          stack.push({ kind: "finalize-set", entries, target: frame.target, key: frame.key });
+          for (let i = items.length - 1; i >= 0; i--) {
+            stack.push({ kind: "decode", value: items[i], target: entries, key: i });
+          }
         }
-        break;
+        continue;
     }
+
     const result: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(obj)) {
-      result[k] = decodeBigInts(v);
+    writeSlot(frame.target, frame.key, result);
+    const objEntries = Object.entries(obj);
+    for (let i = objEntries.length - 1; i >= 0; i--) {
+      stack.push({ kind: "decode", value: objEntries[i][1], target: result, key: objEntries[i][0] });
     }
-    return result;
   }
-  if (Array.isArray(value)) {
-    return value.map(decodeBigInts);
-  }
-  return value;
+
+  return root[0];
 }
 
 function prepareForStringify(value: unknown): unknown {
