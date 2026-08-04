@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronRight, Trash2, Copy, Check, ListX } from "lucide-react";
-import { serializeToJsLiteral } from "@/utils/serialization";
+import { dateToWireString, serializeToJsLiteral } from "@/utils/serialization";
 import type { PathSegment } from "@/types/messages";
 
 interface TreeViewProps {
@@ -266,7 +266,7 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
     return (
       <div className="flex items-center">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-blue-600 dark:text-blue-400">{data.toISOString()}</span>
+        <span className="flex-1 truncate min-w-10 text-blue-600 dark:text-blue-400">{dateToWireString(data)}</span>
         {deleteBtn}
       </div>
     );

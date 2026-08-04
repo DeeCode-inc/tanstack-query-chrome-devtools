@@ -6,6 +6,30 @@ interface TypeSentinel {
 
 type WriteTarget = Record<string, unknown> | unknown[];
 
+/**
+ * `new Date("nope")` is still `instanceof Date`, but its time value is NaN and
+ * `toISOString()` throws `RangeError: Invalid time value` on it. Any invalid
+ * Date anywhere in the inspected cache would therefore make serialization throw.
+ *
+ * That is not contained to the panel: `entrypoints/sync.js` runs in the page's
+ * MAIN world as a QueryCache subscriber, and `QueryCache.notify` iterates its
+ * subscribers without catching. The RangeError unwinds out of the host
+ * application's own React render/commit and trips its error boundary, so a
+ * single invalid Date in the cache takes the inspected app down.
+ *
+ * `"Invalid Date"` is used as the wire value because `new Date("Invalid Date")`
+ * decodes back to an equally invalid Date, keeping the round-trip faithful.
+ */
+export const INVALID_DATE_LABEL = "Invalid Date";
+
+export function isInvalidDate(date: Date): boolean {
+  return Number.isNaN(date.getTime());
+}
+
+export function dateToWireString(date: Date): string {
+  return isInvalidDate(date) ? INVALID_DATE_LABEL : date.toISOString();
+}
+
 function writeSlot(target: WriteTarget, key: string | number, val: unknown): void {
   if (typeof key === "number") {
     (target as unknown[])[key] = val;
@@ -59,7 +83,7 @@ export function encodeBigInts(value: unknown): unknown {
     seen.add(obj);
 
     if (obj instanceof Date) {
-      writeSlot(frame.target, frame.key, { __tqcd_type: "date", value: obj.toISOString() } as TypeSentinel);
+      writeSlot(frame.target, frame.key, { __tqcd_type: "date", value: dateToWireString(obj) } as TypeSentinel);
       continue;
     }
 
@@ -241,7 +265,7 @@ function prepareForStringify(value: unknown): unknown {
   if (typeof value === "bigint") return `__bigint:${String(value)}`;
   if (typeof value === "symbol") return `__symbol:${value.description ?? ""}`;
   if (typeof value === "function") return "__function";
-  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Date) return dateToWireString(value);
   if (value instanceof Map) {
     const result: Record<string, unknown> = {};
     for (const [k, v] of value.entries()) {
@@ -313,6 +337,9 @@ export function serializeToJsLiteral(
   if (ancestors.has(obj)) return '"[Circular]"';
 
   if (obj instanceof Date) {
+    // `new Date(NaN)` is the faithful literal for an invalid Date — emitting
+    // `new Date("Invalid Date")` would also work, but NaN states the intent.
+    if (isInvalidDate(obj)) return "new Date(NaN)";
     return `new Date("${obj.toISOString()}")`;
   }
 
