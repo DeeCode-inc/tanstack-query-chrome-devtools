@@ -43,7 +43,7 @@ export default defineContentScript({
         if (ctx.isInvalid) return;
 
         if (retries < MAX_RECONNECT_RETRIES) {
-          const delay = RECONNECT_BASE_MS * Math.pow(2, retries);
+          const delay = RECONNECT_BASE_MS * 2 ** retries;
           retries++;
           setTimeout(() => {
             if (!ctx.isInvalid) connect();
@@ -68,7 +68,11 @@ export default defineContentScript({
             {
               source: BRIDGE_SOURCE_ACTION,
               type: "SET_DATA_REQUEST",
-              payload: { queryHash: msg.queryHash, path: msg.path, value: msg.value },
+              payload: {
+                queryHash: msg.queryHash,
+                path: msg.path,
+                value: msg.value,
+              },
             },
             "*",
           );
@@ -125,7 +129,10 @@ export default defineContentScript({
     }
 
     function onMessage(event: MessageEvent) {
-      if (event.source !== window || (event.data as Record<string, unknown>)?.source !== BRIDGE_SOURCE) {
+      if (
+        event.source !== window ||
+        (event.data as Record<string, unknown>)?.source !== BRIDGE_SOURCE
+      ) {
         return;
       }
 

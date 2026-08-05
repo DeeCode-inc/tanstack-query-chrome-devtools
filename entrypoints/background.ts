@@ -1,5 +1,9 @@
 import type { Browser } from "wxt/browser";
-import type { PortMessage, SyncSnapshotPortMessage, ChangeEvent } from "@/types/messages";
+import type {
+  ChangeEvent,
+  PortMessage,
+  SyncSnapshotPortMessage,
+} from "@/types/messages";
 
 export default defineBackground(() => {
   // === Icon path constants ===
@@ -29,7 +33,10 @@ export default defineBackground(() => {
   const snapshotCache = new Map<number, SyncSnapshotPortMessage>();
 
   // === Helpers ===
-  function safePostMessage(port: Browser.runtime.Port, message: PortMessage): boolean {
+  function safePostMessage(
+    port: Browser.runtime.Port,
+    message: PortMessage,
+  ): boolean {
     try {
       port.postMessage(message);
       return true;
@@ -162,7 +169,14 @@ export default defineBackground(() => {
         if (msg.type === "PANEL_CONNECT") {
           panelPortTabMap.set(port, msg.tabId);
           addPanelPort(msg.tabId, port);
-        } else if (msg.type === "ACTION_REQUEST" || msg.type === "SET_DATA_REQUEST" || msg.type === "DELETE_DATA_REQUEST" || msg.type === "REMOVE_ALL_QUERIES_REQUEST" || msg.type === "CLEAR_ARRAY_REQUEST" || msg.type === "CLEAR_MUTATION_CACHE_REQUEST") {
+        } else if (
+          msg.type === "ACTION_REQUEST" ||
+          msg.type === "SET_DATA_REQUEST" ||
+          msg.type === "DELETE_DATA_REQUEST" ||
+          msg.type === "REMOVE_ALL_QUERIES_REQUEST" ||
+          msg.type === "CLEAR_ARRAY_REQUEST" ||
+          msg.type === "CLEAR_MUTATION_CACHE_REQUEST"
+        ) {
           const tabId = panelPortTabMap.get(port);
           if (tabId === undefined) return;
           const contentPort = contentPorts.get(tabId);
@@ -194,7 +208,14 @@ export default defineBackground(() => {
             .catch(() => {
               safePostMessage(port, { type: "SYNC_CLEAR" });
             });
-        } else if (msg.type === "ACTION_REQUEST" || msg.type === "SET_DATA_REQUEST" || msg.type === "DELETE_DATA_REQUEST" || msg.type === "REMOVE_ALL_QUERIES_REQUEST" || msg.type === "CLEAR_ARRAY_REQUEST" || msg.type === "CLEAR_MUTATION_CACHE_REQUEST") {
+        } else if (
+          msg.type === "ACTION_REQUEST" ||
+          msg.type === "SET_DATA_REQUEST" ||
+          msg.type === "DELETE_DATA_REQUEST" ||
+          msg.type === "REMOVE_ALL_QUERIES_REQUEST" ||
+          msg.type === "CLEAR_ARRAY_REQUEST" ||
+          msg.type === "CLEAR_MUTATION_CACHE_REQUEST"
+        ) {
           const tabId = panelPortTabMap.get(port);
           if (tabId === undefined) return;
           const contentPort = contentPorts.get(tabId);
@@ -210,5 +231,4 @@ export default defineBackground(() => {
       });
     }
   });
-
 });

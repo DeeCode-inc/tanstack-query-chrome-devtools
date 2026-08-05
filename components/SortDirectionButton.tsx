@@ -1,4 +1,4 @@
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import type { SortDirection } from "@/types/ui";
 
 interface SortDirectionButtonProps {
@@ -6,7 +6,10 @@ interface SortDirectionButtonProps {
   readonly onToggle: () => void;
 }
 
-export function SortDirectionButton({ direction, onToggle }: SortDirectionButtonProps) {
+export function SortDirectionButton({
+  direction,
+  onToggle,
+}: SortDirectionButtonProps) {
   const Icon = direction === "asc" ? ArrowUp : ArrowDown;
   const label = direction === "asc" ? "Asc" : "Desc";
 

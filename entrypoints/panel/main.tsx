@@ -6,8 +6,31 @@ import { useSyncConnection } from "@/hooks/useSyncConnection";
 const tabId = browser.devtools.inspectedWindow.tabId;
 
 function Panel() {
-  const { queries, mutations, connected, sendAction, sendSetData, sendDeleteData, sendRemoveAllQueries, sendClearArray, sendClearMutationCache } = useSyncConnection({ tabId, variant: "panel" });
-  return <ConnectionStatus variant="panel" queries={queries} mutations={mutations} connected={connected} sendAction={sendAction} sendSetData={sendSetData} sendDeleteData={sendDeleteData} sendRemoveAllQueries={sendRemoveAllQueries} sendClearArray={sendClearArray} sendClearMutationCache={sendClearMutationCache} />;
+  const {
+    queries,
+    mutations,
+    connected,
+    sendAction,
+    sendSetData,
+    sendDeleteData,
+    sendRemoveAllQueries,
+    sendClearArray,
+    sendClearMutationCache,
+  } = useSyncConnection({ tabId, variant: "panel" });
+  return (
+    <ConnectionStatus
+      variant="panel"
+      queries={queries}
+      mutations={mutations}
+      connected={connected}
+      sendAction={sendAction}
+      sendSetData={sendSetData}
+      sendDeleteData={sendDeleteData}
+      sendRemoveAllQueries={sendRemoveAllQueries}
+      sendClearArray={sendClearArray}
+      sendClearMutationCache={sendClearMutationCache}
+    />
+  );
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

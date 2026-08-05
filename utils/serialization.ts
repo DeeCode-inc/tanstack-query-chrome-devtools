@@ -1,5 +1,11 @@
 interface TypeSentinel {
-  readonly __tqcd_type: "bigint" | "date" | "function" | "symbol" | "map" | "set";
+  readonly __tqcd_type:
+    | "bigint"
+    | "date"
+    | "function"
+    | "symbol"
+    | "map"
+    | "set";
   readonly value?: string;
   readonly entries?: readonly unknown[];
 }
@@ -37,7 +43,11 @@ export function dateToWireString(date: Date): string {
   return isInvalidDate(date) ? INVALID_DATE_LABEL : date.toISOString();
 }
 
-function writeSlot(target: WriteTarget, key: string | number, val: unknown): void {
+function writeSlot(
+  target: WriteTarget,
+  key: string | number,
+  val: unknown,
+): void {
   if (typeof key === "number") {
     (target as unknown[])[key] = val;
   } else {
@@ -67,13 +77,21 @@ export function encodeBigInts(value: unknown): unknown {
 
     switch (typeof v) {
       case "bigint":
-        writeSlot(frame.target, frame.key, { __tqcd_type: "bigint", value: String(v) } as TypeSentinel);
+        writeSlot(frame.target, frame.key, {
+          __tqcd_type: "bigint",
+          value: String(v),
+        } satisfies TypeSentinel);
         continue;
       case "symbol":
-        writeSlot(frame.target, frame.key, { __tqcd_type: "symbol", value: v.description ?? "" } as TypeSentinel);
+        writeSlot(frame.target, frame.key, {
+          __tqcd_type: "symbol",
+          value: v.description ?? "",
+        } satisfies TypeSentinel);
         continue;
       case "function":
-        writeSlot(frame.target, frame.key, { __tqcd_type: "function" } as TypeSentinel);
+        writeSlot(frame.target, frame.key, {
+          __tqcd_type: "function",
+        } satisfies TypeSentinel);
         continue;
       case "string":
       case "number":
@@ -82,7 +100,7 @@ export function encodeBigInts(value: unknown): unknown {
         continue;
     }
 
-    const obj = v as object;
+    const obj = v;
     if (seen.has(obj)) {
       writeSlot(frame.target, frame.key, undefined);
       continue;
@@ -90,7 +108,10 @@ export function encodeBigInts(value: unknown): unknown {
     seen.add(obj);
 
     if (obj instanceof Date) {
-      writeSlot(frame.target, frame.key, { __tqcd_type: "date", value: dateToWireString(obj) } as TypeSentinel);
+      writeSlot(frame.target, frame.key, {
+        __tqcd_type: "date",
+        value: dateToWireString(obj),
+      } satisfies TypeSentinel);
       continue;
     }
 
@@ -107,12 +128,12 @@ export function encodeBigInts(value: unknown): unknown {
       const entries: [unknown, unknown][] = [];
       const sentinel = { __tqcd_type: "map" as const, entries };
       writeSlot(frame.target, frame.key, sentinel);
-      const mapEntries = Array.from(obj.entries());
-      for (let i = mapEntries.length - 1; i >= 0; i--) {
+      const mapEntries = Array.from(obj.entries()).reverse();
+      for (const [mapKey, mapValue] of mapEntries) {
         const pair: [unknown, unknown] = [undefined, undefined];
         entries.push(pair);
-        stack.push({ value: mapEntries[i][1], target: pair, key: 1 });
-        stack.push({ value: mapEntries[i][0], target: pair, key: 0 });
+        stack.push({ value: mapValue, target: pair, key: 1 });
+        stack.push({ value: mapKey, target: pair, key: 0 });
       }
       entries.reverse();
       continue;
@@ -132,9 +153,13 @@ export function encodeBigInts(value: unknown): unknown {
 
     const result: Record<string, unknown> = {};
     writeSlot(frame.target, frame.key, result);
-    const objEntries = Object.entries(obj as Record<string, unknown>);
-    for (let i = objEntries.length - 1; i >= 0; i--) {
-      stack.push({ value: objEntries[i][1], target: result, key: objEntries[i][0] });
+    const objEntries = Object.entries(obj as Record<string, unknown>).reverse();
+    for (const [entryKey, entryValue] of objEntries) {
+      stack.push({
+        value: entryValue,
+        target: result,
+        key: entryKey,
+      });
     }
   }
 
@@ -234,12 +259,31 @@ export function decodeBigInts(value: unknown): unknown {
         if (Array.isArray(obj.entries)) {
           const pairs = obj.entries as [unknown, unknown][];
           const entries: [unknown, unknown][] = [];
-          stack.push({ kind: "finalize-map", entries, target: frame.target, key: frame.key });
+          stack.push({
+            kind: "finalize-map",
+            entries,
+            target: frame.target,
+            key: frame.key,
+          });
+          // `pairs` aliases the incoming payload rather than a fresh array, so
+          // it must not be reversed in place. Its elements come from a cast of
+          // untrusted data and may not be well-formed pairs, hence `?.`.
           for (let i = pairs.length - 1; i >= 0; i--) {
+            const sourcePair = pairs[i];
             const pair: [unknown, unknown] = [undefined, undefined];
             entries.push(pair);
-            stack.push({ kind: "decode", value: pairs[i][1], target: pair, key: 1 });
-            stack.push({ kind: "decode", value: pairs[i][0], target: pair, key: 0 });
+            stack.push({
+              kind: "decode",
+              value: sourcePair?.[1],
+              target: pair,
+              key: 1,
+            });
+            stack.push({
+              kind: "decode",
+              value: sourcePair?.[0],
+              target: pair,
+              key: 0,
+            });
           }
           entries.reverse();
         }
@@ -249,9 +293,19 @@ export function decodeBigInts(value: unknown): unknown {
           const items = obj.entries as unknown[];
           const entries: unknown[] = [];
           entries.length = items.length;
-          stack.push({ kind: "finalize-set", entries, target: frame.target, key: frame.key });
+          stack.push({
+            kind: "finalize-set",
+            entries,
+            target: frame.target,
+            key: frame.key,
+          });
           for (let i = items.length - 1; i >= 0; i--) {
-            stack.push({ kind: "decode", value: items[i], target: entries, key: i });
+            stack.push({
+              kind: "decode",
+              value: items[i],
+              target: entries,
+              key: i,
+            });
           }
         }
         continue;
@@ -259,9 +313,14 @@ export function decodeBigInts(value: unknown): unknown {
 
     const result: Record<string, unknown> = {};
     writeSlot(frame.target, frame.key, result);
-    const objEntries = Object.entries(obj);
-    for (let i = objEntries.length - 1; i >= 0; i--) {
-      stack.push({ kind: "decode", value: objEntries[i][1], target: result, key: objEntries[i][0] });
+    const objEntries = Object.entries(obj).reverse();
+    for (const [entryKey, entryValue] of objEntries) {
+      stack.push({
+        kind: "decode",
+        value: entryValue,
+        target: result,
+        key: entryKey,
+      });
     }
   }
 
@@ -338,59 +397,72 @@ export function serializeToJsLiteral(
       return "() => {/* Function export is not supported */}";
   }
 
-  // value is object (non-null)
-  const obj = value as object;
+  if (ancestors.has(value)) return '"[Circular]"';
 
-  if (ancestors.has(obj)) return '"[Circular]"';
-
-  if (obj instanceof Date) {
+  if (value instanceof Date) {
     // `new Date(NaN)` is the faithful literal for an invalid Date — emitting
     // `new Date("Invalid Date")` would also work, but NaN states the intent.
-    if (isInvalidDate(obj)) return "new Date(NaN)";
+    if (isInvalidDate(value)) return "new Date(NaN)";
     // `toISOString()` is page-overridable and this literal lands on the user's
     // clipboard, so the result is escaped like every other emitted string.
-    return `new Date("${escapeString(obj.toISOString())}")`;
+    return `new Date("${escapeString(value.toISOString())}")`;
   }
 
   const childAncestors = new Set(ancestors);
-  childAncestors.add(obj);
+  childAncestors.add(value);
 
-  if (obj instanceof Map) {
-    const mapEntries = Array.from(obj.entries());
+  if (value instanceof Map) {
+    const mapEntries = Array.from(value.entries());
     if (mapEntries.length === 0) return "new Map([])";
     const items = mapEntries.map(
-      ([k, v]) => `[${serializeToJsLiteral(k, indent, childAncestors)}, ${serializeToJsLiteral(v, indent, childAncestors)}]`,
+      ([k, v]) =>
+        `[${serializeToJsLiteral(k, indent, childAncestors)}, ${serializeToJsLiteral(v, indent, childAncestors)}]`,
     );
-    const inner = items.map((item) =>
-      item.split("\n").map((line) => " ".repeat(indent) + line).join("\n"),
-    ).join(",\n");
+    const inner = items
+      .map((item) =>
+        item
+          .split("\n")
+          .map((line) => " ".repeat(indent) + line)
+          .join("\n"),
+      )
+      .join(",\n");
     return `new Map([\n${inner},\n])`;
   }
 
-  if (obj instanceof Set) {
-    const members = Array.from(obj.values());
+  if (value instanceof Set) {
+    const members = Array.from(value.values());
     if (members.length === 0) return "new Set([])";
-    const items = members.map(
-      (m) => serializeToJsLiteral(m, indent, childAncestors),
+    const items = members.map((m) =>
+      serializeToJsLiteral(m, indent, childAncestors),
     );
-    const inner = items.map((item) =>
-      item.split("\n").map((line) => " ".repeat(indent) + line).join("\n"),
-    ).join(",\n");
+    const inner = items
+      .map((item) =>
+        item
+          .split("\n")
+          .map((line) => " ".repeat(indent) + line)
+          .join("\n"),
+      )
+      .join(",\n");
     return `new Set([\n${inner},\n])`;
   }
 
-  if (Array.isArray(obj)) {
-    if (obj.length === 0) return "[]";
-    const items = obj.map(
-      (item) => serializeToJsLiteral(item, indent, childAncestors),
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+    const items = value.map((item) =>
+      serializeToJsLiteral(item, indent, childAncestors),
     );
-    const inner = items.map((item) =>
-      item.split("\n").map((line) => " ".repeat(indent) + line).join("\n"),
-    ).join(",\n");
+    const inner = items
+      .map((item) =>
+        item
+          .split("\n")
+          .map((line) => " ".repeat(indent) + line)
+          .join("\n"),
+      )
+      .join(",\n");
     return `[\n${inner},\n]`;
   }
 
-  const entries = Object.entries(obj as Record<string, unknown>);
+  const entries = Object.entries(value as Record<string, unknown>);
   if (entries.length === 0) return "{}";
 
   const lines = entries.map(([key, val]) => {
@@ -398,12 +470,12 @@ export function serializeToJsLiteral(
     const serializedVal = serializeToJsLiteral(val, indent, childAncestors);
     const valLines = serializedVal.split("\n");
     if (valLines.length === 1) {
-      return " ".repeat(indent) + `${formattedKey}: ${serializedVal}`;
+      return `${" ".repeat(indent)}${formattedKey}: ${serializedVal}`;
     }
-    const indented = valLines.map((line, i) =>
-      i === 0 ? line : " ".repeat(indent) + line,
-    ).join("\n");
-    return " ".repeat(indent) + `${formattedKey}: ${indented}`;
+    const indented = valLines
+      .map((line, i) => (i === 0 ? line : " ".repeat(indent) + line))
+      .join("\n");
+    return `${" ".repeat(indent)}${formattedKey}: ${indented}`;
   });
 
   return `{\n${lines.join(",\n")},\n}`;

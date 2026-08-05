@@ -1,12 +1,11 @@
 import { ArrowLeft } from "lucide-react";
-import type { MutationEntry } from "@/types/ui";
+import type { MutationEntry, MutationStatus } from "@/types/ui";
 import { formatAbsoluteTime } from "@/utils/format";
-import { STATUS_THEMES } from "@/utils/status-theme";
 import { stringifyWithBigInt } from "@/utils/serialization";
-import { TreeView } from "./TreeView";
-import { RelativeTime } from "./RelativeTime";
 import type { StatusTheme } from "@/utils/status-theme";
-import type { MutationStatus } from "@/types/ui";
+import { STATUS_THEMES } from "@/utils/status-theme";
+import { RelativeTime } from "./RelativeTime";
+import { TreeView } from "./TreeView";
 
 const MUTATION_THEME: Record<MutationStatus, StatusTheme> = {
   idle: STATUS_THEMES.paused,
@@ -51,44 +50,61 @@ export function MutationDetail({ mutation, onBack }: MutationDetailProps) {
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-1">
         <div className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Mutation key:</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize border ${theme.bg} ${theme.text} ${theme.border}`}>
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+              Mutation key:
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize border ${theme.bg} ${theme.text} ${theme.border}`}
+            >
               {mutation.status}
             </span>
           </div>
           <pre className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-all font-mono">
-            {mutation.mutationKey ? stringifyWithBigInt(mutation.mutationKey, 2) : "No mutation key"}
+            {mutation.mutationKey
+              ? stringifyWithBigInt(mutation.mutationKey, 2)
+              : "No mutation key"}
           </pre>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2" title={formatAbsoluteTime(mutation.timestamp)}>
+        <p
+          className="text-xs text-gray-500 dark:text-gray-400 mt-2"
+          title={formatAbsoluteTime(mutation.timestamp)}
+        >
           Submitted: <RelativeTime timestamp={mutation.timestamp} />
         </p>
       </div>
 
       <div className="px-4 py-3 space-y-4">
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Variables</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            Variables
+          </h3>
           <div className="text-sm">
             <TreeView data={mutation.variables} />
           </div>
         </section>
 
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Context</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            Context
+          </h3>
           <div className="text-sm">
             <TreeView data={mutation.context} />
           </div>
         </section>
 
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Data Explorer</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            Data Explorer
+          </h3>
           <div className="text-sm">
             <TreeView data={mutation.data} />
           </div>
         </section>
 
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Mutation Explorer</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            Mutation Explorer
+          </h3>
           <div className="text-sm">
             <TreeView data={mutation.state} />
           </div>

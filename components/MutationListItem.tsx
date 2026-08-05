@@ -1,4 +1,4 @@
-import { Circle, Loader, CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, Circle, Loader, XCircle } from "lucide-react";
 import type { MutationEntry } from "@/types/ui";
 import { formatAbsoluteTime } from "@/utils/format";
 import { stringifyWithBigInt } from "@/utils/serialization";
@@ -13,15 +13,26 @@ interface MutationListItemProps {
 
 const statusIcons = {
   idle: <Circle className="size-4 text-gray-400 dark:text-gray-500" />,
-  pending: <Loader className="size-4 animate-spin text-yellow-500 dark:text-yellow-400" />,
-  success: <CheckCircle className="size-4 text-green-500 dark:text-green-400" />,
+  pending: (
+    <Loader className="size-4 animate-spin text-yellow-500 dark:text-yellow-400" />
+  ),
+  success: (
+    <CheckCircle className="size-4 text-green-500 dark:text-green-400" />
+  ),
   error: <XCircle className="size-4 text-red-500 dark:text-red-400" />,
 } as const;
 
-export function MutationListItem({ mutation, index, isSelected, onSelect }: MutationListItemProps) {
+export function MutationListItem({
+  mutation,
+  index,
+  isSelected,
+  onSelect,
+}: MutationListItemProps) {
   return (
-    <div
-      className={`flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer ${isSelected ? "bg-blue-50 dark:bg-blue-900/30" : ""}`}
+    <button
+      type="button"
+      aria-pressed={isSelected}
+      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer ${isSelected ? "bg-blue-50 dark:bg-blue-900/30" : ""}`}
       onClick={onSelect}
     >
       <span className="shrink-0">{statusIcons[mutation.status]}</span>
@@ -36,6 +47,6 @@ export function MutationListItem({ mutation, index, isSelected, onSelect }: Muta
       >
         <RelativeTime timestamp={mutation.timestamp} />
       </span>
-    </div>
+    </button>
   );
 }

@@ -54,7 +54,7 @@ tests/
 
 ## Commands
 
-npm test && npm run lint
+pnpm lint && pnpm compile
 
 ## Code Style
 

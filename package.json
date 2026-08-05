@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.15.0",
   "type": "module",
+  "packageManager": "pnpm@11.20.0",
   "description": "TanStack Query DevTools",
   "license": "MIT",
   "homepage": "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools#readme",
@@ -23,33 +24,29 @@
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
-    "lint": "eslint .",
-    "prettier:format": "prettier --write .",
-    "prettier:check": "prettier --check .",
+    "lint": "biome lint",
+    "format": "biome format --write",
+    "check": "biome check",
+    "check:fix": "biome check --write",
+    "ci:biome": "biome ci --reporter=github",
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "@tanstack/query-core": "^5.96.2",
+    "@tanstack/query-core": "^5.101.4",
     "highlight.js": "^11.11.1",
-    "lucide-react": "^1.7.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "lucide-react": "^1.28.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@eslint/css": "^1.1.0",
-    "@eslint/markdown": "^8.0.1",
-    "@tailwindcss/vite": "^4.2.2",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
+    "@biomejs/biome": "2.5.6",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "@wxt-dev/module-react": "^1.2.2",
-    "eslint": "^9.39.4",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^6.1.1",
-    "prettier": "^3.8.1",
-    "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
-    "typescript-eslint": "^8.58.1",
-    "wxt": "^0.20.20"
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "wxt": "^0.21.3"
   }
 }

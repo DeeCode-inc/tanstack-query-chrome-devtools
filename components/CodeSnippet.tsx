@@ -1,7 +1,7 @@
-import { useState } from "react";
 import hljs from "highlight.js/lib/core";
 import typescript from "highlight.js/lib/languages/typescript";
-import { Copy, Check } from "lucide-react";
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
 
 hljs.registerLanguage("typescript", typescript);
 
@@ -11,7 +11,11 @@ interface CodeSnippetProps {
   preClassName?: string;
 }
 
-export function CodeSnippet({ code, language, preClassName }: CodeSnippetProps) {
+export function CodeSnippet({
+  code,
+  language,
+  preClassName,
+}: CodeSnippetProps) {
   const [copied, setCopied] = useState(false);
 
   const highlighted = hljs.highlight(code, { language }).value;
@@ -26,6 +30,7 @@ export function CodeSnippet({ code, language, preClassName }: CodeSnippetProps) 
   return (
     <div className="relative group">
       <button
+        type="button"
         onClick={handleCopy}
         className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-200/80 dark:bg-gray-700/80 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
         aria-label={copied ? "Copied" : "Copy to clipboard"}
@@ -36,8 +41,10 @@ export function CodeSnippet({ code, language, preClassName }: CodeSnippetProps) 
           <Copy className="size-4 text-gray-600 dark:text-gray-300" />
         )}
       </button>
-      <pre className={`hljs rounded-lg p-4 overflow-x-auto text-sm whitespace-pre-wrap border border-gray-300 dark:border-gray-600${preClassName ? ` ${preClassName}` : ""}`}>
-        {/* Safe: input is a hardcoded static string, not user content */}
+      <pre
+        className={`hljs rounded-lg p-4 overflow-x-auto text-sm whitespace-pre-wrap border border-gray-300 dark:border-gray-600${preClassName ? ` ${preClassName}` : ""}`}
+      >
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: highlight.js escapes the source text it is given, and `code` only ever receives hardcoded setup snippets, never user content. */}
         <code dangerouslySetInnerHTML={{ __html: highlighted }} />
       </pre>
     </div>

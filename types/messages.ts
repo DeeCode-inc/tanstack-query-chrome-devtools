@@ -1,6 +1,8 @@
-import type { QueryEntry, MutationEntry } from "./ui";
+import type { MutationEntry, QueryEntry } from "./ui";
 
-export interface MapKeySegment { readonly mapKey: string }
+export interface MapKeySegment {
+  readonly mapKey: string;
+}
 export type PathSegment = string | MapKeySegment;
 
 // === Bridge (MAIN ↔ ISOLATED) ===

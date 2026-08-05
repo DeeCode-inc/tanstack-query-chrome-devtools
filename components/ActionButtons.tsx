@@ -14,14 +14,38 @@ interface ButtonConfigInput {
   readonly isFakeError: boolean;
 }
 
-function getButtonConfig({ isFetching, isFakeLoading, isFakeError }: ButtonConfigInput): readonly ActionButtonConfig[] {
+function getButtonConfig({
+  isFetching,
+  isFakeLoading,
+  isFakeError,
+}: ButtonConfigInput): readonly ActionButtonConfig[] {
   const disableOthers = isFetching || isFakeLoading || isFakeError;
 
   return [
-    { label: "Refetch", textColor: "text-blue-600 dark:text-blue-400", action: "refetch", disabled: disableOthers },
-    { label: "Invalidate", textColor: "text-orange-500 dark:text-orange-400", action: "invalidate", disabled: disableOthers },
-    { label: "Reset", textColor: "text-gray-800 dark:text-white", action: "reset", disabled: disableOthers },
-    { label: "Remove", textColor: "text-pink-600 dark:text-pink-400", action: "remove", disabled: false },
+    {
+      label: "Refetch",
+      textColor: "text-blue-600 dark:text-blue-400",
+      action: "refetch",
+      disabled: disableOthers,
+    },
+    {
+      label: "Invalidate",
+      textColor: "text-orange-500 dark:text-orange-400",
+      action: "invalidate",
+      disabled: disableOthers,
+    },
+    {
+      label: "Reset",
+      textColor: "text-gray-800 dark:text-white",
+      action: "reset",
+      disabled: disableOthers,
+    },
+    {
+      label: "Remove",
+      textColor: "text-pink-600 dark:text-pink-400",
+      action: "remove",
+      disabled: false,
+    },
     {
       label: isFakeLoading ? "Restore Loading" : "Trigger Loading",
       textColor: "text-cyan-600 dark:text-cyan-400",
@@ -47,11 +71,23 @@ interface ActionButtonsProps {
   readonly onClearSelection?: () => void;
 }
 
-export function ActionButtons({ queryHash, queryState, isActive, isDisabled, observerCount, sendAction, onClearSelection }: ActionButtonsProps) {
+export function ActionButtons({
+  queryHash,
+  queryState,
+  isActive,
+  isDisabled,
+  observerCount,
+  sendAction,
+  onClearSelection,
+}: ActionButtonsProps) {
   const forceDisableAll = isDisabled || !isActive || !observerCount;
   const isFetching = queryState.fetchStatus === "fetching";
-  const isFakeLoading = queryState.fetchMeta?.__previousQueryOptions != null && queryState.status === "pending";
-  const isFakeError = queryState.fetchMeta?.__previousQueryOptions != null && queryState.status === "error";
+  const isFakeLoading =
+    queryState.fetchMeta?.__previousQueryOptions != null &&
+    queryState.status === "pending";
+  const isFakeError =
+    queryState.fetchMeta?.__previousQueryOptions != null &&
+    queryState.status === "error";
   const buttons = getButtonConfig({ isFetching, isFakeLoading, isFakeError });
 
   function handleClick(action: ActionType) {
@@ -64,10 +100,21 @@ export function ActionButtons({ queryHash, queryState, isActive, isDisabled, obs
   return (
     <div className="grid grid-cols-3 gap-2">
       {buttons.map((button) => {
-        const isTriggerButton = button.action === "triggerLoading" || button.action === "restoreLoading" || button.action === "triggerError" || button.action === "restoreError";
-        const disabled = (isTriggerButton && forceDisableAll) || button.disabled;
+        const isTriggerButton =
+          button.action === "triggerLoading" ||
+          button.action === "restoreLoading" ||
+          button.action === "triggerError" ||
+          button.action === "restoreError";
+        const disabled =
+          (isTriggerButton && forceDisableAll) || button.disabled;
         return (
-          <button type="button" key={button.action} disabled={disabled} className={`w-full px-2 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-xs font-medium cursor-default hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all duration-150 ${button.textColor}${disabled ? " opacity-50 cursor-not-allowed" : ""}`} onClick={disabled ? undefined : () => handleClick(button.action)}>
+          <button
+            type="button"
+            key={button.action}
+            disabled={disabled}
+            className={`w-full px-2 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-xs font-medium cursor-default hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all duration-150 ${button.textColor}${disabled ? " opacity-50 cursor-not-allowed" : ""}`}
+            onClick={disabled ? undefined : () => handleClick(button.action)}
+          >
             {button.label}
           </button>
         );
