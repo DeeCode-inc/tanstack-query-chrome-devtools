@@ -7,10 +7,16 @@ interface TabToggleProps {
   readonly mutationCount: number;
 }
 
-export function TabToggle({ activeTab, onTabChange, queryCount, mutationCount }: TabToggleProps) {
+export function TabToggle({
+  activeTab,
+  onTabChange,
+  queryCount,
+  mutationCount,
+}: TabToggleProps) {
   return (
     <div className="flex gap-1">
       <button
+        type="button"
         className={
           activeTab === "queries"
             ? "px-3 py-1 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-medium text-sm"
@@ -21,6 +27,7 @@ export function TabToggle({ activeTab, onTabChange, queryCount, mutationCount }:
         Queries ({queryCount})
       </button>
       <button
+        type="button"
         className={
           activeTab === "mutations"
             ? "px-3 py-1 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-medium text-sm"

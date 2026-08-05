@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import type { QueryEntry, MutationEntry, LayoutVariant } from "@/types/ui";
-import type { PortMessage, ChangeEvent, ActionType, PathSegment } from "@/types/messages";
+import type {
+  ActionType,
+  ChangeEvent,
+  PathSegment,
+  PortMessage,
+} from "@/types/messages";
+import type { LayoutVariant, MutationEntry, QueryEntry } from "@/types/ui";
 import { decodeBigInts } from "@/utils/serialization";
 
 interface SyncState {
@@ -10,7 +15,11 @@ interface SyncState {
 }
 
 type SyncAction =
-  | { type: "SNAPSHOT"; queries: readonly QueryEntry[]; mutations: readonly MutationEntry[] }
+  | {
+      type: "SNAPSHOT";
+      queries: readonly QueryEntry[];
+      mutations: readonly MutationEntry[];
+    }
   | { type: "UPDATE"; changes: readonly ChangeEvent[] }
   | { type: "DISCONNECTED" }
   | { type: "CLEAR" };
@@ -64,9 +73,14 @@ interface UseSyncConnectionOptions {
   variant: LayoutVariant;
 }
 
-export function useSyncConnection({ tabId, variant }: UseSyncConnectionOptions) {
+export function useSyncConnection({
+  tabId,
+  variant,
+}: UseSyncConnectionOptions) {
   const [state, dispatch] = useReducer(syncReducer, initialState);
-  const portRef = useRef<ReturnType<typeof browser.runtime.connect> | null>(null);
+  const portRef = useRef<ReturnType<typeof browser.runtime.connect> | null>(
+    null,
+  );
 
   useEffect(() => {
     let retries = 0;
@@ -94,11 +108,16 @@ export function useSyncConnection({ tabId, variant }: UseSyncConnectionOptions) 
             dispatch({
               type: "SNAPSHOT",
               queries: decodeBigInts(msg.queries) as readonly QueryEntry[],
-              mutations: decodeBigInts(msg.mutations) as readonly MutationEntry[],
+              mutations: decodeBigInts(
+                msg.mutations,
+              ) as readonly MutationEntry[],
             });
             break;
           case "SYNC_UPDATE":
-            dispatch({ type: "UPDATE", changes: decodeBigInts(msg.changes) as readonly ChangeEvent[] });
+            dispatch({
+              type: "UPDATE",
+              changes: decodeBigInts(msg.changes) as readonly ChangeEvent[],
+            });
             break;
           case "SYNC_DISCONNECTED":
             dispatch({ type: "DISCONNECTED" });
@@ -148,22 +167,32 @@ export function useSyncConnection({ tabId, variant }: UseSyncConnectionOptions) 
     } as PortMessage);
   }, []);
 
-  const sendSetData = useCallback((queryHash: string, path: readonly PathSegment[], value: string | number | boolean) => {
-    portRef.current?.postMessage({
-      type: "SET_DATA_REQUEST",
-      queryHash,
-      path,
-      value,
-    } as PortMessage);
-  }, []);
+  const sendSetData = useCallback(
+    (
+      queryHash: string,
+      path: readonly PathSegment[],
+      value: string | number | boolean,
+    ) => {
+      portRef.current?.postMessage({
+        type: "SET_DATA_REQUEST",
+        queryHash,
+        path,
+        value,
+      } as PortMessage);
+    },
+    [],
+  );
 
-  const sendDeleteData = useCallback((queryHash: string, path: readonly PathSegment[]) => {
-    portRef.current?.postMessage({
-      type: "DELETE_DATA_REQUEST",
-      queryHash,
-      path,
-    } as PortMessage);
-  }, []);
+  const sendDeleteData = useCallback(
+    (queryHash: string, path: readonly PathSegment[]) => {
+      portRef.current?.postMessage({
+        type: "DELETE_DATA_REQUEST",
+        queryHash,
+        path,
+      } as PortMessage);
+    },
+    [],
+  );
 
   const sendRemoveAllQueries = useCallback(() => {
     portRef.current?.postMessage({
@@ -171,13 +200,16 @@ export function useSyncConnection({ tabId, variant }: UseSyncConnectionOptions) 
     } as PortMessage);
   }, []);
 
-  const sendClearArray = useCallback((queryHash: string, path: readonly PathSegment[]) => {
-    portRef.current?.postMessage({
-      type: "CLEAR_ARRAY_REQUEST",
-      queryHash,
-      path,
-    } as PortMessage);
-  }, []);
+  const sendClearArray = useCallback(
+    (queryHash: string, path: readonly PathSegment[]) => {
+      portRef.current?.postMessage({
+        type: "CLEAR_ARRAY_REQUEST",
+        queryHash,
+        path,
+      } as PortMessage);
+    },
+    [],
+  );
 
   const sendClearMutationCache = useCallback(() => {
     portRef.current?.postMessage({

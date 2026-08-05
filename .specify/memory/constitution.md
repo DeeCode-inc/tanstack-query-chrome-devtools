@@ -133,11 +133,11 @@
 
 ## Development Workflow
 
-- `wxt` for development (`npm run dev` / `npm run dev:firefox`)
+- `wxt` for development (`pnpm dev` / `pnpm dev:firefox`)
 - `wxt build` for production builds
-- `tsc --noEmit` for type checking (`npm run compile`)
-- `eslint .` for linting (`npm run lint`)
-- `prettier` for formatting (`npm run prettier:format`)
+- `tsc --noEmit` for type checking (`pnpm compile`)
+- `eslint .` for linting (`pnpm lint`)
+- `prettier` for formatting (`pnpm prettier:format`)
 - All PRs MUST pass `compile`, `lint`, and `prettier:check` before
   merge.
 - Every new UI component MUST be verified in both dark and light

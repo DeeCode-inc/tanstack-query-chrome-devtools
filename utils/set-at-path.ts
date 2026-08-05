@@ -1,6 +1,8 @@
 import type { PathSegment } from "@/types/messages";
 
-function isMapKeySegment(segment: PathSegment): segment is { readonly mapKey: string } {
+function isMapKeySegment(
+  segment: PathSegment,
+): segment is { readonly mapKey: string } {
   return typeof segment === "object" && "mapKey" in segment;
 }
 
@@ -64,18 +66,27 @@ function deepClone(value: unknown, seen = new Map<object, object>()): unknown {
   return clone;
 }
 
-export function setAtPath(obj: unknown, path: readonly PathSegment[], value: unknown): unknown {
+export function setAtPath(
+  obj: unknown,
+  path: readonly PathSegment[],
+  value: unknown,
+): unknown {
   const clone = deepClone(obj);
   if (path.length === 0) return value;
 
   let current: unknown = clone;
-  for (let i = 0; i < path.length - 1; i++) {
-    current = navigateSegment(current, path[i]);
+  for (const segment of path.slice(0, -1)) {
+    current = navigateSegment(current, segment);
     if (current === undefined) return clone;
   }
 
   const lastSegment = path[path.length - 1];
-  if (current == null || typeof current !== "object" || lastSegment === undefined) return clone;
+  if (
+    current == null ||
+    typeof current !== "object" ||
+    lastSegment === undefined
+  )
+    return clone;
 
   if (isMapKeySegment(lastSegment)) {
     if (current instanceof Map) {
@@ -98,18 +109,26 @@ export function setAtPath(obj: unknown, path: readonly PathSegment[], value: unk
   return clone;
 }
 
-export function deleteAtPath(obj: unknown, path: readonly PathSegment[]): unknown {
+export function deleteAtPath(
+  obj: unknown,
+  path: readonly PathSegment[],
+): unknown {
   const clone = deepClone(obj);
   if (path.length === 0) return clone;
 
   let current: unknown = clone;
-  for (let i = 0; i < path.length - 1; i++) {
-    current = navigateSegment(current, path[i]);
+  for (const segment of path.slice(0, -1)) {
+    current = navigateSegment(current, segment);
     if (current === undefined) return clone;
   }
 
   const lastSegment = path[path.length - 1];
-  if (current == null || typeof current !== "object" || lastSegment === undefined) return clone;
+  if (
+    current == null ||
+    typeof current !== "object" ||
+    lastSegment === undefined
+  )
+    return clone;
 
   if (isMapKeySegment(lastSegment)) {
     if (current instanceof Map) {

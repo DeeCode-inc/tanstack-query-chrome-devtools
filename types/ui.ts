@@ -1,7 +1,12 @@
 export type MutationStatus = "idle" | "pending" | "success" | "error";
 export type ActiveTab = "queries" | "mutations";
 export type LayoutVariant = "popup" | "panel";
-export type QueryDisplayStatus = "fresh" | "fetching" | "paused" | "stale" | "inactive";
+export type QueryDisplayStatus =
+  | "fresh"
+  | "fetching"
+  | "paused"
+  | "stale"
+  | "inactive";
 
 export interface QueryState {
   readonly data: unknown;

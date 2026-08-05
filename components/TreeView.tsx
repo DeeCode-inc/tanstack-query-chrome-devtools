@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
-import { ChevronRight, Trash2, Copy, Check, ListX } from "lucide-react";
-import { dateToWireString, serializeToJsLiteral } from "@/utils/serialization";
+import { Check, ChevronRight, Copy, ListX, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { PathSegment } from "@/types/messages";
+import { dateToWireString, serializeToJsLiteral } from "@/utils/serialization";
 
 interface TreeViewProps {
   readonly data: unknown;
@@ -10,12 +10,26 @@ interface TreeViewProps {
   readonly ancestors?: ReadonlySet<object>;
   readonly editable?: boolean;
   readonly path?: readonly PathSegment[];
-  readonly onFieldChange?: (path: readonly PathSegment[], value: string | number | boolean) => void;
+  readonly onFieldChange?: (
+    path: readonly PathSegment[],
+    value: string | number | boolean,
+  ) => void;
   readonly onFieldDelete?: (path: readonly PathSegment[]) => void;
   readonly onArrayClear?: (path: readonly PathSegment[]) => void;
 }
 
-function StringInput({ value, path, onFieldChange }: { readonly value: string; readonly path: readonly PathSegment[]; readonly onFieldChange: (path: readonly PathSegment[], value: string | number | boolean) => void }) {
+function StringInput({
+  value,
+  path,
+  onFieldChange,
+}: {
+  readonly value: string;
+  readonly path: readonly PathSegment[];
+  readonly onFieldChange: (
+    path: readonly PathSegment[],
+    value: string | number | boolean,
+  ) => void;
+}) {
   const [local, setLocal] = useState(value);
   const focusedRef = useRef(false);
 
@@ -46,7 +60,18 @@ function StringInput({ value, path, onFieldChange }: { readonly value: string; r
   );
 }
 
-function NumberInput({ value, path, onFieldChange }: { readonly value: number; readonly path: readonly PathSegment[]; readonly onFieldChange: (path: readonly PathSegment[], value: string | number | boolean) => void }) {
+function NumberInput({
+  value,
+  path,
+  onFieldChange,
+}: {
+  readonly value: number;
+  readonly path: readonly PathSegment[];
+  readonly onFieldChange: (
+    path: readonly PathSegment[],
+    value: string | number | boolean,
+  ) => void;
+}) {
   const [local, setLocal] = useState(String(value));
   const focusedRef = useRef(false);
 
@@ -81,28 +106,95 @@ function NumberInput({ value, path, onFieldChange }: { readonly value: number; r
   );
 }
 
-function BooleanInput({ value, path, onFieldChange }: { readonly value: boolean; readonly path: readonly PathSegment[]; readonly onFieldChange: (path: readonly PathSegment[], value: string | number | boolean) => void }) {
+function BooleanInput({
+  value,
+  path,
+  onFieldChange,
+}: {
+  readonly value: boolean;
+  readonly path: readonly PathSegment[];
+  readonly onFieldChange: (
+    path: readonly PathSegment[],
+    value: string | number | boolean,
+  ) => void;
+}) {
   return (
     <label className="flex items-center gap-1 flex-1 min-w-10 cursor-pointer">
-      <input type="checkbox" checked={value} onChange={() => onFieldChange(path, !value)} />
-      <span className="text-yellow-600 dark:text-yellow-400">{String(value)}</span>
+      <input
+        type="checkbox"
+        checked={value}
+        onChange={() => onFieldChange(path, !value)}
+      />
+      <span className="text-yellow-600 dark:text-yellow-400">
+        {String(value)}
+      </span>
     </label>
   );
 }
 
-function DeleteButton({ path, onFieldDelete }: { readonly path: readonly PathSegment[]; readonly onFieldDelete: (path: readonly PathSegment[]) => void }) {
+function DeleteButton({
+  path,
+  onFieldDelete,
+}: {
+  readonly path: readonly PathSegment[];
+  readonly onFieldDelete: (path: readonly PathSegment[]) => void;
+}) {
   return (
-    <button type="button" title="Delete field" className="ml-auto shrink-0 text-gray-400 hover:text-red-500 cursor-pointer" onClick={() => onFieldDelete(path)}>
+    <button
+      type="button"
+      title="Delete field"
+      className="ml-auto shrink-0 text-gray-400 hover:text-red-500 cursor-pointer"
+      onClick={() => onFieldDelete(path)}
+    >
       <Trash2 size={12} />
     </button>
   );
 }
 
-function CollapsibleNode({ label, entries, isArray, summaryOverride, showClearButton, childSegments, depth, ancestors, editable, path, data, onFieldChange, onFieldDelete, onArrayClear }: { readonly label?: string; readonly entries: readonly (readonly [string, unknown])[]; readonly isArray: boolean; readonly summaryOverride?: string; readonly showClearButton?: boolean; readonly childSegments?: readonly PathSegment[]; readonly depth: number; readonly ancestors: ReadonlySet<object>; readonly editable: boolean; readonly path: readonly PathSegment[]; readonly data: unknown; readonly onFieldChange?: (path: readonly PathSegment[], value: string | number | boolean) => void; readonly onFieldDelete?: (path: readonly PathSegment[]) => void; readonly onArrayClear?: (path: readonly PathSegment[]) => void }) {
+function CollapsibleNode({
+  label,
+  entries,
+  isArray,
+  summaryOverride,
+  showClearButton,
+  childSegments,
+  depth,
+  ancestors,
+  editable,
+  path,
+  data,
+  onFieldChange,
+  onFieldDelete,
+  onArrayClear,
+}: {
+  readonly label?: string;
+  readonly entries: readonly (readonly [string, unknown])[];
+  readonly isArray: boolean;
+  readonly summaryOverride?: string;
+  readonly showClearButton?: boolean;
+  readonly childSegments?: readonly PathSegment[];
+  readonly depth: number;
+  readonly ancestors: ReadonlySet<object>;
+  readonly editable: boolean;
+  readonly path: readonly PathSegment[];
+  readonly data: unknown;
+  readonly onFieldChange?: (
+    path: readonly PathSegment[],
+    value: string | number | boolean,
+  ) => void;
+  readonly onFieldDelete?: (path: readonly PathSegment[]) => void;
+  readonly onArrayClear?: (path: readonly PathSegment[]) => void;
+}) {
   const [expanded, setExpanded] = useState(depth === 0);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">(
+    "idle",
+  );
 
-  const summary = summaryOverride ?? (isArray ? `Array (${entries.length} element${entries.length !== 1 ? "s" : ""})` : `Object (${entries.length} entr${entries.length !== 1 ? "ies" : "y"})`);
+  const summary =
+    summaryOverride ??
+    (isArray
+      ? `Array (${entries.length} element${entries.length !== 1 ? "s" : ""})`
+      : `Object (${entries.length} entr${entries.length !== 1 ? "ies" : "y"})`);
 
   const shouldShowClear = showClearButton ?? isArray;
 
@@ -123,27 +215,68 @@ function CollapsibleNode({ label, entries, isArray, summaryOverride, showClearBu
   return (
     <div>
       <div className="flex items-center">
-        <button type="button" className="flex items-center gap-1 hover:underline cursor-pointer" onClick={() => setExpanded((e) => !e)}>
-          <ChevronRight size={14} className={`text-blue-600 dark:text-blue-400 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`} />
-          {label && <span className="text-green-700 dark:text-green-400">{label}:</span>}
+        <button
+          type="button"
+          className="flex items-center gap-1 hover:underline cursor-pointer"
+          onClick={() => setExpanded((e) => !e)}
+        >
+          <ChevronRight
+            size={14}
+            className={`text-blue-600 dark:text-blue-400 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
+          />
+          {label && (
+            <span className="text-green-700 dark:text-green-400">{label}:</span>
+          )}
           <span className="text-blue-600 dark:text-blue-400">{summary}</span>
         </button>
         <div className="ml-auto flex items-center">
-          <button type="button" title={copyState === "copied" ? "Copied!" : copyState === "error" ? "Copy failed" : "Copy value"} className={`ml-1 shrink-0 cursor-pointer ${copyState === "copied" ? "text-green-500" : copyState === "error" ? "text-red-500" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`} onClick={handleCopy}>
+          <button
+            type="button"
+            title={
+              copyState === "copied"
+                ? "Copied!"
+                : copyState === "error"
+                  ? "Copy failed"
+                  : "Copy value"
+            }
+            className={`ml-1 shrink-0 cursor-pointer ${copyState === "copied" ? "text-green-500" : copyState === "error" ? "text-red-500" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
+            onClick={handleCopy}
+          >
             {copyState === "copied" ? <Check size={12} /> : <Copy size={12} />}
           </button>
-          {editable && shouldShowClear && entries.length > 0 && onArrayClear && (
-            <button type="button" title="Clear array" className="ml-1 shrink-0 text-gray-400 hover:text-orange-500 cursor-pointer" onClick={() => onArrayClear(path)}>
-              <ListX size={12} />
-            </button>
+          {editable &&
+            shouldShowClear &&
+            entries.length > 0 &&
+            onArrayClear && (
+              <button
+                type="button"
+                title="Clear array"
+                className="ml-1 shrink-0 text-gray-400 hover:text-orange-500 cursor-pointer"
+                onClick={() => onArrayClear(path)}
+              >
+                <ListX size={12} />
+              </button>
+            )}
+          {editable && onFieldDelete && depth > 0 && (
+            <DeleteButton path={path} onFieldDelete={onFieldDelete} />
           )}
-          {editable && onFieldDelete && depth > 0 && <DeleteButton path={path} onFieldDelete={onFieldDelete} />}
         </div>
       </div>
       {expanded && (
         <div className="pl-4">
           {entries.map(([key, value], index) => (
-            <TreeView key={key} data={value} label={key} depth={depth + 1} ancestors={ancestors} editable={editable} path={[...path, childSegments ? childSegments[index] : key]} onFieldChange={onFieldChange} onFieldDelete={onFieldDelete} onArrayClear={onArrayClear} />
+            <TreeView
+              key={key}
+              data={value}
+              label={key}
+              depth={depth + 1}
+              ancestors={ancestors}
+              editable={editable}
+              path={[...path, childSegments?.[index] ?? key]}
+              onFieldChange={onFieldChange}
+              onFieldDelete={onFieldDelete}
+              onArrayClear={onArrayClear}
+            />
           ))}
         </div>
       )}
@@ -151,23 +284,42 @@ function CollapsibleNode({ label, entries, isArray, summaryOverride, showClearBu
   );
 }
 
-export function TreeView({ data, label, depth = 0, ancestors = new Set(), editable = false, path = [], onFieldChange, onFieldDelete, onArrayClear }: TreeViewProps) {
+export function TreeView({
+  data,
+  label,
+  depth = 0,
+  ancestors = new Set(),
+  editable = false,
+  path = [],
+  onFieldChange,
+  onFieldDelete,
+  onArrayClear,
+}: TreeViewProps) {
   const labelSpan = label && (
-    <span title={label} className="font-mono shrink text-ellipsis overflow-hidden text-green-700 dark:text-green-400">
+    <span
+      title={label}
+      className="font-mono shrink text-ellipsis overflow-hidden text-green-700 dark:text-green-400"
+    >
       {label}:&nbsp;
     </span>
   );
 
-  const deleteBtn = editable && onFieldDelete && depth > 0 && <DeleteButton path={path} onFieldDelete={onFieldDelete} />;
+  const deleteBtn = editable && onFieldDelete && depth > 0 && (
+    <DeleteButton path={path} onFieldDelete={onFieldDelete} />
+  );
 
   if (data === undefined || data === null) {
     if (depth === 0) {
-      return <p className="text-sm text-gray-500 dark:text-gray-400">No data</p>;
+      return (
+        <p className="text-sm text-gray-500 dark:text-gray-400">No data</p>
+      );
     }
     return (
       <div className="flex items-center gap-1">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400">{data === null ? "null" : "undefined"}</span>
+        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400">
+          {data === null ? "null" : "undefined"}
+        </span>
         {deleteBtn}
       </div>
     );
@@ -177,7 +329,9 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
     return (
       <div className="flex items-center gap-1">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-purple-600 dark:text-purple-400">{String(data)}n</span>
+        <span className="flex-1 truncate min-w-10 text-purple-600 dark:text-purple-400">
+          {String(data)}n
+        </span>
         {deleteBtn}
       </div>
     );
@@ -188,7 +342,11 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
       <div className="flex items-center gap-1">
         {labelSpan}
         <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400">
-          Symbol(<span className="text-amber-600 dark:text-amber-400">{data.description ?? ""}</span>)
+          Symbol(
+          <span className="text-amber-600 dark:text-amber-400">
+            {data.description ?? ""}
+          </span>
+          )
         </span>
         {deleteBtn}
       </div>
@@ -199,7 +357,9 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
     return (
       <div className="flex items-center gap-1">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400 italic">fn</span>
+        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400 italic">
+          fn
+        </span>
         {deleteBtn}
       </div>
     );
@@ -210,7 +370,11 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
       return (
         <div className="flex items-center gap-1">
           {labelSpan}
-          <BooleanInput value={data} path={path} onFieldChange={onFieldChange} />
+          <BooleanInput
+            value={data}
+            path={path}
+            onFieldChange={onFieldChange}
+          />
           {deleteBtn}
         </div>
       );
@@ -218,7 +382,9 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
     return (
       <div className="flex items-center gap-1">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-yellow-600 dark:text-yellow-400">{String(data)}</span>
+        <span className="flex-1 truncate min-w-10 text-yellow-600 dark:text-yellow-400">
+          {String(data)}
+        </span>
         {deleteBtn}
       </div>
     );
@@ -237,7 +403,9 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
     return (
       <div className="flex items-center">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">&quot;{data}&quot;</span>
+        <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
+          &quot;{data}&quot;
+        </span>
         {deleteBtn}
       </div>
     );
@@ -256,7 +424,9 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
     return (
       <div className="flex items-center">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">{String(data as number)}</span>
+        <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
+          {String(data as number)}
+        </span>
         {deleteBtn}
       </div>
     );
@@ -266,7 +436,9 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
     return (
       <div className="flex items-center">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-blue-600 dark:text-blue-400">{dateToWireString(data)}</span>
+        <span className="flex-1 truncate min-w-10 text-blue-600 dark:text-blue-400">
+          {dateToWireString(data)}
+        </span>
         {deleteBtn}
       </div>
     );
@@ -276,7 +448,9 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
     return (
       <div className="flex items-center">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400">[Circular]</span>
+        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400">
+          [Circular]
+        </span>
         {deleteBtn}
       </div>
     );
@@ -288,7 +462,16 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
   if (data instanceof Map) {
     const mapEntries = Array.from(data.entries());
     const displayEntries = mapEntries.map(([k, v]) => {
-      const keyLabel = k === null ? "null" : k === undefined ? "undefined" : typeof k === "object" ? "[Object]" : typeof k === "function" ? "[Function]" : String(k);
+      const keyLabel =
+        k === null
+          ? "null"
+          : k === undefined
+            ? "undefined"
+            : typeof k === "object"
+              ? "[Object]"
+              : typeof k === "function"
+                ? "[Function]"
+                : String(k);
       return [keyLabel, v] as const;
     });
     const n = mapEntries.length;
@@ -298,15 +481,35 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
       return (
         <div className="flex items-center">
           {labelSpan}
-          <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">Map (0 entries)</span>
+          <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
+            Map (0 entries)
+          </span>
           {deleteBtn}
         </div>
       );
     }
 
-    const childSegments = mapEntries.map(([k]) => ({ mapKey: String(k) }) as PathSegment);
+    const childSegments = mapEntries.map(
+      ([k]) => ({ mapKey: String(k) }) as PathSegment,
+    );
 
-    return <CollapsibleNode label={label} entries={displayEntries} isArray={false} summaryOverride={summary} childSegments={childSegments} depth={depth} ancestors={childAncestors} editable={editable} path={path} data={data} onFieldChange={onFieldChange} onFieldDelete={onFieldDelete} onArrayClear={onArrayClear} />;
+    return (
+      <CollapsibleNode
+        label={label}
+        entries={displayEntries}
+        isArray={false}
+        summaryOverride={summary}
+        childSegments={childSegments}
+        depth={depth}
+        ancestors={childAncestors}
+        editable={editable}
+        path={path}
+        data={data}
+        onFieldChange={onFieldChange}
+        onFieldDelete={onFieldDelete}
+        onArrayClear={onArrayClear}
+      />
+    );
   }
 
   if (data instanceof Set) {
@@ -319,27 +522,63 @@ export function TreeView({ data, label, depth = 0, ancestors = new Set(), editab
       return (
         <div className="flex items-center">
           {labelSpan}
-          <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">Set (0 entries)</span>
+          <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
+            Set (0 entries)
+          </span>
           {deleteBtn}
         </div>
       );
     }
 
-    return <CollapsibleNode label={label} entries={displayEntries} isArray={false} summaryOverride={summary} showClearButton={true} depth={depth} ancestors={childAncestors} editable={editable} path={path} data={data} onFieldChange={onFieldChange} onFieldDelete={onFieldDelete} onArrayClear={onArrayClear} />;
+    return (
+      <CollapsibleNode
+        label={label}
+        entries={displayEntries}
+        isArray={false}
+        summaryOverride={summary}
+        showClearButton={true}
+        depth={depth}
+        ancestors={childAncestors}
+        editable={editable}
+        path={path}
+        data={data}
+        onFieldChange={onFieldChange}
+        onFieldDelete={onFieldDelete}
+        onArrayClear={onArrayClear}
+      />
+    );
   }
 
   const isArray = Array.isArray(data);
-  const entries = isArray ? (data as unknown[]).map((value, index) => [String(index), value] as const) : Object.entries(data as Record<string, unknown>);
+  const entries = isArray
+    ? (data as unknown[]).map((value, index) => [String(index), value] as const)
+    : Object.entries(data as Record<string, unknown>);
 
   if (entries.length === 0) {
     return (
       <div className="flex items-center">
         {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">{isArray ? "[]" : "{}"}</span>
+        <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
+          {isArray ? "[]" : "{}"}
+        </span>
         {deleteBtn}
       </div>
     );
   }
 
-  return <CollapsibleNode label={label} entries={entries} isArray={isArray} depth={depth} ancestors={childAncestors} editable={editable} path={path} data={data} onFieldChange={onFieldChange} onFieldDelete={onFieldDelete} onArrayClear={onArrayClear} />;
+  return (
+    <CollapsibleNode
+      label={label}
+      entries={entries}
+      isArray={isArray}
+      depth={depth}
+      ancestors={childAncestors}
+      editable={editable}
+      path={path}
+      data={data}
+      onFieldChange={onFieldChange}
+      onFieldDelete={onFieldDelete}
+      onArrayClear={onArrayClear}
+    />
+  );
 }

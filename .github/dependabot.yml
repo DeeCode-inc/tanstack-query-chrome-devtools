@@ -1,6 +1,8 @@
 version: 2
 updates:
-  - package-ecosystem: "npm" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # pnpm is covered by the "npm" ecosystem value
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
       interval: daily
+    open-pull-requests-limit: 10

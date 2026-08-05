@@ -1,5 +1,5 @@
-import { defineConfig } from "wxt";
 import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "wxt";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -13,8 +13,10 @@ export default defineConfig({
       },
     },
     version: "1.0.2",
-    description: "DevTools extension for debugging TanStack Query applications. Inspect queries, mutations, and cache state in real-time.",
-    homepage_url: "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools",
+    description:
+      "DevTools extension for debugging TanStack Query applications. Inspect queries, mutations, and cache state in real-time.",
+    homepage_url:
+      "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools",
     host_permissions: ["<all_urls>"],
     icons: {
       "16": "icon/icon-16.png",

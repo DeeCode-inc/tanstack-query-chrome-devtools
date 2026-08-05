@@ -46,9 +46,7 @@ Install directly from one of the browser add-on stores:
 The extension connects to your app by reading `window.__TANSTACK_QUERY_CLIENT__`. Add this to your app's entry point (e.g. `main.ts` / `main.tsx`):
 
 ```typescript
-const queryClient = new QueryClient({
-  /* ... */
-});
+const queryClient = new QueryClient({/* ... */});
 
 // TypeScript users: add the type declaration
 declare global {
@@ -71,7 +69,7 @@ window.__TANSTACK_QUERY_CLIENT__ = queryClient;
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (LTS recommended)
-- [pnpm](https://pnpm.io/), [npm](https://www.npmjs.com/), or [yarn](https://yarnpkg.com/)
+- [pnpm](https://pnpm.io/)
 
 ### Setup
 
@@ -81,37 +79,38 @@ git clone https://github.com/DeeCode-inc/tanstack-query-chrome-devtools.git
 cd tanstack-query-chrome-devtools
 
 # Install dependencies
-npm install
+pnpm install
 
 # Start dev server (Chrome)
-npm run dev
+pnpm dev
 
 # Start dev server (Firefox)
-npm run dev:firefox
+pnpm dev:firefox
 ```
 
 ### Build
 
 ```bash
 # Production build (Chrome)
-npm run build
+pnpm build
 
 # Production build (Firefox)
-npm run build:firefox
+pnpm build:firefox
 
 # Package as .zip for store submission
-npm run zip
-npm run zip:firefox
+pnpm zip
+pnpm zip:firefox
 ```
 
 ### Other scripts
 
-| Command                   | Description                |
-| ------------------------- | -------------------------- |
-| `npm run lint`            | Run ESLint                 |
-| `npm run prettier:check`  | Check formatting           |
-| `npm run prettier:format` | Auto-format all files      |
-| `npm run compile`         | Type-check with TypeScript |
+| Command          | Description                                  |
+| ---------------- | -------------------------------------------- |
+| `pnpm check`     | Lint, format, and import-order check (Biome) |
+| `pnpm check:fix` | Apply Biome fixes and formatting             |
+| `pnpm lint`      | Lint only                                    |
+| `pnpm format`    | Auto-format all files                        |
+| `pnpm compile`   | Type-check with TypeScript                   |
 
 ## Tech Stack
 
@@ -119,6 +118,7 @@ npm run zip:firefox
 - [React 19](https://react.dev/) — UI
 - [Tailwind CSS 4](https://tailwindcss.com/) — styling
 - [TypeScript](https://www.typescriptlang.org/) — type safety
+- [Biome](https://biomejs.dev/) — linting and formatting
 - [@tanstack/query-core](https://tanstack.com/query) — query type definitions
 
 ## Architecture

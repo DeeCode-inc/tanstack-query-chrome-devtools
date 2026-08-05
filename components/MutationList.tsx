@@ -11,12 +11,21 @@ interface MutationListProps {
   readonly onRemoveAllMutations?: () => void;
 }
 
-export function MutationList({ mutations, selectedMutationId, onSelectMutation, onRemoveAllMutations }: MutationListProps) {
+export function MutationList({
+  mutations,
+  selectedMutationId,
+  onSelectMutation,
+  onRemoveAllMutations,
+}: MutationListProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="@container flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 justify-between w-full">
-          <StatusSummary items={mutations} getStatus={(m) => m.status} statusDefinitions={MUTATION_STATUS_DEFINITIONS} />
+          <StatusSummary
+            items={mutations}
+            getStatus={(m) => m.status}
+            statusDefinitions={MUTATION_STATUS_DEFINITIONS}
+          />
           {onRemoveAllMutations && (
             <button
               type="button"
@@ -32,7 +41,9 @@ export function MutationList({ mutations, selectedMutationId, onSelectMutation, 
       </div>
       {mutations.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">No mutations</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No mutations
+          </p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">

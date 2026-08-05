@@ -1,0 +1,74 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "includes": [
+      "**",
+      // The `specs` git submodule and the Spec Kit scaffolding are
+      // vendored, so they stay out of formatting and linting.
+      "!specs",
+      "!.specify",
+      "!.github/agents",
+      "!.github/prompts"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    // Matches the Prettier defaults this project used, so the migration
+    // does not reindent or rewrap every file.
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80
+  },
+  "linter": {
+    "enabled": true,
+    "domains": {
+      "react": "recommended",
+      "types": "recommended"
+    },
+    "rules": {
+      "preset": "recommended",
+      "nursery": {
+        // Preserves `@typescript-eslint/no-floating-promises`, which the old
+        // `recommendedTypeChecked` preset enforced and this codebase relies on
+        // (hence the `void` prefixes on fire-and-forget promises). Biome still
+        // classes it as nursery, so it may change in a future minor.
+        "noFloatingPromises": "error"
+      },
+      "style": {
+        // The ESLint setup this replaced did not enable
+        // `@typescript-eslint/no-non-null-assertion`, and the remaining
+        // assertions are provably safe (React root elements, `pop()` guarded
+        // by a `length > 0` loop).
+        "noNonNullAssertion": "off"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    }
+  },
+  "html": {
+    "formatter": {
+      // HTML formatting is still experimental in Biome, so it needs an opt-in.
+      // Verified to produce byte-identical output to Prettier on the three
+      // entrypoint documents.
+      "enabled": true,
+      "selfCloseVoidElements": "always"
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}

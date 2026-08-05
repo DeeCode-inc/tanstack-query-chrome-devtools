@@ -1,6 +1,6 @@
-import { ExtensionIcon } from "./ExtensionIcon";
-import { CodeSnippet } from "./CodeSnippet";
 import type { LayoutVariant } from "@/types/ui";
+import { CodeSnippet } from "./CodeSnippet";
+import { ExtensionIcon } from "./ExtensionIcon";
 
 const SETUP_CODE = `const queryClient = new QueryClient({/* ... */})
 
@@ -13,7 +13,7 @@ declare global {
 }
 
 // This code is for all users
-window.__TANSTACK_QUERY_CLIENT__ = queryClient`
+window.__TANSTACK_QUERY_CLIENT__ = queryClient`;
 
 const SETUP_CODE_COMPACT = `const queryClient = new QueryClient()
 
@@ -26,7 +26,7 @@ declare global {
   }
 }
 
-window.__TANSTACK_QUERY_CLIENT__ = queryClient`
+window.__TANSTACK_QUERY_CLIENT__ = queryClient`;
 
 interface SetupMessageProps {
   variant?: LayoutVariant;
@@ -41,10 +41,15 @@ export function SetupMessage({ variant = "panel" }: SetupMessageProps) {
           Connect Your App
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-          To use TanStack Query DevTools, add this code to your application where you create your QueryClient.
+          To use TanStack Query DevTools, add this code to your application
+          where you create your QueryClient.
         </p>
         <div className="w-full text-left">
-          <CodeSnippet code={SETUP_CODE_COMPACT} language="typescript" preClassName="text-xs" />
+          <CodeSnippet
+            code={SETUP_CODE_COMPACT}
+            language="typescript"
+            preClassName="text-xs"
+          />
         </div>
       </div>
     );
@@ -58,7 +63,8 @@ export function SetupMessage({ variant = "panel" }: SetupMessageProps) {
           Connect Your App
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-          To use TanStack Query DevTools, add this code to your application where you create your QueryClient.
+          To use TanStack Query DevTools, add this code to your application
+          where you create your QueryClient.
         </p>
         <div className="w-full max-w-lg text-left">
           <CodeSnippet code={SETUP_CODE} language="typescript" />
