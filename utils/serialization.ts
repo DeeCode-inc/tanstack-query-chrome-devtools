@@ -19,11 +19,18 @@ type WriteTarget = Record<string, unknown> | unknown[];
  *
  * `"Invalid Date"` is used as the wire value because `new Date("Invalid Date")`
  * decodes back to an equally invalid Date, keeping the round-trip faithful.
+ *
+ * The guard calls `Date.prototype.getTime.call(date)` rather than
+ * `date.getTime()`: `getTime` is an overridable method, while `toISOString`
+ * reads the internal [[DateValue]] slot and ignores any override. Going through
+ * the prototype keeps the guard reading the same slot as the call it protects,
+ * so an overridden `getTime` can neither hide a NaN time value nor introduce a
+ * throw where the unguarded code had none.
  */
 export const INVALID_DATE_LABEL = "Invalid Date";
 
 export function isInvalidDate(date: Date): boolean {
-  return Number.isNaN(date.getTime());
+  return Number.isNaN(Date.prototype.getTime.call(date));
 }
 
 export function dateToWireString(date: Date): string {
@@ -340,7 +347,9 @@ export function serializeToJsLiteral(
     // `new Date(NaN)` is the faithful literal for an invalid Date — emitting
     // `new Date("Invalid Date")` would also work, but NaN states the intent.
     if (isInvalidDate(obj)) return "new Date(NaN)";
-    return `new Date("${obj.toISOString()}")`;
+    // `toISOString()` is page-overridable and this literal lands on the user's
+    // clipboard, so the result is escaped like every other emitted string.
+    return `new Date("${escapeString(obj.toISOString())}")`;
   }
 
   const childAncestors = new Set(ancestors);

@@ -8,6 +8,25 @@ import { Mutation, Query } from "@tanstack/query-core";
 const POLL_INTERVAL_MS = 250;
 const MAX_POLL_MS = 30_000;
 
+/**
+ * This script runs in the page's MAIN world and QueryCache.notify iterates its
+ * subscribers without catching, so an exception thrown here unwinds into the
+ * inspected application's own render/commit and trips its error boundary.
+ * Nothing the devtools do may escape into the page.
+ */
+function safely(label: string, fn: () => void): void {
+  try {
+    fn();
+  } catch (error: unknown) {
+    console.warn(`[tanstack-query-devtools] skipped ${label}:`, error);
+  }
+}
+
+/** Wraps a callback so it is invoked through `safely` without re-indenting its body. */
+function guarded<A extends readonly unknown[]>(label: string, fn: (...args: A) => void): (...args: A) => void {
+  return (...args: A) => safely(label, () => fn(...args));
+}
+
 function deriveQueryStatus(query: Query): QueryDisplayStatus {
   if (query.state.fetchStatus === "fetching") return "fetching";
   if (query.getObserversCount() === 0) return "inactive";
@@ -100,14 +119,15 @@ function startSync(client: NonNullable<Window["__TANSTACK_QUERY_CLIENT__"]>) {
   const mutationCache = client.getMutationCache();
 
   // Build and send initial snapshot
+  safely("initial snapshot", () => {
+    const queries = queryCache.getAll().map((q) => extractQuery(q));
 
-  const queries = queryCache.getAll().map((q) => extractQuery(q));
-
-  const mutations = mutationCache.getAll().map((m) => extractMutation(m));
-  postBridge("SYNC_SNAPSHOT", encodeBigInts({ queries, mutations }) as { queries: QueryEntry[]; mutations: MutationEntry[] });
+    const mutations = mutationCache.getAll().map((m) => extractMutation(m));
+    postBridge("SYNC_SNAPSHOT", encodeBigInts({ queries, mutations }) as { queries: QueryEntry[]; mutations: MutationEntry[] });
+  });
 
   // Subscribe to QueryCache
-  const unsubQuery = queryCache.subscribe((event) => {
+  const unsubQuery = queryCache.subscribe(guarded("query cache update", (event) => {
     const type = event.type;
 
     if (type === "observerResultsUpdated" || type === "observerOptionsUpdated") {
@@ -140,10 +160,10 @@ function startSync(client: NonNullable<Window["__TANSTACK_QUERY_CLIENT__"]>) {
       queryHash: query.queryHash,
       entry: extractQuery(query),
     });
-  });
+  }));
 
   // Subscribe to MutationCache
-  const unsubMutation = mutationCache.subscribe((event) => {
+  const unsubMutation = mutationCache.subscribe(guarded("mutation cache update", (event) => {
     const type = event.type;
 
     if (type === "observerAdded" || type === "observerRemoved" || type === "observerOptionsUpdated") {
@@ -169,7 +189,7 @@ function startSync(client: NonNullable<Window["__TANSTACK_QUERY_CLIENT__"]>) {
       mutationId: mutation.mutationId,
       entry: extractMutation(mutation),
     });
-  });
+  }));
 
   // Return cleanup function
   return () => {
@@ -245,7 +265,7 @@ export default defineContentScript({
     }
 
     // Listen for reverse-direction action messages from the devtools panel
-    window.addEventListener("message", (event: MessageEvent) => {
+    window.addEventListener("message", guarded("panel request", (event: MessageEvent) => {
       if (event.source !== window || (event.data as Record<string, unknown>)?.source !== BRIDGE_SOURCE_ACTION) {
         return;
       }
@@ -323,7 +343,7 @@ export default defineContentScript({
       }
       const { payload } = data as { payload: { action: ActionType; queryHash: string } };
       handleAction(payload.action, payload.queryHash);
-    });
+    }));
 
     // Immediate check
     const client = window.__TANSTACK_QUERY_CLIENT__;
@@ -332,7 +352,7 @@ export default defineContentScript({
       return;
     }
 
-    const timer = setInterval(() => {
+    const timer = setInterval(guarded("client detection", () => {
       const c = window.__TANSTACK_QUERY_CLIENT__;
       if (c) {
         clearInterval(timer);
@@ -344,7 +364,7 @@ export default defineContentScript({
         clearInterval(timer);
         postBridge("SYNC_DISCONNECTED", {} as Record<string, never>);
       }
-    }, POLL_INTERVAL_MS);
+    }), POLL_INTERVAL_MS);
 
     // Note: MAIN-world scripts don't have context for cleanup,
     // but if the page unloads the script is destroyed anyway.
