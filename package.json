@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@tanstack/query-core": "^5.101.4",
-    "highlight.js": "^11.11.1",
+    "highlight.js": "^11.11.2",
     "lucide-react": "^1.31.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
