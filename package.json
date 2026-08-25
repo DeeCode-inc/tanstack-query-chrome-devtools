@@ -33,7 +33,7 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "@tanstack/query-core": "^5.101.4",
+    "@tanstack/query-core": "^5.102.0",
     "highlight.js": "^11.12.0",
     "lucide-react": "^1.33.0",
     "react": "^19.2.8",
