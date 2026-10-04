@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@tanstack/query-core':
-        specifier: ^5.102.8
-        version: 5.102.8
+        specifier: ^5.104.0
+        version: 5.104.0
       highlight.js:
         specifier: ^11.12.0
         version: 11.12.0
@@ -691,8 +691,8 @@ packages:
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
 
-  '@tanstack/query-core@5.102.8':
-    resolution: {integrity: sha512-ZNjkJ33CqvPNec/6lZBnHqLc3EVGPZ9ySLhYahU9TcuRFdmwXewuj0c4hwSWcGHqEUwcSrKeZ+oGcvPBqXcQcg==}
+  '@tanstack/query-core@5.104.0':
+    resolution: {integrity: sha512-JrC2r/JQlXt7khBSdUpsgxNvybzOg+aITa+ARRMlP2AFo93Y8vIqz077rp+e61mJetSZ0T6AJbwW1JHer1vrPQ==}
 
   '@topcli/prompts@4.0.0':
     resolution: {integrity: sha512-kkKYPb4k/6kRdnESt77B5vJrrYnYHIYczwv0P1c+tfN/IWEx3KZeKEHoUq7sImIyBEXWdA2uakIroD9pmRJziQ==}
@@ -2210,7 +2210,7 @@ snapshots:
       tailwindcss: 4.3.3
       vite: 8.2.0(@types/node@26.1.2)(esbuild@0.27.7)(jiti@2.7.0)
 
-  '@tanstack/query-core@5.102.8': {}
+  '@tanstack/query-core@5.104.0': {}
 
   '@topcli/prompts@4.0.0': {}
 
