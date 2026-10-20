@@ -1,7 +1,153 @@
 import { Check, ChevronRight, Copy, ListX, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { PathSegment } from "@/types/messages";
-import { dateToWireString, serializeToJsLiteral } from "@/utils/serialization";
+import {
+  CIRCULAR,
+  dateToWireString,
+  formatMapKey,
+  omittedCount,
+  serializeToJsLiteral,
+  TRUNCATED,
+} from "@/utils/serialization";
+
+/** Like `String(n)`, but keeps the sign of -0, which `String` drops. */
+function formatNumber(n: number): string {
+  return Object.is(n, -0) ? "-0" : String(n);
+}
+
+/** Tooltip of everything that stands for data the page did not send. */
+const TRUNCATED_TITLE =
+  "Not sent by the page: this value is over the devtools size budget";
+
+/** Error fields rendered explicitly, ahead of the error's own props. */
+const ERROR_FIELD_KEYS: ReadonlySet<string> = new Set([
+  "name",
+  "message",
+  "stack",
+]);
+
+/** Nodes with more children than this show them in collapsed ranges. */
+const CHUNK_SIZE = 100;
+
+/** One child row of a collapsible node. */
+export interface TreeEntry {
+  /** React key, unique among the node's children. */
+  readonly key: string;
+  /** Text shown in front of the child's value. */
+  readonly label: string;
+  /** Segment appended to the node's path to address this child. */
+  readonly segment: PathSegment;
+  readonly value: unknown;
+}
+
+/** Entries for positional children (array items, Set members). */
+function indexEntries(values: readonly unknown[]): TreeEntry[] {
+  return values.map((value, index) => {
+    const key = String(index);
+    return { key, label: key, segment: key, value };
+  });
+}
+
+/** Entries for named children (object properties, Error fields). */
+function namedEntries(
+  pairs: readonly (readonly [string, unknown])[],
+): TreeEntry[] {
+  return pairs.map(([key, value]) => ({
+    key,
+    label: key,
+    segment: key,
+    value,
+  }));
+}
+
+/** Text colour of a read-only leaf value, by kind of value. */
+const LEAF_VALUE_CLASS = {
+  muted: "text-gray-500 dark:text-gray-400",
+  bigint: "text-purple-600 dark:text-purple-400",
+  boolean: "text-yellow-600 dark:text-yellow-400",
+  text: "text-gray-900 dark:text-gray-100",
+  date: "text-blue-600 dark:text-blue-400",
+  fn: "text-gray-500 dark:text-gray-400 italic",
+} as const;
+
+function LeafValue({
+  kind,
+  title,
+  children,
+}: {
+  readonly kind: keyof typeof LEAF_VALUE_CLASS;
+  readonly title?: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <span
+      title={title}
+      className={`flex-1 truncate min-w-10 ${LEAF_VALUE_CLASS[kind]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** One non-collapsible row: optional label, the value, optional delete. */
+function LeafRow({
+  label,
+  deleteButton,
+  children,
+}: {
+  readonly label?: string;
+  readonly deleteButton?: ReactNode;
+  readonly children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      {label && (
+        <span
+          title={label}
+          className="font-mono shrink text-ellipsis overflow-hidden text-green-700 dark:text-green-400"
+        >
+          {label}:&nbsp;
+        </span>
+      )}
+      {children}
+      {deleteButton}
+    </div>
+  );
+}
+
+/**
+ * Summary of a container, e.g. `Array (3 elements)`. A container the page
+ * cut short is counted in full, with how much of it was not sent.
+ */
+function countSummary(
+  kind: string,
+  [singular, plural]: readonly [string, string],
+  shown: number,
+  omitted: number,
+): string {
+  const total = shown + omitted;
+  const counted = `${String(total)} ${total === 1 ? singular : plural}`;
+  return omitted > 0
+    ? `${kind} (${counted}, ${String(omitted)} truncated)`
+    : `${kind} (${counted})`;
+}
+
+const ELEMENTS = ["element", "elements"] as const;
+const ENTRIES = ["entry", "entries"] as const;
+
+/**
+ * Last row of a container the page cut short. It stands for children the
+ * viewer does not have, so it has no path and no controls.
+ */
+function OmittedRow({ count }: { readonly count: number }) {
+  return (
+    <LeafRow>
+      <LeafValue kind="muted" title={TRUNCATED_TITLE}>
+        {`… ${String(count)} more truncated`}
+      </LeafValue>
+    </LeafRow>
+  );
+}
 
 interface TreeViewProps {
   readonly data: unknown;
@@ -20,10 +166,13 @@ interface TreeViewProps {
 
 function StringInput({
   value,
+  label,
   path,
   onFieldChange,
 }: {
   readonly value: string;
+  /** Field name, used for the input's accessible name. */
+  readonly label: string;
   readonly path: readonly PathSegment[];
   readonly onFieldChange: (
     path: readonly PathSegment[],
@@ -32,6 +181,10 @@ function StringInput({
 }) {
   const [local, setLocal] = useState(value);
   const focusedRef = useRef(false);
+  // Set by Escape so the blur it triggers discards the edit instead of saving.
+  const cancelRef = useRef(false);
+  // Set by typing; a blur without it must not write the (possibly stale) text.
+  const dirtyRef = useRef(false);
 
   useEffect(() => {
     if (!focusedRef.current) setLocal(value);
@@ -40,18 +193,35 @@ function StringInput({
   return (
     <input
       type="text"
+      aria-label={`Edit ${label}`}
       className="flex-1 min-w-20 bg-transparent border border-gray-300 dark:border-gray-600 rounded px-1 text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500"
       value={local}
-      onChange={(e) => setLocal(e.target.value)}
+      onChange={(e) => {
+        dirtyRef.current = true;
+        setLocal(e.target.value);
+      }}
       onFocus={() => {
         focusedRef.current = true;
       }}
       onBlur={() => {
         focusedRef.current = false;
+        const dirty = dirtyRef.current;
+        dirtyRef.current = false;
+        if (cancelRef.current) {
+          cancelRef.current = false;
+          return;
+        }
+        if (!dirty) {
+          // Show any host value that arrived while focused.
+          setLocal(value);
+          return;
+        }
+        if (local === value) return;
         onFieldChange(path, local);
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
+          cancelRef.current = true;
           setLocal(value);
           (e.target as HTMLInputElement).blur();
         }
@@ -62,43 +232,66 @@ function StringInput({
 
 function NumberInput({
   value,
+  label,
   path,
   onFieldChange,
 }: {
   readonly value: number;
+  /** Field name, used for the input's accessible name. */
+  readonly label: string;
   readonly path: readonly PathSegment[];
   readonly onFieldChange: (
     path: readonly PathSegment[],
     value: string | number | boolean,
   ) => void;
 }) {
-  const [local, setLocal] = useState(String(value));
+  const [local, setLocal] = useState(formatNumber(value));
   const focusedRef = useRef(false);
+  // Set by Escape so the blur it triggers discards the edit instead of saving.
+  const cancelRef = useRef(false);
+  // Set by typing; a blur without it must not write the (possibly stale) text.
+  const dirtyRef = useRef(false);
 
   useEffect(() => {
-    if (!focusedRef.current) setLocal(String(value));
+    if (!focusedRef.current) setLocal(formatNumber(value));
   }, [value]);
 
   return (
     <input
       type="number"
+      aria-label={`Edit ${label}`}
       className="flex-1 min-w-10 bg-transparent border border-gray-300 dark:border-gray-600 rounded px-1 text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500"
       value={local}
-      onChange={(e) => setLocal(e.target.value)}
+      onChange={(e) => {
+        dirtyRef.current = true;
+        setLocal(e.target.value);
+      }}
       onFocus={() => {
         focusedRef.current = true;
       }}
       onBlur={() => {
         focusedRef.current = false;
-        if (local === "") {
-          setLocal(String(value));
+        const dirty = dirtyRef.current;
+        dirtyRef.current = false;
+        if (cancelRef.current) {
+          cancelRef.current = false;
           return;
         }
-        onFieldChange(path, Number(local));
+        const next = Number(local);
+        if (!dirty || local === "" || Number.isNaN(next)) {
+          // Nothing usable typed: show the current host value, which may
+          // have changed while the input had focus.
+          setLocal(formatNumber(value));
+          return;
+        }
+        // Object.is so that changing 0 to -0 (or back) still counts as an edit.
+        if (Object.is(next, value)) return;
+        onFieldChange(path, next);
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
-          setLocal(String(value));
+          cancelRef.current = true;
+          setLocal(formatNumber(value));
           (e.target as HTMLInputElement).blur();
         }
       }}
@@ -108,10 +301,13 @@ function NumberInput({
 
 function BooleanInput({
   value,
+  label,
   path,
   onFieldChange,
 }: {
   readonly value: boolean;
+  /** Field name, used as the checkbox's accessible name. */
+  readonly label: string;
   readonly path: readonly PathSegment[];
   readonly onFieldChange: (
     path: readonly PathSegment[],
@@ -122,12 +318,11 @@ function BooleanInput({
     <label className="flex items-center gap-1 flex-1 min-w-10 cursor-pointer">
       <input
         type="checkbox"
+        aria-label={label}
         checked={value}
         onChange={() => onFieldChange(path, !value)}
       />
-      <span className="text-yellow-600 dark:text-yellow-400">
-        {String(value)}
-      </span>
+      <span className={LEAF_VALUE_CLASS.boolean}>{String(value)}</span>
     </label>
   );
 }
@@ -154,10 +349,10 @@ function DeleteButton({
 function CollapsibleNode({
   label,
   entries,
+  omitted,
   isArray,
   summaryOverride,
   showClearButton,
-  childSegments,
   depth,
   ancestors,
   editable,
@@ -168,11 +363,12 @@ function CollapsibleNode({
   onArrayClear,
 }: {
   readonly label?: string;
-  readonly entries: readonly (readonly [string, unknown])[];
+  readonly entries: readonly TreeEntry[];
+  /** Children the page did not send (see `omittedCount`). */
+  readonly omitted: number;
   readonly isArray: boolean;
   readonly summaryOverride?: string;
   readonly showClearButton?: boolean;
-  readonly childSegments?: readonly PathSegment[];
   readonly depth: number;
   readonly ancestors: ReadonlySet<object>;
   readonly editable: boolean;
@@ -193,8 +389,8 @@ function CollapsibleNode({
   const summary =
     summaryOverride ??
     (isArray
-      ? `Array (${entries.length} element${entries.length !== 1 ? "s" : ""})`
-      : `Object (${entries.length} entr${entries.length !== 1 ? "ies" : "y"})`);
+      ? countSummary("Array", ELEMENTS, entries.length, omitted)
+      : countSummary("Object", ENTRIES, entries.length, omitted));
 
   const shouldShowClear = showClearButton ?? isArray;
 
@@ -217,6 +413,7 @@ function CollapsibleNode({
       <div className="flex items-center">
         <button
           type="button"
+          aria-expanded={expanded}
           className="flex items-center gap-1 hover:underline cursor-pointer"
           onClick={() => setExpanded((e) => !e)}
         >
@@ -246,7 +443,7 @@ function CollapsibleNode({
           </button>
           {editable &&
             shouldShowClear &&
-            entries.length > 0 &&
+            entries.length + omitted > 0 &&
             onArrayClear && (
               <button
                 type="button"
@@ -264,20 +461,133 @@ function CollapsibleNode({
       </div>
       {expanded && (
         <div className="pl-4">
-          {entries.map(([key, value], index) => (
-            <TreeView
-              key={key}
-              data={value}
-              label={key}
-              depth={depth + 1}
+          {entries.length > CHUNK_SIZE ? (
+            entryRanges(entries.length).map(([start, end]) => (
+              <EntryRange
+                key={String(start)}
+                start={start}
+                end={end}
+                entries={entries}
+                depth={depth}
+                ancestors={ancestors}
+                editable={editable}
+                path={path}
+                onFieldChange={onFieldChange}
+                onFieldDelete={onFieldDelete}
+                onArrayClear={onArrayClear}
+              />
+            ))
+          ) : (
+            <TreeEntries
+              entries={entries}
+              depth={depth}
               ancestors={ancestors}
               editable={editable}
-              path={[...path, childSegments?.[index] ?? key]}
+              path={path}
               onFieldChange={onFieldChange}
               onFieldDelete={onFieldDelete}
               onArrayClear={onArrayClear}
             />
-          ))}
+          )}
+          {omitted > 0 && <OmittedRow count={omitted} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Inclusive `[start, end]` index ranges of at most `CHUNK_SIZE` entries. */
+function entryRanges(count: number): (readonly [number, number])[] {
+  const ranges: (readonly [number, number])[] = [];
+  for (let start = 0; start < count; start += CHUNK_SIZE) {
+    ranges.push([start, Math.min(start + CHUNK_SIZE, count) - 1]);
+  }
+  return ranges;
+}
+
+/** Context a node passes down to render its child rows. */
+interface ChildRowsProps {
+  /** Depth of the node owning the rows; rows render one level deeper. */
+  readonly depth: number;
+  readonly ancestors: ReadonlySet<object>;
+  readonly editable: boolean;
+  /** Path of the node owning the rows. */
+  readonly path: readonly PathSegment[];
+  readonly onFieldChange?: (
+    path: readonly PathSegment[],
+    value: string | number | boolean,
+  ) => void;
+  readonly onFieldDelete?: (path: readonly PathSegment[]) => void;
+  readonly onArrayClear?: (path: readonly PathSegment[]) => void;
+}
+
+/** Renders the given child entries of a node, one `TreeView` each. */
+function TreeEntries({
+  entries,
+  depth,
+  ancestors,
+  editable,
+  path,
+  onFieldChange,
+  onFieldDelete,
+  onArrayClear,
+}: ChildRowsProps & { readonly entries: readonly TreeEntry[] }) {
+  return (
+    <>
+      {entries.map((entry) => (
+        <TreeView
+          key={entry.key}
+          data={entry.value}
+          label={entry.label}
+          depth={depth + 1}
+          ancestors={ancestors}
+          editable={editable}
+          path={[...path, entry.segment]}
+          onFieldChange={onFieldChange}
+          onFieldDelete={onFieldDelete}
+          onArrayClear={onArrayClear}
+        />
+      ))}
+    </>
+  );
+}
+
+/**
+ * Collapsed-by-default group of a large node's children, entries `start`
+ * through `end` inclusive. Keeps a node with thousands of children from
+ * mounting them all at once.
+ */
+function EntryRange({
+  start,
+  end,
+  entries,
+  ...childRows
+}: ChildRowsProps & {
+  readonly start: number;
+  readonly end: number;
+  readonly entries: readonly TreeEntry[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        className="flex items-center gap-1 hover:underline cursor-pointer"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <ChevronRight
+          size={14}
+          className={`text-blue-600 dark:text-blue-400 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
+        />
+        <span className="text-blue-600 dark:text-blue-400">
+          {`[${start}…${end}]`}
+        </span>
+      </button>
+      {expanded && (
+        <div className="pl-4">
+          <TreeEntries entries={entries.slice(start, end + 1)} {...childRows} />
         </div>
       )}
     </div>
@@ -295,18 +605,11 @@ export function TreeView({
   onFieldDelete,
   onArrayClear,
 }: TreeViewProps) {
-  const labelSpan = label && (
-    <span
-      title={label}
-      className="font-mono shrink text-ellipsis overflow-hidden text-green-700 dark:text-green-400"
-    >
-      {label}:&nbsp;
-    </span>
-  );
-
   const deleteBtn = editable && onFieldDelete && depth > 0 && (
     <DeleteButton path={path} onFieldDelete={onFieldDelete} />
   );
+  // Accessible name for edit inputs; the root value has no label.
+  const inputLabel = label ?? "value";
 
   if (data === undefined || data === null) {
     if (depth === 0) {
@@ -315,191 +618,198 @@ export function TreeView({
       );
     }
     return (
-      <div className="flex items-center gap-1">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400">
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="muted">
           {data === null ? "null" : "undefined"}
-        </span>
-        {deleteBtn}
-      </div>
+        </LeafValue>
+      </LeafRow>
     );
   }
 
   if (typeof data === "bigint") {
     return (
-      <div className="flex items-center gap-1">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-purple-600 dark:text-purple-400">
-          {String(data)}n
-        </span>
-        {deleteBtn}
-      </div>
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="bigint">{String(data)}n</LeafValue>
+      </LeafRow>
+    );
+  }
+
+  if (data === CIRCULAR) {
+    return (
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="muted">[Circular]</LeafValue>
+      </LeafRow>
+    );
+  }
+
+  // Never an edit input: the marker is not the value, and writing it back
+  // would replace the page's data. Deleting removes the real value, whose
+  // path the marker keeps.
+  if (data === TRUNCATED) {
+    return (
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="muted" title={TRUNCATED_TITLE}>
+          [Truncated]
+        </LeafValue>
+      </LeafRow>
     );
   }
 
   if (typeof data === "symbol") {
     return (
-      <div className="flex items-center gap-1">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400">
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="muted">
           Symbol(
           <span className="text-amber-600 dark:text-amber-400">
             {data.description ?? ""}
           </span>
           )
-        </span>
-        {deleteBtn}
-      </div>
+        </LeafValue>
+      </LeafRow>
     );
   }
 
   if (typeof data === "function") {
     return (
-      <div className="flex items-center gap-1">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400 italic">
-          fn
-        </span>
-        {deleteBtn}
-      </div>
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="fn">fn</LeafValue>
+      </LeafRow>
     );
   }
 
   if (typeof data === "boolean") {
-    if (editable && onFieldChange) {
-      return (
-        <div className="flex items-center gap-1">
-          {labelSpan}
+    return (
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        {editable && onFieldChange ? (
           <BooleanInput
             value={data}
+            label={inputLabel}
             path={path}
             onFieldChange={onFieldChange}
           />
-          {deleteBtn}
-        </div>
-      );
-    }
-    return (
-      <div className="flex items-center gap-1">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-yellow-600 dark:text-yellow-400">
-          {String(data)}
-        </span>
-        {deleteBtn}
-      </div>
+        ) : (
+          <LeafValue kind="boolean">{String(data)}</LeafValue>
+        )}
+      </LeafRow>
     );
   }
 
   if (typeof data === "string") {
-    if (editable && onFieldChange) {
-      return (
-        <div className="flex items-center gap-1">
-          {labelSpan}
-          <StringInput value={data} path={path} onFieldChange={onFieldChange} />
-          {deleteBtn}
-        </div>
-      );
-    }
     return (
-      <div className="flex items-center">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
-          &quot;{data}&quot;
-        </span>
-        {deleteBtn}
-      </div>
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        {editable && onFieldChange ? (
+          <StringInput
+            value={data}
+            label={inputLabel}
+            path={path}
+            onFieldChange={onFieldChange}
+          />
+        ) : (
+          <LeafValue kind="text">&quot;{data}&quot;</LeafValue>
+        )}
+      </LeafRow>
     );
   }
 
   if (typeof data !== "object") {
-    if (editable && onFieldChange && typeof data === "number") {
-      return (
-        <div className="flex items-center gap-1">
-          {labelSpan}
-          <NumberInput value={data} path={path} onFieldChange={onFieldChange} />
-          {deleteBtn}
-        </div>
-      );
-    }
+    // NaN and ±Infinity have no editable form in a number input.
+    const numberEditable =
+      editable &&
+      onFieldChange &&
+      typeof data === "number" &&
+      Number.isFinite(data);
     return (
-      <div className="flex items-center">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
-          {String(data as number)}
-        </span>
-        {deleteBtn}
-      </div>
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        {numberEditable ? (
+          <NumberInput
+            value={data}
+            label={inputLabel}
+            path={path}
+            onFieldChange={onFieldChange}
+          />
+        ) : (
+          <LeafValue kind="text">{formatNumber(data as number)}</LeafValue>
+        )}
+      </LeafRow>
     );
   }
 
   if (data instanceof Date) {
     return (
-      <div className="flex items-center">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-blue-600 dark:text-blue-400">
-          {dateToWireString(data)}
-        </span>
-        {deleteBtn}
-      </div>
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="date">{dateToWireString(data)}</LeafValue>
+      </LeafRow>
     );
   }
 
   if (ancestors.has(data)) {
     return (
-      <div className="flex items-center">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-500 dark:text-gray-400">
-          [Circular]
-        </span>
-        {deleteBtn}
-      </div>
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="muted">[Circular]</LeafValue>
+      </LeafRow>
     );
   }
 
   const childAncestors = new Set(ancestors);
   childAncestors.add(data);
+  const omitted = omittedCount(data);
 
-  if (data instanceof Map) {
-    const mapEntries = Array.from(data.entries());
-    const displayEntries = mapEntries.map(([k, v]) => {
-      const keyLabel =
-        k === null
-          ? "null"
-          : k === undefined
-            ? "undefined"
-            : typeof k === "object"
-              ? "[Object]"
-              : typeof k === "function"
-                ? "[Function]"
-                : String(k);
-      return [keyLabel, v] as const;
-    });
-    const n = mapEntries.length;
-    const summary = `Map (${n} entr${n !== 1 ? "ies" : "y"})`;
-
-    if (n === 0) {
-      return (
-        <div className="flex items-center">
-          {labelSpan}
-          <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
-            Map (0 entries)
-          </span>
-          {deleteBtn}
-        </div>
-      );
+  if (data instanceof Error) {
+    const errorEntries: (readonly [string, unknown])[] = [
+      ["name", data.name],
+      ["message", data.message],
+    ];
+    if (typeof data.stack === "string") {
+      errorEntries.push(["stack", data.stack]);
     }
-
-    const childSegments = mapEntries.map(
-      ([k]) => ({ mapKey: String(k) }) as PathSegment,
-    );
+    for (const entry of Object.entries(data)) {
+      if (!ERROR_FIELD_KEYS.has(entry[0])) errorEntries.push(entry);
+    }
+    const errorName = typeof data.name === "string" ? data.name : "Error";
+    const errorMessage = typeof data.message === "string" ? data.message : "";
 
     return (
       <CollapsibleNode
         label={label}
-        entries={displayEntries}
+        entries={namedEntries(errorEntries)}
+        omitted={omitted}
         isArray={false}
-        summaryOverride={summary}
-        childSegments={childSegments}
+        summaryOverride={`${errorName}: ${errorMessage}`}
+        showClearButton={false}
+        depth={depth}
+        ancestors={childAncestors}
+        editable={false}
+        path={path}
+        data={data}
+      />
+    );
+  }
+
+  if (data instanceof Map) {
+    // Map keys can be any value, so children are addressed by entry position.
+    const mapEntries: TreeEntry[] = Array.from(data.entries(), ([k, v], i) => ({
+      key: String(i),
+      label: formatMapKey(k),
+      segment: { mapIndex: i },
+      value: v,
+    }));
+    const n = mapEntries.length;
+
+    if (n === 0 && omitted === 0) {
+      return (
+        <LeafRow label={label} deleteButton={deleteBtn}>
+          <LeafValue kind="text">Map (0 entries)</LeafValue>
+        </LeafRow>
+      );
+    }
+
+    return (
+      <CollapsibleNode
+        label={label}
+        entries={mapEntries}
+        omitted={omitted}
+        isArray={false}
+        summaryOverride={countSummary("Map", ENTRIES, n, omitted)}
         depth={depth}
         ancestors={childAncestors}
         editable={editable}
@@ -514,28 +824,23 @@ export function TreeView({
 
   if (data instanceof Set) {
     const members = Array.from(data.values());
-    const displayEntries = members.map((v, i) => [String(i), v] as const);
     const n = members.length;
-    const summary = `Set (${n} entr${n !== 1 ? "ies" : "y"})`;
 
-    if (n === 0) {
+    if (n === 0 && omitted === 0) {
       return (
-        <div className="flex items-center">
-          {labelSpan}
-          <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
-            Set (0 entries)
-          </span>
-          {deleteBtn}
-        </div>
+        <LeafRow label={label} deleteButton={deleteBtn}>
+          <LeafValue kind="text">Set (0 entries)</LeafValue>
+        </LeafRow>
       );
     }
 
     return (
       <CollapsibleNode
         label={label}
-        entries={displayEntries}
+        entries={indexEntries(members)}
+        omitted={omitted}
         isArray={false}
-        summaryOverride={summary}
+        summaryOverride={countSummary("Set", ENTRIES, n, omitted)}
         showClearButton={true}
         depth={depth}
         ancestors={childAncestors}
@@ -551,18 +856,14 @@ export function TreeView({
 
   const isArray = Array.isArray(data);
   const entries = isArray
-    ? (data as unknown[]).map((value, index) => [String(index), value] as const)
-    : Object.entries(data as Record<string, unknown>);
+    ? indexEntries(data)
+    : namedEntries(Object.entries(data as Record<string, unknown>));
 
-  if (entries.length === 0) {
+  if (entries.length === 0 && omitted === 0) {
     return (
-      <div className="flex items-center">
-        {labelSpan}
-        <span className="flex-1 truncate min-w-10 text-gray-900 dark:text-gray-100">
-          {isArray ? "[]" : "{}"}
-        </span>
-        {deleteBtn}
-      </div>
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="text">{isArray ? "[]" : "{}"}</LeafValue>
+      </LeafRow>
     );
   }
 
@@ -570,6 +871,7 @@ export function TreeView({
     <CollapsibleNode
       label={label}
       entries={entries}
+      omitted={omitted}
       isArray={isArray}
       depth={depth}
       ancestors={childAncestors}

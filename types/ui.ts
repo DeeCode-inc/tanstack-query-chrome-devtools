@@ -1,6 +1,21 @@
 export type MutationStatus = "idle" | "pending" | "success" | "error";
 export type ActiveTab = "queries" | "mutations";
 export type LayoutVariant = "popup" | "panel";
+
+/** What a viewer can show of its tab's caches (see `useSyncConnection`). */
+export type SyncStatus =
+  /** No snapshot: the page has no client yet, or it went away. */
+  | { readonly kind: "disconnected" }
+  /** The first `received` of `total` chunks of a snapshot are in. */
+  | {
+      readonly kind: "loading";
+      readonly received: number;
+      readonly total: number;
+    }
+  /** A complete snapshot and the updates since. */
+  | { readonly kind: "connected" }
+  /** The last snapshot could not be delivered. */
+  | { readonly kind: "failed" };
 export type QueryDisplayStatus =
   | "fresh"
   | "fetching"
@@ -29,7 +44,6 @@ export interface QueryEntry {
   readonly observerCount: number;
   readonly status: QueryDisplayStatus;
   readonly dataUpdatedAt: number;
-  readonly data: unknown;
   readonly isActive: boolean;
   readonly isDisabled: boolean;
   readonly meta: Record<string, unknown> | undefined;
@@ -53,10 +67,6 @@ export interface MutationEntry {
   readonly mutationKey: readonly unknown[] | null;
   readonly status: MutationStatus;
   readonly timestamp: number;
-  readonly variables: unknown;
-  readonly context: unknown;
-  readonly data: unknown;
-  readonly error: unknown;
   readonly state: MutationState;
 }
 

@@ -6,3 +6,10 @@ updates:
     schedule:
       interval: daily
     open-pull-requests-limit: 10
+    groups:
+      react:
+        patterns: ["react*", "@types/react*"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: daily

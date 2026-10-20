@@ -11,6 +11,7 @@ export function SearchInput({ value, onChange }: SearchInputProps) {
       <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-gray-400 dark:text-gray-500" />
       <input
         type="text"
+        aria-label="Filter"
         placeholder="Filter"
         value={value}
         onChange={(e) => onChange(e.target.value)}

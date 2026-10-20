@@ -1,14 +1,16 @@
+import { memo } from "react";
 import type { QueryEntry } from "@/types/ui";
-import { stringifyWithBigInt } from "@/utils/serialization";
+import { getQueryKeyLabel } from "@/utils/entry-labels";
 import { STATUS_THEMES } from "@/utils/status-theme";
 
 interface QueryListItemProps {
   readonly query: QueryEntry;
   readonly isSelected: boolean;
-  readonly onSelect: () => void;
+  /** Stable across renders, so unchanged rows skip re-rendering. */
+  readonly onSelect: (queryHash: string) => void;
 }
 
-export function QueryListItem({
+export const QueryListItem = memo(function QueryListItem({
   query,
   isSelected,
   onSelect,
@@ -17,7 +19,7 @@ export function QueryListItem({
     <button
       type="button"
       aria-pressed={isSelected}
-      onClick={onSelect}
+      onClick={() => onSelect(query.queryHash)}
       className={`flex w-full items-center gap-2 px-3 py-1.5 text-left cursor-pointer ${
         isSelected
           ? "bg-blue-100 dark:bg-blue-900/50 border border-blue-300 dark:border-blue-600"
@@ -30,7 +32,7 @@ export function QueryListItem({
         {query.observerCount}
       </span>
       <span className="font-mono text-xs text-gray-900 dark:text-gray-100 break-all">
-        {stringifyWithBigInt(query.queryKey)}
+        {getQueryKeyLabel(query)}
       </span>
       {!query.isActive && query.observerCount > 0 && (
         <span className="ml-auto shrink-0 px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
@@ -39,4 +41,4 @@ export function QueryListItem({
       )}
     </button>
   );
-}
+});

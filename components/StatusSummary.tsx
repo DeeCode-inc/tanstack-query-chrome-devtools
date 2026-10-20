@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { StatusDefinition } from "@/utils/status-theme";
 import { STATUS_THEMES } from "@/utils/status-theme";
 
@@ -12,12 +13,20 @@ export function StatusSummary<T>({
   getStatus,
   statusDefinitions,
 }: StatusSummaryProps<T>) {
+  // One pass over the items for all statuses instead of one per status.
+  const counts = useMemo(() => {
+    const byStatus = new Map<string, number>();
+    for (const item of items) {
+      const status = getStatus(item);
+      byStatus.set(status, (byStatus.get(status) ?? 0) + 1);
+    }
+    return byStatus;
+  }, [items, getStatus]);
+
   return (
     <div className="flex items-center gap-1.5">
       {statusDefinitions.map((def) => {
-        const count = items.filter(
-          (item) => getStatus(item) === def.key,
-        ).length;
+        const count = counts.get(def.key) ?? 0;
         const theme = count > 0 ? def.theme : STATUS_THEMES.inactive;
         return (
           <div
