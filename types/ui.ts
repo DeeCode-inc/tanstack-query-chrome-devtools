@@ -1,6 +1,21 @@
 export type MutationStatus = "idle" | "pending" | "success" | "error";
 export type ActiveTab = "queries" | "mutations";
 export type LayoutVariant = "popup" | "panel";
+
+/** What a viewer can show of its tab's caches (see `useSyncConnection`). */
+export type SyncStatus =
+  /** No snapshot: the page has no client yet, or it went away. */
+  | { readonly kind: "disconnected" }
+  /** The first `received` of `total` chunks of a snapshot are in. */
+  | {
+      readonly kind: "loading";
+      readonly received: number;
+      readonly total: number;
+    }
+  /** A complete snapshot and the updates since. */
+  | { readonly kind: "connected" }
+  /** The last snapshot could not be delivered. */
+  | { readonly kind: "failed" };
 export type QueryDisplayStatus =
   | "fresh"
   | "fetching"

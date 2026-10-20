@@ -936,6 +936,9 @@ describe("entity encoding", () => {
           source: BRIDGE_SOURCE,
           type: "SYNC_SNAPSHOT",
           payload: {
+            snapshotId: 1,
+            chunkIndex: 0,
+            chunkCount: 1,
             queries: [encodedQuery.value],
             mutations: [encodedMutation.value],
           },

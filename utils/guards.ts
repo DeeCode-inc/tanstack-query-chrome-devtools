@@ -32,12 +32,12 @@ import type {
  * the extension ports. They check the structure the receiving code relies on;
  * encoded user data (`data`, `error`, `meta`, the contents of keys) is not
  * walked, because decoding it is total and never throws.
+ *
+ * Lists are not capped by length: the relay caps messages by size (see
+ * `MAX_MESSAGE_BYTES` in `utils/chunking.ts`), and the page splits a large
+ * cache into chunks under it.
  */
 
-/** Largest JSON size of one snapshot or update the relay forwards. */
-export const MAX_PAYLOAD_CHARS = 32 * 1024 * 1024;
-/** Most entries or changes a single message may carry. */
-export const MAX_ENTRIES = 10_000;
 /** Most segments an edit path may have. */
 export const MAX_PATH_LENGTH = 256;
 
@@ -105,6 +105,14 @@ function isNonNegativeInteger(value: unknown): value is number {
 }
 
 /**
+ * A number compared for equality and counted up: a safe integer, so that
+ * `+ 1` and `===` stay exact.
+ */
+function isCounter(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+/**
  * Checks length and every item by index: arrays posted through the window
  * keep their holes, which `Array.prototype.every` would skip.
  */
@@ -112,7 +120,7 @@ function isListOf<T>(
   value: unknown,
   isItem: (item: unknown) => item is T,
 ): value is readonly T[] {
-  if (!Array.isArray(value) || value.length > MAX_ENTRIES) return false;
+  if (!Array.isArray(value)) return false;
   for (let i = 0; i < value.length; i++) {
     if (!isItem(value[i])) return false;
   }
@@ -204,10 +212,22 @@ function isChangeEvent(value: unknown): value is ChangeEvent {
   return false;
 }
 
+/** The chunk fields of a snapshot message: index within a count of at least one. */
+function isSnapshotChunkFields(value: Record<string, unknown>): boolean {
+  const { snapshotId, chunkIndex, chunkCount } = value;
+  return (
+    isCounter(snapshotId) &&
+    isCounter(chunkIndex) &&
+    isCounter(chunkCount) &&
+    chunkIndex < chunkCount
+  );
+}
+
 function isSnapshotFields(
   value: Record<string, unknown>,
 ): value is Record<string, unknown> & SyncSnapshotPayload {
   return (
+    isSnapshotChunkFields(value) &&
     isListOf(value.queries, isQueryEntry) &&
     isListOf(value.mutations, isMutationEntry)
   );
@@ -266,6 +286,15 @@ function isForwardedRequestMessage(value: unknown): value is ForwardedRequest {
 }
 
 /**
+ * Whether a window message claims to come from the page script. One that
+ * then fails `parseBridgeMessage` is worth a warning, unlike the page's own
+ * unrelated messages, which arrive on the same window.
+ */
+export function claimsBridgeSource(data: unknown): boolean {
+  return isRecord(data) && data.source === BRIDGE_SOURCE;
+}
+
+/**
  * Validates a message the page posted on the window and returns it as a
  * fresh envelope that carries only the checked fields, or `null` when it is
  * not a well-formed bridge message.
@@ -279,7 +308,13 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
       return {
         source: BRIDGE_SOURCE,
         type: "SYNC_SNAPSHOT",
-        payload: { queries: payload.queries, mutations: payload.mutations },
+        payload: {
+          snapshotId: payload.snapshotId,
+          chunkIndex: payload.chunkIndex,
+          chunkCount: payload.chunkCount,
+          queries: payload.queries,
+          mutations: payload.mutations,
+        },
       };
     case "SYNC_UPDATE":
       if (!isRecord(payload) || !isUpdateFields(payload)) return null;
@@ -307,6 +342,7 @@ export function isContentToBackgroundMessage(
       return isSnapshotFields(value);
     case "SYNC_UPDATE":
       return isUpdateFields(value);
+    case "SYNC_SNAPSHOT_FAILED":
     case "SYNC_DISCONNECTED":
     case "CLIENT_READY":
       return true;
@@ -349,6 +385,7 @@ export function isBackgroundToViewerMessage(
       return isSnapshotFields(value);
     case "SYNC_UPDATE":
       return isUpdateFields(value);
+    case "SYNC_SNAPSHOT_FAILED":
     case "SYNC_DISCONNECTED":
     case "SYNC_CLEAR":
     case "CONNECT_ACK":

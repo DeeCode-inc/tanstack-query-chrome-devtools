@@ -26,7 +26,22 @@ export type BridgeMessageType =
   | "SYNC_DISCONNECTED"
   | "CLIENT_READY";
 
-export interface SyncSnapshotPayload {
+/**
+ * Places one SYNC_SNAPSHOT message within its snapshot. A snapshot is sent as
+ * `chunkCount` messages with `chunkIndex` 0, 1, ... in order, so that no
+ * message outgrows the port size limit (see `utils/chunking.ts`); the
+ * receiver replaces its state only once the last one is in. The chunks of a
+ * snapshot are posted back to back, with nothing else of the stream between
+ * them. Chunk 0 starts a new snapshot and supersedes any unfinished one.
+ */
+export interface SnapshotChunkFields {
+  /** Tells the chunks of one snapshot from those of another. */
+  readonly snapshotId: number;
+  readonly chunkIndex: number;
+  readonly chunkCount: number;
+}
+
+export interface SyncSnapshotPayload extends SnapshotChunkFields {
   readonly queries: readonly QueryEntry[];
   readonly mutations: readonly MutationEntry[];
 }
@@ -117,6 +132,7 @@ export type ChangeEvent =
 export type PortMessage =
   | SyncSnapshotPortMessage
   | SyncUpdatePortMessage
+  | SyncSnapshotFailedPortMessage
   | SyncDisconnectedPortMessage
   | SyncClearPortMessage
   | ConnectAckPortMessage
@@ -132,7 +148,8 @@ export type PortMessage =
   | ClearArrayRequestPortMessage
   | ClearMutationCacheRequestPortMessage;
 
-export interface SyncSnapshotPortMessage {
+/** One chunk of a snapshot (see `SnapshotChunkFields`). */
+export interface SyncSnapshotPortMessage extends SnapshotChunkFields {
   readonly type: "SYNC_SNAPSHOT";
   readonly queries: readonly QueryEntry[];
   readonly mutations: readonly MutationEntry[];
@@ -141,6 +158,17 @@ export interface SyncSnapshotPortMessage {
 export interface SyncUpdatePortMessage {
   readonly type: "SYNC_UPDATE";
   readonly changes: readonly ChangeEvent[];
+}
+
+/**
+ * sync-relay → background → panel / popup: the snapshot being sent could not
+ * be delivered (a chunk was refused or lost on the way). The receiver drops
+ * its state and any unfinished snapshot, and ignores updates until the next
+ * snapshot, because they only apply on top of the one that was lost. Not
+ * answered with a resync: the page would build the same snapshot again.
+ */
+export interface SyncSnapshotFailedPortMessage {
+  readonly type: "SYNC_SNAPSHOT_FAILED";
 }
 
 export interface SyncDisconnectedPortMessage {
@@ -167,7 +195,8 @@ export interface ClientReadyPortMessage {
 
 /**
  * background → page: a viewer is connected. The page subscribes to its
- * QueryClient and always answers with a fresh SYNC_SNAPSHOT.
+ * QueryClient and always answers with a fresh snapshot. The relay also sends
+ * it to the page on its own, to resync after an update it could not forward.
  */
 export interface StartSyncPortMessage {
   readonly type: "START_SYNC";
@@ -267,6 +296,7 @@ export function isForwardedRequest(msg: PortMessage): msg is ForwardedRequest {
 export type ContentToBackgroundMessage =
   | SyncSnapshotPortMessage
   | SyncUpdatePortMessage
+  | SyncSnapshotFailedPortMessage
   | SyncDisconnectedPortMessage
   | ClientReadyPortMessage;
 
@@ -286,6 +316,7 @@ export type ViewerToBackgroundMessage =
 export type BackgroundToViewerMessage =
   | SyncSnapshotPortMessage
   | SyncUpdatePortMessage
+  | SyncSnapshotFailedPortMessage
   | SyncDisconnectedPortMessage
   | SyncClearPortMessage
   | ConnectAckPortMessage;

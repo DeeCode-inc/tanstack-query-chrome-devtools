@@ -8,7 +8,7 @@ import { useSyncConnection } from "@/hooks/useSyncConnection";
 const tabId = browser.devtools.inspectedWindow.tabId;
 
 function Panel() {
-  const { queries, mutations, connected, actions } = useSyncConnection({
+  const { queries, mutations, status, actions } = useSyncConnection({
     tabId,
     variant: "panel",
   });
@@ -18,7 +18,7 @@ function Panel() {
         variant="panel"
         queries={queries}
         mutations={mutations}
-        connected={connected}
+        status={status}
       />
     </DevtoolsActionsContext>
   );

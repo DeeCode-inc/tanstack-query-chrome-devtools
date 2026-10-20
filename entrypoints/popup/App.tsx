@@ -3,7 +3,7 @@ import { DevtoolsActionsContext } from "@/hooks/useDevtoolsActions";
 import { useSyncConnection } from "@/hooks/useSyncConnection";
 
 function App() {
-  const { queries, mutations, connected, actions } = useSyncConnection({
+  const { queries, mutations, status, actions } = useSyncConnection({
     variant: "popup",
   });
   return (
@@ -12,7 +12,7 @@ function App() {
         variant="popup"
         queries={queries}
         mutations={mutations}
-        connected={connected}
+        status={status}
       />
     </DevtoolsActionsContext>
   );

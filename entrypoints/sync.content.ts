@@ -19,12 +19,18 @@ import type {
   QueryEntry,
   QueryState,
 } from "@/types/ui";
+import {
+  packBySize,
+  splitSnapshot,
+  TARGET_MESSAGE_BYTES,
+} from "@/utils/chunking";
 import { isPageRequestEnvelope } from "@/utils/guards";
+import type { WireEncoding } from "@/utils/serialization";
 import { clearAtPath, deleteAtPath, setAtPath } from "@/utils/set-at-path";
 import {
-  encodeChange,
-  encodeMutationEntry,
-  encodeQueryEntry,
+  encodeChangeForMessage,
+  encodeMutationEntryForMessage,
+  encodeQueryEntryForMessage,
 } from "@/utils/wire-entities";
 
 /**
@@ -164,29 +170,54 @@ function postBridge(message: BridgeMessage): void {
   window.postMessage(message, "*");
 }
 
+/** Longest part of a query hash quoted in a warning. */
+const HASH_PREVIEW_LENGTH = 100;
+
+/** An entity the devtools will not show; see `encodeQueryEntryForMessage`. */
+function warnNotSent(label: string): void {
+  const preview =
+    label.length > HASH_PREVIEW_LENGTH
+      ? `${label.slice(0, HASH_PREVIEW_LENGTH)}…`
+      : label;
+  console.warn(
+    `[tanstack-query-devtools] not sent: ${preview} is too large for the devtools`,
+  );
+}
+
 /**
  * Encodes every entry on its own, under its own budgets (see
  * `utils/wire-entities.ts`). Extraction runs user code (`enabled` /
  * `staleTime` functions) and encoding walks user data, so either can throw;
  * a failure skips only that entity, like a failing change in `flush`.
+ *
+ * The snapshot is posted as chunks of about `TARGET_MESSAGE_BYTES`, packed
+ * by the exact size of each encoded entry, back to back in this one task so
+ * that nothing of the stream comes between them.
  */
-function postSnapshot(client: QueryClient): void {
-  const queries: QueryEntry[] = [];
+function postSnapshot(client: QueryClient, snapshotId: number): void {
+  const queries: WireEncoding<QueryEntry>[] = [];
   for (const query of client.getQueryCache().getAll()) {
     safely("query snapshot", () => {
-      queries.push(encodeQueryEntry(extractQuery(query)).value);
+      const encoded = encodeQueryEntryForMessage(extractQuery(query));
+      if (encoded) queries.push(encoded);
+      else warnNotSent(`query ${query.queryHash}`);
     });
   }
-  const mutations: MutationEntry[] = [];
+  const mutations: WireEncoding<MutationEntry>[] = [];
   for (const mutation of client.getMutationCache().getAll()) {
     safely("mutation snapshot", () => {
-      mutations.push(encodeMutationEntry(extractMutation(mutation)).value);
+      const encoded = encodeMutationEntryForMessage(extractMutation(mutation));
+      if (encoded) mutations.push(encoded);
+      else warnNotSent(`mutation ${String(mutation.mutationId)}`);
     });
   }
-  postBridge({
-    source: BRIDGE_SOURCE,
-    type: "SYNC_SNAPSHOT",
-    payload: { queries, mutations },
+  const parts = splitSnapshot(queries, mutations);
+  parts.forEach((part, chunkIndex) => {
+    postBridge({
+      source: BRIDGE_SOURCE,
+      type: "SYNC_SNAPSHOT",
+      payload: { snapshotId, chunkIndex, chunkCount: parts.length, ...part },
+    });
   });
 }
 
@@ -246,11 +277,14 @@ function queryEventKind(
  * Streams the page's caches to the extension only while a viewer is
  * connected: START_SYNC subscribes and posts a snapshot, STOP_SYNC
  * unsubscribes. Cache events are coalesced per query hash and mutation id and
- * flushed as one SYNC_UPDATE per BATCH_MS, so a busy page pays for at most one
- * extraction per changed entity per batch instead of one per cache event.
+ * flushed once per BATCH_MS (one SYNC_UPDATE, or several for a large batch),
+ * so a busy page pays for at most one extraction per changed entity per batch
+ * instead of one per cache event.
  */
 function createSyncSession() {
   let streaming = false;
+  /** Id of the last snapshot posted; the first one gets 1. */
+  let lastSnapshotId = 0;
   let subscribedClient: QueryClient | null = null;
   let unsubscribe: (() => void) | null = null;
   let pendingQueries = new Map<string, PendingKind>();
@@ -277,7 +311,14 @@ function createSyncSession() {
     const client = subscribedClient;
     if (!client) return;
     const queryCache = client.getQueryCache();
-    const changes: ChangeEvent[] = [];
+    const changes: WireEncoding<ChangeEvent>[] = [];
+
+    /** Queues the encoded change, or warns that it is not sent. */
+    function push(change: ChangeEvent, label: string): void {
+      const encoded = encodeChangeForMessage(change);
+      if (encoded) changes.push(encoded);
+      else warnNotSent(label);
+    }
 
     for (const [queryHash, kind] of queries) {
       // Extraction runs user code (`enabled` / `staleTime` functions) and
@@ -303,7 +344,7 @@ function createSyncSession() {
             entry: extractQuery(live),
           };
         }
-        changes.push(encodeChange(change).value);
+        push(change, `query ${queryHash}`);
       });
     }
 
@@ -318,17 +359,20 @@ function createSyncSession() {
                 mutationId,
                 entry: extractMutation(mutation),
               };
-        changes.push(encodeChange(change).value);
+        push(change, `mutation ${String(mutationId)}`);
       });
     }
 
-    if (changes.length === 0) return;
-    // Each change is already encoded, so the batch is not encoded again
-    postBridge({
-      source: BRIDGE_SOURCE,
-      type: "SYNC_UPDATE",
-      payload: { changes },
-    });
+    // Each change is already encoded, so the batch is not encoded again. It
+    // is split by size like a snapshot; the changes are of distinct entities,
+    // so applying them over several messages ends in the same state.
+    for (const group of packBySize(changes, TARGET_MESSAGE_BYTES)) {
+      postBridge({
+        source: BRIDGE_SOURCE,
+        type: "SYNC_UPDATE",
+        payload: { changes: group },
+      });
+    }
   }
 
   function scheduleFlush(): void {
@@ -406,7 +450,8 @@ function createSyncSession() {
       unsubscribeClient();
       subscribe(client);
     }
-    postSnapshot(client);
+    lastSnapshotId++;
+    postSnapshot(client, lastSnapshotId);
   }
 
   /** STOP_SYNC: unsubscribe and drop anything still queued. Idempotent. */
