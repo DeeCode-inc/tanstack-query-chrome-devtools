@@ -12,12 +12,11 @@ export default defineConfig({
         strict_min_version: "112.0",
       },
     },
-    version: "1.0.2",
+    version: "1.0.3",
     description:
-      "DevTools extension for debugging TanStack Query applications. Inspect queries, mutations, and cache state in real-time.",
+      "Real-time TanStack Query devtools in your browser. Inspect queries, mutations, and cache — with zero bundle impact.",
     homepage_url:
       "https://github.com/DeeCode-inc/tanstack-query-chrome-devtools",
-    host_permissions: ["<all_urls>"],
     icons: {
       "16": "icon/icon-16.png",
       "48": "icon/icon-48.png",

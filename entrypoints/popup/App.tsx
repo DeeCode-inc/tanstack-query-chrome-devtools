@@ -1,31 +1,20 @@
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { DevtoolsActionsContext } from "@/hooks/useDevtoolsActions";
 import { useSyncConnection } from "@/hooks/useSyncConnection";
 
 function App() {
-  const {
-    queries,
-    mutations,
-    connected,
-    sendAction,
-    sendSetData,
-    sendDeleteData,
-    sendRemoveAllQueries,
-    sendClearArray,
-    sendClearMutationCache,
-  } = useSyncConnection({ variant: "popup" });
+  const { queries, mutations, connected, actions } = useSyncConnection({
+    variant: "popup",
+  });
   return (
-    <ConnectionStatus
-      variant="popup"
-      queries={queries}
-      mutations={mutations}
-      connected={connected}
-      sendAction={sendAction}
-      sendSetData={sendSetData}
-      sendDeleteData={sendDeleteData}
-      sendRemoveAllQueries={sendRemoveAllQueries}
-      sendClearArray={sendClearArray}
-      sendClearMutationCache={sendClearMutationCache}
-    />
+    <DevtoolsActionsContext value={actions}>
+      <ConnectionStatus
+        variant="popup"
+        queries={queries}
+        mutations={mutations}
+        connected={connected}
+      />
+    </DevtoolsActionsContext>
   );
 }
 

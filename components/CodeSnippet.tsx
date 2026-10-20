@@ -32,7 +32,7 @@ export function CodeSnippet({
       <button
         type="button"
         onClick={handleCopy}
-        className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-200/80 dark:bg-gray-700/80 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-200/80 dark:bg-gray-700/80 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-pointer"
         aria-label={copied ? "Copied" : "Copy to clipboard"}
       >
         {copied ? (

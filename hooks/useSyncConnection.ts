@@ -1,12 +1,23 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import type {
-  ActionType,
   ChangeEvent,
-  PathSegment,
-  PortMessage,
+  DevtoolsActions,
+  ViewerToBackgroundMessage,
 } from "@/types/messages";
 import type { LayoutVariant, MutationEntry, QueryEntry } from "@/types/ui";
+import { applyChanges } from "@/utils/apply-changes";
+import { isBackgroundToViewerMessage } from "@/utils/guards";
 import { decodeBigInts } from "@/utils/serialization";
+
+/**
+ * Reverses the wire encoding of a payload that passed the viewer guard.
+ * `decodeBigInts` reverses exactly the sentinels the page's encoder writes,
+ * so the payload keeps its static type. This is the only cast on decoder
+ * output.
+ */
+function decodeWire<T>(value: T): T {
+  return decodeBigInts(value) as T;
+}
 
 interface SyncState {
   queries: Map<string, QueryEntry>;
@@ -34,24 +45,28 @@ function syncReducer(state: SyncState, action: SyncAction): SyncState {
       return { queries, mutations, connected: true };
     }
     case "UPDATE": {
-      const queries = new Map(state.queries);
-      const mutations = new Map(state.mutations);
-      for (const change of action.changes) {
-        if (change.entityType === "query") {
-          if (change.changeType === "removed") {
-            queries.delete(change.queryHash);
-          } else if (change.entry) {
-            queries.set(change.queryHash, change.entry);
-          }
-        } else {
-          if (change.changeType === "removed") {
-            mutations.delete(change.mutationId);
-          } else if (change.entry) {
-            mutations.set(change.mutationId, change.entry);
-          }
-        }
-      }
-      return { queries, mutations, connected: true };
+      // Changes only apply on top of a snapshot; before one (or after a
+      // disconnect) there is nothing consistent to patch.
+      if (!state.connected) return state;
+      // Copy only a map the batch can touch; an untouched map keeps its
+      // identity so the memoized list built from it is reused.
+      const queries = action.changes.some((c) => c.entityType === "query")
+        ? new Map(state.queries)
+        : state.queries;
+      const mutations = action.changes.some((c) => c.entityType === "mutation")
+        ? new Map(state.mutations)
+        : state.mutations;
+      const { queriesChanged, mutationsChanged } = applyChanges(
+        queries,
+        mutations,
+        action.changes,
+      );
+      if (!queriesChanged && !mutationsChanged) return state;
+      return {
+        queries: queriesChanged ? queries : state.queries,
+        mutations: mutationsChanged ? mutations : state.mutations,
+        connected: true,
+      };
     }
     case "DISCONNECTED":
     case "CLEAR":
@@ -82,6 +97,10 @@ export function useSyncConnection({
     null,
   );
 
+  const post = useCallback((message: ViewerToBackgroundMessage) => {
+    portRef.current?.postMessage(message);
+  }, []);
+
   useEffect(() => {
     let retries = 0;
     let disposed = false;
@@ -96,27 +115,30 @@ export function useSyncConnection({
 
       // Send init message
       if (variant === "panel" && tabId !== undefined) {
-        port.postMessage({ type: "PANEL_CONNECT", tabId } as PortMessage);
+        post({ type: "PANEL_CONNECT", tabId });
       } else if (variant === "popup") {
-        port.postMessage({ type: "POPUP_CONNECT" } as PortMessage);
+        post({ type: "POPUP_CONNECT" });
       }
 
       port.onMessage.addListener((message: unknown) => {
-        const msg = message as PortMessage;
-        switch (msg.type) {
+        // Any message proves the connection works, so later losses get the
+        // full retry budget again.
+        retries = 0;
+        // Checked on the encoded form; decoding never throws and keeps the
+        // checked structure
+        if (!isBackgroundToViewerMessage(message)) return;
+        switch (message.type) {
           case "SYNC_SNAPSHOT":
             dispatch({
               type: "SNAPSHOT",
-              queries: decodeBigInts(msg.queries) as readonly QueryEntry[],
-              mutations: decodeBigInts(
-                msg.mutations,
-              ) as readonly MutationEntry[],
+              queries: decodeWire(message.queries),
+              mutations: decodeWire(message.mutations),
             });
             break;
           case "SYNC_UPDATE":
             dispatch({
               type: "UPDATE",
-              changes: decodeBigInts(msg.changes) as readonly ChangeEvent[],
+              changes: decodeWire(message.changes),
             });
             break;
           case "SYNC_DISCONNECTED":
@@ -124,6 +146,9 @@ export function useSyncConnection({
             break;
           case "SYNC_CLEAR":
             dispatch({ type: "CLEAR" });
+            break;
+          case "CONNECT_ACK":
+            // Only resets the retry budget (above); carries no state
             break;
         }
       });
@@ -142,9 +167,6 @@ export function useSyncConnection({
           dispatch({ type: "DISCONNECTED" });
         }
       });
-
-      // Reset retries on successful message receipt
-      retries = 0;
     }
 
     connect();
@@ -157,75 +179,49 @@ export function useSyncConnection({
         portRef.current = null;
       }
     };
-  }, [tabId, variant]);
+  }, [tabId, variant, post]);
 
-  const sendAction = useCallback((action: ActionType, queryHash: string) => {
-    portRef.current?.postMessage({
-      type: "ACTION_REQUEST",
-      action,
-      queryHash,
-    } as PortMessage);
-  }, []);
-
-  const sendSetData = useCallback(
-    (
-      queryHash: string,
-      path: readonly PathSegment[],
-      value: string | number | boolean,
-    ) => {
-      portRef.current?.postMessage({
-        type: "SET_DATA_REQUEST",
-        queryHash,
-        path,
-        value,
-      } as PortMessage);
-    },
-    [],
+  // `post` only reads the ref, so it and `actions` keep one identity for the
+  // lifetime of the hook.
+  const actions = useMemo<DevtoolsActions>(
+    () => ({
+      sendAction: (action, queryHash) => {
+        post({ type: "ACTION_REQUEST", action, queryHash });
+      },
+      sendSetData: (queryHash, path, value) => {
+        post({ type: "SET_DATA_REQUEST", queryHash, path, value });
+      },
+      sendDeleteData: (queryHash, path) => {
+        post({ type: "DELETE_DATA_REQUEST", queryHash, path });
+      },
+      sendRemoveAllQueries: () => {
+        post({ type: "REMOVE_ALL_QUERIES_REQUEST" });
+      },
+      sendClearArray: (queryHash, path) => {
+        post({ type: "CLEAR_ARRAY_REQUEST", queryHash, path });
+      },
+      sendClearMutationCache: () => {
+        post({ type: "CLEAR_MUTATION_CACHE_REQUEST" });
+      },
+    }),
+    [post],
   );
 
-  const sendDeleteData = useCallback(
-    (queryHash: string, path: readonly PathSegment[]) => {
-      portRef.current?.postMessage({
-        type: "DELETE_DATA_REQUEST",
-        queryHash,
-        path,
-      } as PortMessage);
-    },
-    [],
+  // New arrays only when the underlying map changed, so list components
+  // memoized on them skip sorting and filtering for unrelated updates.
+  const queries = useMemo(
+    () => Array.from(state.queries.values()),
+    [state.queries],
   );
-
-  const sendRemoveAllQueries = useCallback(() => {
-    portRef.current?.postMessage({
-      type: "REMOVE_ALL_QUERIES_REQUEST",
-    } as PortMessage);
-  }, []);
-
-  const sendClearArray = useCallback(
-    (queryHash: string, path: readonly PathSegment[]) => {
-      portRef.current?.postMessage({
-        type: "CLEAR_ARRAY_REQUEST",
-        queryHash,
-        path,
-      } as PortMessage);
-    },
-    [],
+  const mutations = useMemo(
+    () => Array.from(state.mutations.values()),
+    [state.mutations],
   );
-
-  const sendClearMutationCache = useCallback(() => {
-    portRef.current?.postMessage({
-      type: "CLEAR_MUTATION_CACHE_REQUEST",
-    } as PortMessage);
-  }, []);
 
   return {
-    queries: Array.from(state.queries.values()),
-    mutations: Array.from(state.mutations.values()),
+    queries,
+    mutations,
     connected: state.connected,
-    sendAction,
-    sendSetData,
-    sendDeleteData,
-    sendRemoveAllQueries,
-    sendClearArray,
-    sendClearMutationCache,
+    actions,
   };
 }

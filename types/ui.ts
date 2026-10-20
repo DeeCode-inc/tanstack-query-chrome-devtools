@@ -29,7 +29,6 @@ export interface QueryEntry {
   readonly observerCount: number;
   readonly status: QueryDisplayStatus;
   readonly dataUpdatedAt: number;
-  readonly data: unknown;
   readonly isActive: boolean;
   readonly isDisabled: boolean;
   readonly meta: Record<string, unknown> | undefined;
@@ -53,10 +52,6 @@ export interface MutationEntry {
   readonly mutationKey: readonly unknown[] | null;
   readonly status: MutationStatus;
   readonly timestamp: number;
-  readonly variables: unknown;
-  readonly context: unknown;
-  readonly data: unknown;
-  readonly error: unknown;
   readonly state: MutationState;
 }
 

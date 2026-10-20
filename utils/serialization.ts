@@ -5,12 +5,61 @@ interface TypeSentinel {
     | "function"
     | "symbol"
     | "map"
-    | "set";
+    | "set"
+    | "error"
+    | "undefined"
+    | "number"
+    | "circular";
   readonly value?: string;
   readonly entries?: readonly unknown[];
+  readonly name?: string;
+  readonly message?: string;
+  readonly stack?: string;
+  readonly props?: Record<string, unknown>;
 }
 
 type WriteTarget = Record<string, unknown> | unknown[];
+
+/**
+ * Stand-in for a reference back to an object that is already on the current
+ * path from the root (a cycle). Decoding produces it in place of the cyclic
+ * reference, so decoded values are always acyclic trees.
+ */
+export const CIRCULAR: unique symbol = Symbol("Circular");
+
+/**
+ * Number values that JSON cannot carry: `JSON.stringify` turns NaN and
+ * ±Infinity into `null` and -0 into `0`. They travel as their string form.
+ */
+const SPECIAL_NUMBERS = {
+  NaN: Number.NaN,
+  Infinity: Number.POSITIVE_INFINITY,
+  "-Infinity": Number.NEGATIVE_INFINITY,
+  "-0": -0,
+} as const;
+
+type SpecialNumberLabel = keyof typeof SPECIAL_NUMBERS;
+
+function specialNumberLabel(n: number): SpecialNumberLabel | null {
+  if (Number.isNaN(n)) return "NaN";
+  if (n === Number.POSITIVE_INFINITY) return "Infinity";
+  if (n === Number.NEGATIVE_INFINITY) return "-Infinity";
+  if (Object.is(n, -0)) return "-0";
+  return null;
+}
+
+function isSpecialNumberLabel(value: unknown): value is SpecialNumberLabel {
+  return typeof value === "string" && Object.hasOwn(SPECIAL_NUMBERS, value);
+}
+
+function isErrorObject(obj: object): obj is Error {
+  return (
+    obj instanceof Error ||
+    Object.prototype.toString.call(obj) === "[object Error]"
+  );
+}
+
+const BIGINT_WIRE = /^-?\d+$/;
 
 /**
  * `new Date("nope")` is still `instanceof Date`, but its time value is NaN and
@@ -50,28 +99,68 @@ function writeSlot(
 ): void {
   if (typeof key === "number") {
     (target as unknown[])[key] = val;
+  } else if (key === "__proto__") {
+    // An own `__proto__` key survives JSON and structured clone as a plain
+    // data property. Assigning it would instead hit the inherited
+    // `Object.prototype.__proto__` setter and replace the target's prototype
+    // (e.g. turning a decoded object into a fake Map), so it is defined as an
+    // ordinary own property, the way `JSON.parse` creates it.
+    Object.defineProperty(target, key, {
+      value: val,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
   } else {
     (target as Record<string, unknown>)[key] = val;
   }
 }
 
 interface EncodeFrame {
+  kind: "encode";
   value: unknown;
   target: WriteTarget;
   key: string | number;
 }
 
+/**
+ * Popped once every child frame of `obj` has been processed, which is when
+ * `obj` leaves the current root-to-node path.
+ */
+interface ExitFrame {
+  kind: "exit";
+  obj: object;
+}
+
 export function encodeBigInts(value: unknown): unknown {
   const root: [unknown] = [undefined];
-  const stack: EncodeFrame[] = [{ value, target: root, key: 0 }];
-  const seen = new WeakSet<object>();
+  const stack: (EncodeFrame | ExitFrame)[] = [
+    { kind: "encode", value, target: root, key: 0 },
+  ];
+  // Objects on the path from the root to the current frame. Only a reference
+  // to one of these is a cycle; an object that is merely shared between
+  // siblings is encoded again at every occurrence.
+  const ancestors = new Set<object>();
 
   while (stack.length > 0) {
     const frame = stack.pop()!;
+
+    if (frame.kind === "exit") {
+      ancestors.delete(frame.obj);
+      continue;
+    }
+
     const v = frame.value;
 
-    if (v === null || v === undefined) {
+    if (v === null) {
       writeSlot(frame.target, frame.key, v);
+      continue;
+    }
+
+    if (v === undefined) {
+      writeSlot(frame.target, frame.key, {
+        __tqcd_type: "undefined",
+      } satisfies TypeSentinel);
       continue;
     }
 
@@ -93,20 +182,27 @@ export function encodeBigInts(value: unknown): unknown {
           __tqcd_type: "function",
         } satisfies TypeSentinel);
         continue;
+      case "number": {
+        const label = specialNumberLabel(v);
+        writeSlot(
+          frame.target,
+          frame.key,
+          label === null
+            ? v
+            : ({ __tqcd_type: "number", value: label } satisfies TypeSentinel),
+        );
+        continue;
+      }
       case "string":
-      case "number":
       case "boolean":
         writeSlot(frame.target, frame.key, v);
         continue;
     }
 
     const obj = v;
-    if (seen.has(obj)) {
-      writeSlot(frame.target, frame.key, undefined);
-      continue;
-    }
-    seen.add(obj);
 
+    // A Date has no children to recurse into, so it cannot close a cycle and
+    // needs no ancestor bookkeeping.
     if (obj instanceof Date) {
       writeSlot(frame.target, frame.key, {
         __tqcd_type: "date",
@@ -115,11 +211,53 @@ export function encodeBigInts(value: unknown): unknown {
       continue;
     }
 
+    if (ancestors.has(obj)) {
+      writeSlot(frame.target, frame.key, {
+        __tqcd_type: "circular",
+      } satisfies TypeSentinel);
+      continue;
+    }
+    ancestors.add(obj);
+    // Pushed before the child frames so that, the stack being LIFO, it pops
+    // only after all of them.
+    stack.push({ kind: "exit", obj });
+
+    if (isErrorObject(obj)) {
+      const props: Record<string, unknown> = {};
+      const errorStack: unknown = obj.stack;
+      writeSlot(frame.target, frame.key, {
+        __tqcd_type: "error",
+        name: typeof obj.name === "string" ? obj.name : "Error",
+        message: typeof obj.message === "string" ? obj.message : "",
+        ...(typeof errorStack === "string" ? { stack: errorStack } : {}),
+        props,
+      } satisfies TypeSentinel);
+      const propEntries: [string, unknown][] = Object.entries(obj);
+      // `new Error(msg, { cause })` defines `cause` as a non-enumerable own
+      // property, which `Object.entries` skips.
+      if (
+        Object.hasOwn(obj, "cause") &&
+        !Object.prototype.propertyIsEnumerable.call(obj, "cause")
+      ) {
+        propEntries.push(["cause", obj.cause]);
+      }
+      for (let i = propEntries.length - 1; i >= 0; i--) {
+        const [propKey, propValue] = propEntries[i]!;
+        stack.push({
+          kind: "encode",
+          value: propValue,
+          target: props,
+          key: propKey,
+        });
+      }
+      continue;
+    }
+
     if (Array.isArray(obj)) {
       const result = new Array<unknown>(obj.length);
       writeSlot(frame.target, frame.key, result);
       for (let i = obj.length - 1; i >= 0; i--) {
-        stack.push({ value: obj[i], target: result, key: i });
+        stack.push({ kind: "encode", value: obj[i], target: result, key: i });
       }
       continue;
     }
@@ -132,8 +270,8 @@ export function encodeBigInts(value: unknown): unknown {
       for (const [mapKey, mapValue] of mapEntries) {
         const pair: [unknown, unknown] = [undefined, undefined];
         entries.push(pair);
-        stack.push({ value: mapValue, target: pair, key: 1 });
-        stack.push({ value: mapKey, target: pair, key: 0 });
+        stack.push({ kind: "encode", value: mapValue, target: pair, key: 1 });
+        stack.push({ kind: "encode", value: mapKey, target: pair, key: 0 });
       }
       entries.reverse();
       continue;
@@ -146,7 +284,12 @@ export function encodeBigInts(value: unknown): unknown {
       const setValues = Array.from(obj.values());
       entries.length = setValues.length;
       for (let i = setValues.length - 1; i >= 0; i--) {
-        stack.push({ value: setValues[i], target: entries, key: i });
+        stack.push({
+          kind: "encode",
+          value: setValues[i],
+          target: entries,
+          key: i,
+        });
       }
       continue;
     }
@@ -156,6 +299,7 @@ export function encodeBigInts(value: unknown): unknown {
     const objEntries = Object.entries(obj as Record<string, unknown>).reverse();
     for (const [entryKey, entryValue] of objEntries) {
       stack.push({
+        kind: "encode",
         value: entryValue,
         target: result,
         key: entryKey,
@@ -187,16 +331,51 @@ interface FinalizeSetFrame {
   key: string | number;
 }
 
+/**
+ * Builds the real `Error` for an error sentinel. `name` and `stack` are
+ * defined like the engine defines them on a native error (non-enumerable),
+ * so only the sentinel's `props` show up as enumerable own properties.
+ */
+function decodeErrorShell(sentinel: Record<string, unknown>): Error {
+  const error = new Error(
+    typeof sentinel.message === "string" ? sentinel.message : "",
+  );
+  Object.defineProperty(error, "name", {
+    value: typeof sentinel.name === "string" ? sentinel.name : "Error",
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+  if (typeof sentinel.stack === "string") {
+    Object.defineProperty(error, "stack", {
+      value: sentinel.stack,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
+  }
+  return error;
+}
+
 export function decodeBigInts(value: unknown): unknown {
   const root: [unknown] = [undefined];
-  const stack: (DecodeFrame | FinalizeMapFrame | FinalizeSetFrame)[] = [
-    { kind: "decode", value, target: root, key: 0 },
-  ];
-  const seen = new WeakSet<object>();
+  const stack: (
+    | DecodeFrame
+    | FinalizeMapFrame
+    | FinalizeSetFrame
+    | ExitFrame
+  )[] = [{ kind: "decode", value, target: root, key: 0 }];
+  // Same path-based cycle tracking as `encodeBigInts`: a payload that arrived
+  // through structured clone can be cyclic, and the decoded value must not be.
+  const ancestors = new Set<object>();
 
   while (stack.length > 0) {
     const frame = stack.pop()!;
 
+    if (frame.kind === "exit") {
+      ancestors.delete(frame.obj);
+      continue;
+    }
     if (frame.kind === "finalize-map") {
       writeSlot(frame.target, frame.key, new Map(frame.entries));
       continue;
@@ -213,11 +392,12 @@ export function decodeBigInts(value: unknown): unknown {
       continue;
     }
 
-    if (seen.has(v)) {
-      writeSlot(frame.target, frame.key, undefined);
+    if (ancestors.has(v)) {
+      writeSlot(frame.target, frame.key, CIRCULAR);
       continue;
     }
-    seen.add(v);
+    ancestors.add(v);
+    stack.push({ kind: "exit", obj: v });
 
     if (Array.isArray(v)) {
       const result = new Array<unknown>(v.length);
@@ -232,12 +412,47 @@ export function decodeBigInts(value: unknown): unknown {
 
     switch (obj.__tqcd_type) {
       case "bigint":
-        if (typeof obj.value === "string") {
+        // `BigInt("1.5")` and `BigInt("abc")` throw; decoding must not.
+        if (typeof obj.value === "string" && BIGINT_WIRE.test(obj.value)) {
           writeSlot(frame.target, frame.key, BigInt(obj.value));
         } else {
           writeSlot(frame.target, frame.key, undefined);
         }
         continue;
+      case "undefined":
+        writeSlot(frame.target, frame.key, undefined);
+        continue;
+      case "number":
+        writeSlot(
+          frame.target,
+          frame.key,
+          isSpecialNumberLabel(obj.value)
+            ? SPECIAL_NUMBERS[obj.value]
+            : undefined,
+        );
+        continue;
+      case "circular":
+        writeSlot(frame.target, frame.key, CIRCULAR);
+        continue;
+      case "error": {
+        const error = decodeErrorShell(obj);
+        writeSlot(frame.target, frame.key, error);
+        const props = obj.props;
+        if (typeof props === "object" && props !== null) {
+          // The decoded props are written straight onto the Error instance.
+          const propEntries = Object.entries(props);
+          for (let i = propEntries.length - 1; i >= 0; i--) {
+            const [propKey, propValue] = propEntries[i]!;
+            stack.push({
+              kind: "decode",
+              value: propValue,
+              target: error as unknown as Record<string, unknown>,
+              key: propKey,
+            });
+          }
+        }
+        continue;
+      }
       case "date":
         if (typeof obj.value === "string") {
           writeSlot(frame.target, frame.key, new Date(obj.value));
@@ -327,6 +542,21 @@ export function decodeBigInts(value: unknown): unknown {
   return root[0];
 }
 
+/**
+ * Text for a Map key, used by the key labels and the tree view. Never throws.
+ *
+ * Primitives go through `String`, which cannot throw for them (symbols
+ * included). Objects and functions get a fixed tag instead of being coerced:
+ * coercion calls their `toString` / `valueOf`, and decoded page data can carry
+ * own non-callable `toString` / `valueOf` keys, or be an array holding a
+ * symbol, so `String(key)` would throw a TypeError and take the UI down.
+ */
+export function formatMapKey(key: unknown): string {
+  if (typeof key === "function") return "[Function]";
+  if (typeof key === "object" && key !== null) return "[Object]";
+  return String(key);
+}
+
 function prepareForStringify(value: unknown): unknown {
   if (typeof value === "bigint") return `__bigint:${String(value)}`;
   if (typeof value === "symbol") return `__symbol:${value.description ?? ""}`;
@@ -335,7 +565,7 @@ function prepareForStringify(value: unknown): unknown {
   if (value instanceof Map) {
     const result: Record<string, unknown> = {};
     for (const [k, v] of value.entries()) {
-      result[String(k)] = prepareForStringify(v);
+      writeSlot(result, formatMapKey(k), prepareForStringify(v));
     }
     return result;
   }
@@ -346,7 +576,7 @@ function prepareForStringify(value: unknown): unknown {
   if (typeof value === "object" && value !== null) {
     const result: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      result[k] = prepareForStringify(v);
+      writeSlot(result, k, prepareForStringify(v));
     }
     return result;
   }
@@ -378,6 +608,7 @@ export function serializeToJsLiteral(
 ): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
+  if (value === CIRCULAR) return '"[Circular]"';
 
   switch (typeof value) {
     case "string":
@@ -386,6 +617,8 @@ export function serializeToJsLiteral(
       if (Number.isNaN(value)) return "NaN";
       if (value === Infinity) return "Infinity";
       if (value === -Infinity) return "-Infinity";
+      // `String(-0)` is "0".
+      if (Object.is(value, -0)) return "-0";
       return String(value);
     case "boolean":
       return String(value);
@@ -398,6 +631,12 @@ export function serializeToJsLiteral(
   }
 
   if (ancestors.has(value)) return '"[Circular]"';
+
+  if (value instanceof Error) {
+    // Only the message is reproduced; name, stack and extra props are dropped.
+    const message = typeof value.message === "string" ? value.message : "";
+    return `new Error("${escapeString(message)}")`;
+  }
 
   if (value instanceof Date) {
     // `new Date(NaN)` is the faithful literal for an invalid Date — emitting
@@ -466,7 +705,14 @@ export function serializeToJsLiteral(
   if (entries.length === 0) return "{}";
 
   const lines = entries.map(([key, val]) => {
-    const formattedKey = VALID_IDENT.test(key) ? key : `"${escapeString(key)}"`;
+    // In an object literal, `__proto__: v` sets the prototype whether the key
+    // is bare or quoted; only a computed key creates an own property.
+    const formattedKey =
+      key === "__proto__"
+        ? '["__proto__"]'
+        : VALID_IDENT.test(key)
+          ? key
+          : `"${escapeString(key)}"`;
     const serializedVal = serializeToJsLiteral(val, indent, childAncestors);
     const valLines = serializedVal.split("\n");
     if (valLines.length === 1) {

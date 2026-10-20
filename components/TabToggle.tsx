@@ -17,6 +17,7 @@ export function TabToggle({
     <div className="flex gap-1">
       <button
         type="button"
+        aria-pressed={activeTab === "queries"}
         className={
           activeTab === "queries"
             ? "px-3 py-1 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-medium text-sm"
@@ -28,6 +29,7 @@ export function TabToggle({
       </button>
       <button
         type="button"
+        aria-pressed={activeTab === "mutations"}
         className={
           activeTab === "mutations"
             ? "px-3 py-1 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-medium text-sm"

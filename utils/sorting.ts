@@ -53,10 +53,11 @@ function compareQueries(
       if (rankDiff !== 0) return rankDiff;
       // Secondary: dataUpdatedAt descending (most recent first)
       // Treat 0 as "never updated" — sort to bottom in ascending
+      // Compared rather than subtracted: -Infinity - -Infinity is NaN, which
+      // would skip the tiebreaker and give the sort an inconsistent comparator.
       const aTime = a.dataUpdatedAt || -Infinity;
       const bTime = b.dataUpdatedAt || -Infinity;
-      const timeDiff = bTime - aTime;
-      if (timeDiff !== 0) return timeDiff;
+      if (aTime !== bTime) return bTime > aTime ? 1 : -1;
       // Tiebreaker: queryHash alphabetical
       return a.queryHash.localeCompare(b.queryHash);
     }
@@ -65,7 +66,7 @@ function compareQueries(
     case "lastUpdated": {
       const aTime = a.dataUpdatedAt || -Infinity;
       const bTime = b.dataUpdatedAt || -Infinity;
-      return aTime - bTime;
+      return aTime === bTime ? 0 : aTime > bTime ? 1 : -1;
     }
   }
 }
@@ -82,17 +83,17 @@ function compareMutations(
       if (rankDiff !== 0) return rankDiff;
       // Secondary: submittedAt descending (most recent first)
       // Treat 0 as "never submitted" — sort to bottom in ascending
+      // Compared rather than subtracted, as in `compareQueries`.
       const aTime = a.state.submittedAt || -Infinity;
       const bTime = b.state.submittedAt || -Infinity;
-      const timeDiff = bTime - aTime;
-      if (timeDiff !== 0) return timeDiff;
+      if (aTime !== bTime) return bTime > aTime ? 1 : -1;
       // Tiebreaker: mutationId
       return a.mutationId - b.mutationId;
     }
     case "lastUpdated": {
       const aTime = a.state.submittedAt || -Infinity;
       const bTime = b.state.submittedAt || -Infinity;
-      return aTime - bTime;
+      return aTime === bTime ? 0 : aTime > bTime ? 1 : -1;
     }
   }
 }

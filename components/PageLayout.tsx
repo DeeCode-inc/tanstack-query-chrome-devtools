@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import type { ActionType, PathSegment } from "@/types/messages";
+import { useDevtoolsActions } from "@/hooks/useDevtoolsActions";
 import type {
   ActiveTab,
   LayoutVariant,
@@ -8,59 +8,26 @@ import type {
   QueryEntry,
   QuerySortConfig,
 } from "@/types/ui";
-import { stringifyWithBigInt } from "@/utils/serialization";
+import {
+  getMutationSearchText,
+  getQueryKeySearchText,
+} from "@/utils/entry-labels";
 import {
   MUTATION_SORT_OPTIONS,
   QUERY_SORT_OPTIONS,
   sortMutations,
   sortQueries,
 } from "@/utils/sorting";
-import { Header } from "./Header";
 import { MutationDetail } from "./MutationDetail";
 import { MutationList } from "./MutationList";
 import { QueryDetail } from "./QueryDetail";
 import { QueryList } from "./QueryList";
-import { SearchInput } from "./SearchInput";
-import { SortDirectionButton } from "./SortDirectionButton";
-import { SortTermDropdown } from "./SortTermDropdown";
-
-function queryMatchesFilter(query: QueryEntry, filter: string): boolean {
-  return stringifyWithBigInt(query.queryKey)
-    .toLowerCase()
-    .includes(filter.toLowerCase());
-}
-
-function mutationMatchesFilter(
-  mutation: MutationEntry,
-  index: number,
-  filter: string,
-): boolean {
-  const label = mutation.mutationKey
-    ? stringifyWithBigInt(mutation.mutationKey)
-    : `Mutation #${String(index + 1)}`;
-  return label.toLowerCase().includes(filter.toLowerCase());
-}
+import { Toolbar } from "./Toolbar";
 
 interface PageLayoutProps {
   readonly variant: LayoutVariant;
   readonly queries: readonly QueryEntry[];
   readonly mutations: readonly MutationEntry[];
-  readonly sendAction?: (action: ActionType, queryHash: string) => void;
-  readonly sendSetData?: (
-    queryHash: string,
-    path: readonly PathSegment[],
-    value: string | number | boolean,
-  ) => void;
-  readonly sendDeleteData?: (
-    queryHash: string,
-    path: readonly PathSegment[],
-  ) => void;
-  readonly sendRemoveAllQueries?: () => void;
-  readonly sendClearArray?: (
-    queryHash: string,
-    path: readonly PathSegment[],
-  ) => void;
-  readonly sendClearMutationCache?: () => void;
 }
 
 interface ListContentProps {
@@ -69,10 +36,8 @@ interface ListContentProps {
   readonly mutations: readonly MutationEntry[];
   readonly selectedQueryHash: string | null;
   readonly onSelectQuery: (queryHash: string) => void;
-  readonly onRemoveAllQueries?: () => void;
   readonly selectedMutationId: number | null;
   readonly onSelectMutation: (mutationId: number) => void;
-  readonly onClearMutationCache?: () => void;
 }
 
 function ListContent({
@@ -81,39 +46,29 @@ function ListContent({
   mutations,
   selectedQueryHash,
   onSelectQuery,
-  onRemoveAllQueries,
   selectedMutationId,
   onSelectMutation,
-  onClearMutationCache,
 }: ListContentProps) {
+  const { sendRemoveAllQueries, sendClearMutationCache } = useDevtoolsActions();
+
   return activeTab === "queries" ? (
     <QueryList
       queries={queries}
       selectedQueryHash={selectedQueryHash}
       onSelectQuery={onSelectQuery}
-      onRemoveAllQueries={onRemoveAllQueries}
+      onRemoveAllQueries={sendRemoveAllQueries}
     />
   ) : (
     <MutationList
       mutations={mutations}
       selectedMutationId={selectedMutationId}
       onSelectMutation={onSelectMutation}
-      onRemoveAllMutations={onClearMutationCache}
+      onRemoveAllMutations={sendClearMutationCache}
     />
   );
 }
 
-export function PageLayout({
-  variant,
-  queries,
-  mutations,
-  sendAction,
-  sendSetData,
-  sendDeleteData,
-  sendRemoveAllQueries,
-  sendClearArray,
-  sendClearMutationCache,
-}: PageLayoutProps) {
+export function PageLayout({ variant, queries, mutations }: PageLayoutProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("queries");
   const [selectedQueryHash, setSelectedQueryHash] = useState<string | null>(
     null,
@@ -139,20 +94,26 @@ export function PageLayout({
     [mutations, mutationSortConfig],
   );
 
+  // Lowercased once per filter change; labels are lowercased once per entry.
+  const needle = deferredFilter.toLowerCase();
+
   const filteredQueries = useMemo(
     () =>
-      deferredFilter
-        ? sortedQueries.filter((q) => queryMatchesFilter(q, deferredFilter))
+      needle
+        ? sortedQueries.filter((q) => getQueryKeySearchText(q).includes(needle))
         : sortedQueries,
-    [sortedQueries, deferredFilter],
+    [sortedQueries, needle],
   );
 
-  const filteredMutations = useMemo(() => {
-    if (!deferredFilter) return sortedMutations;
-    return sortedMutations.filter((m, i) =>
-      mutationMatchesFilter(m, i, deferredFilter),
-    );
-  }, [sortedMutations, deferredFilter]);
+  const filteredMutations = useMemo(
+    () =>
+      needle
+        ? sortedMutations.filter((m) =>
+            getMutationSearchText(m).includes(needle),
+          )
+        : sortedMutations,
+    [sortedMutations, needle],
+  );
 
   const activeSortConfig =
     activeTab === "queries" ? querySortConfig : mutationSortConfig;
@@ -214,6 +175,22 @@ export function PageLayout({
     }
   }, [selectedMutationId, mutations]);
 
+  const toolbar = (
+    <Toolbar
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      queryCount={queries.length}
+      mutationCount={mutations.length}
+      filterTerm={filterTerm}
+      onFilterChange={setFilterTerm}
+      sortTerm={activeSortConfig.term}
+      sortOptions={activeSortOptions}
+      onSortTermChange={handleSortTermChange}
+      sortDirection={activeSortConfig.direction}
+      onSortDirectionToggle={handleSortDirectionToggle}
+    />
+  );
+
   if (variant === "popup") {
     // Popup: show detail view when a query is selected on the queries tab
     if (selectedQueryHash !== null && activeTab === "queries") {
@@ -222,11 +199,6 @@ export function PageLayout({
           <QueryDetail
             query={selectedQuery}
             onBack={() => setSelectedQueryHash(null)}
-            activeTab={activeTab}
-            sendAction={sendAction}
-            sendSetData={sendSetData}
-            sendDeleteData={sendDeleteData}
-            sendClearArray={sendClearArray}
             onClearSelection={onClearSelection}
           />
         </div>
@@ -247,24 +219,7 @@ export function PageLayout({
 
     return (
       <div className="flex flex-col h-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <Header
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          queryCount={queries.length}
-          mutationCount={mutations.length}
-        />
-        <div className="flex items-center gap-2 px-3 py-2">
-          <SearchInput value={filterTerm} onChange={setFilterTerm} />
-          <SortTermDropdown
-            value={activeSortConfig.term}
-            options={activeSortOptions}
-            onChange={handleSortTermChange}
-          />
-          <SortDirectionButton
-            direction={activeSortConfig.direction}
-            onToggle={handleSortDirectionToggle}
-          />
-        </div>
+        {toolbar}
         <div className="flex-1 overflow-y-auto">
           <ListContent
             activeTab={activeTab}
@@ -272,10 +227,8 @@ export function PageLayout({
             mutations={filteredMutations}
             selectedQueryHash={selectedQueryHash}
             onSelectQuery={setSelectedQueryHash}
-            onRemoveAllQueries={sendRemoveAllQueries}
             selectedMutationId={selectedMutationId}
             onSelectMutation={setSelectedMutationId}
-            onClearMutationCache={sendClearMutationCache}
           />
         </div>
       </div>
@@ -284,24 +237,7 @@ export function PageLayout({
 
   return (
     <div className="flex flex-col h-full w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <Header
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        queryCount={queries.length}
-        mutationCount={mutations.length}
-      />
-      <div className="flex items-center gap-2 px-3 py-2">
-        <SearchInput value={filterTerm} onChange={setFilterTerm} />
-        <SortTermDropdown
-          value={activeSortConfig.term}
-          options={activeSortOptions}
-          onChange={handleSortTermChange}
-        />
-        <SortDirectionButton
-          direction={activeSortConfig.direction}
-          onToggle={handleSortDirectionToggle}
-        />
-      </div>
+      {toolbar}
       <div className="flex flex-col md:flex-row flex-1 min-h-0">
         <div className="w-full h-1/2 md:w-1/2 md:h-full overflow-y-auto border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700">
           <ListContent
@@ -310,21 +246,14 @@ export function PageLayout({
             mutations={filteredMutations}
             selectedQueryHash={selectedQueryHash}
             onSelectQuery={setSelectedQueryHash}
-            onRemoveAllQueries={sendRemoveAllQueries}
             selectedMutationId={selectedMutationId}
             onSelectMutation={setSelectedMutationId}
-            onClearMutationCache={sendClearMutationCache}
           />
         </div>
         <div className="w-full h-1/2 md:w-1/2 md:h-full overflow-y-auto">
           {activeTab === "queries" ? (
             <QueryDetail
               query={selectedQuery}
-              activeTab={activeTab}
-              sendAction={sendAction}
-              sendSetData={sendSetData}
-              sendDeleteData={sendDeleteData}
-              sendClearArray={sendClearArray}
               onClearSelection={onClearSelection}
             />
           ) : (
