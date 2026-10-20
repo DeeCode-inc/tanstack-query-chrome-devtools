@@ -5,13 +5,19 @@ import {
   CIRCULAR,
   dateToWireString,
   formatMapKey,
+  omittedCount,
   serializeToJsLiteral,
+  TRUNCATED,
 } from "@/utils/serialization";
 
 /** Like `String(n)`, but keeps the sign of -0, which `String` drops. */
 function formatNumber(n: number): string {
   return Object.is(n, -0) ? "-0" : String(n);
 }
+
+/** Tooltip of everything that stands for data the page did not send. */
+const TRUNCATED_TITLE =
+  "Not sent by the page: this value is over the devtools size budget";
 
 /** Error fields rendered explicitly, ahead of the error's own props. */
 const ERROR_FIELD_KEYS: ReadonlySet<string> = new Set([
@@ -66,13 +72,18 @@ const LEAF_VALUE_CLASS = {
 
 function LeafValue({
   kind,
+  title,
   children,
 }: {
   readonly kind: keyof typeof LEAF_VALUE_CLASS;
+  readonly title?: string;
   readonly children: ReactNode;
 }) {
   return (
-    <span className={`flex-1 truncate min-w-10 ${LEAF_VALUE_CLASS[kind]}`}>
+    <span
+      title={title}
+      className={`flex-1 truncate min-w-10 ${LEAF_VALUE_CLASS[kind]}`}
+    >
       {children}
     </span>
   );
@@ -101,6 +112,40 @@ function LeafRow({
       {children}
       {deleteButton}
     </div>
+  );
+}
+
+/**
+ * Summary of a container, e.g. `Array (3 elements)`. A container the page
+ * cut short is counted in full, with how much of it was not sent.
+ */
+function countSummary(
+  kind: string,
+  [singular, plural]: readonly [string, string],
+  shown: number,
+  omitted: number,
+): string {
+  const total = shown + omitted;
+  const counted = `${String(total)} ${total === 1 ? singular : plural}`;
+  return omitted > 0
+    ? `${kind} (${counted}, ${String(omitted)} truncated)`
+    : `${kind} (${counted})`;
+}
+
+const ELEMENTS = ["element", "elements"] as const;
+const ENTRIES = ["entry", "entries"] as const;
+
+/**
+ * Last row of a container the page cut short. It stands for children the
+ * viewer does not have, so it has no path and no controls.
+ */
+function OmittedRow({ count }: { readonly count: number }) {
+  return (
+    <LeafRow>
+      <LeafValue kind="muted" title={TRUNCATED_TITLE}>
+        {`… ${String(count)} more truncated`}
+      </LeafValue>
+    </LeafRow>
   );
 }
 
@@ -304,6 +349,7 @@ function DeleteButton({
 function CollapsibleNode({
   label,
   entries,
+  omitted,
   isArray,
   summaryOverride,
   showClearButton,
@@ -318,6 +364,8 @@ function CollapsibleNode({
 }: {
   readonly label?: string;
   readonly entries: readonly TreeEntry[];
+  /** Children the page did not send (see `omittedCount`). */
+  readonly omitted: number;
   readonly isArray: boolean;
   readonly summaryOverride?: string;
   readonly showClearButton?: boolean;
@@ -341,8 +389,8 @@ function CollapsibleNode({
   const summary =
     summaryOverride ??
     (isArray
-      ? `Array (${entries.length} element${entries.length !== 1 ? "s" : ""})`
-      : `Object (${entries.length} entr${entries.length !== 1 ? "ies" : "y"})`);
+      ? countSummary("Array", ELEMENTS, entries.length, omitted)
+      : countSummary("Object", ENTRIES, entries.length, omitted));
 
   const shouldShowClear = showClearButton ?? isArray;
 
@@ -395,7 +443,7 @@ function CollapsibleNode({
           </button>
           {editable &&
             shouldShowClear &&
-            entries.length > 0 &&
+            entries.length + omitted > 0 &&
             onArrayClear && (
               <button
                 type="button"
@@ -441,6 +489,7 @@ function CollapsibleNode({
               onArrayClear={onArrayClear}
             />
           )}
+          {omitted > 0 && <OmittedRow count={omitted} />}
         </div>
       )}
     </div>
@@ -593,6 +642,19 @@ export function TreeView({
     );
   }
 
+  // Never an edit input: the marker is not the value, and writing it back
+  // would replace the page's data. Deleting removes the real value, whose
+  // path the marker keeps.
+  if (data === TRUNCATED) {
+    return (
+      <LeafRow label={label} deleteButton={deleteBtn}>
+        <LeafValue kind="muted" title={TRUNCATED_TITLE}>
+          [Truncated]
+        </LeafValue>
+      </LeafRow>
+    );
+  }
+
   if (typeof data === "symbol") {
     return (
       <LeafRow label={label} deleteButton={deleteBtn}>
@@ -690,6 +752,7 @@ export function TreeView({
 
   const childAncestors = new Set(ancestors);
   childAncestors.add(data);
+  const omitted = omittedCount(data);
 
   if (data instanceof Error) {
     const errorEntries: (readonly [string, unknown])[] = [
@@ -709,6 +772,7 @@ export function TreeView({
       <CollapsibleNode
         label={label}
         entries={namedEntries(errorEntries)}
+        omitted={omitted}
         isArray={false}
         summaryOverride={`${errorName}: ${errorMessage}`}
         showClearButton={false}
@@ -730,9 +794,8 @@ export function TreeView({
       value: v,
     }));
     const n = mapEntries.length;
-    const summary = `Map (${n} entr${n !== 1 ? "ies" : "y"})`;
 
-    if (n === 0) {
+    if (n === 0 && omitted === 0) {
       return (
         <LeafRow label={label} deleteButton={deleteBtn}>
           <LeafValue kind="text">Map (0 entries)</LeafValue>
@@ -744,8 +807,9 @@ export function TreeView({
       <CollapsibleNode
         label={label}
         entries={mapEntries}
+        omitted={omitted}
         isArray={false}
-        summaryOverride={summary}
+        summaryOverride={countSummary("Map", ENTRIES, n, omitted)}
         depth={depth}
         ancestors={childAncestors}
         editable={editable}
@@ -761,9 +825,8 @@ export function TreeView({
   if (data instanceof Set) {
     const members = Array.from(data.values());
     const n = members.length;
-    const summary = `Set (${n} entr${n !== 1 ? "ies" : "y"})`;
 
-    if (n === 0) {
+    if (n === 0 && omitted === 0) {
       return (
         <LeafRow label={label} deleteButton={deleteBtn}>
           <LeafValue kind="text">Set (0 entries)</LeafValue>
@@ -775,8 +838,9 @@ export function TreeView({
       <CollapsibleNode
         label={label}
         entries={indexEntries(members)}
+        omitted={omitted}
         isArray={false}
-        summaryOverride={summary}
+        summaryOverride={countSummary("Set", ENTRIES, n, omitted)}
         showClearButton={true}
         depth={depth}
         ancestors={childAncestors}
@@ -795,7 +859,7 @@ export function TreeView({
     ? indexEntries(data)
     : namedEntries(Object.entries(data as Record<string, unknown>));
 
-  if (entries.length === 0) {
+  if (entries.length === 0 && omitted === 0) {
     return (
       <LeafRow label={label} deleteButton={deleteBtn}>
         <LeafValue kind="text">{isArray ? "[]" : "{}"}</LeafValue>
@@ -807,6 +871,7 @@ export function TreeView({
     <CollapsibleNode
       label={label}
       entries={entries}
+      omitted={omitted}
       isArray={isArray}
       depth={depth}
       ancestors={childAncestors}

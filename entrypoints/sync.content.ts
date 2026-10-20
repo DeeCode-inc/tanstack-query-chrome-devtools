@@ -20,8 +20,12 @@ import type {
   QueryState,
 } from "@/types/ui";
 import { isPageRequestEnvelope } from "@/utils/guards";
-import { encodeBigInts } from "@/utils/serialization";
 import { clearAtPath, deleteAtPath, setAtPath } from "@/utils/set-at-path";
+import {
+  encodeChange,
+  encodeMutationEntry,
+  encodeQueryEntry,
+} from "@/utils/wire-entities";
 
 /**
  * Fallback detection interval, used only when the page shaped the global
@@ -81,7 +85,9 @@ function sanitizeFetchMeta(
   if (!meta) return null;
   const { __previousQueryOptions, ...rest } = meta;
   if (__previousQueryOptions !== undefined) {
-    return { ...rest, __previousQueryOptions: true };
+    // First, so that the action buttons still see it when the rest of a large
+    // `fetchMeta` is cut by the encoding budget.
+    return { __previousQueryOptions: true, ...rest };
   }
   return Object.keys(rest).length > 0 ? rest : null;
 }
@@ -159,27 +165,28 @@ function postBridge(message: BridgeMessage): void {
 }
 
 /**
- * Applies the wire encoding to a payload. Every sentinel the encoder writes is
- * reversed by `decodeBigInts` on the viewer side, so the payload keeps its
- * decoded type across the bridge. This is the only cast on encoder output.
+ * Encodes every entry on its own, under its own budgets (see
+ * `utils/wire-entities.ts`). Extraction runs user code (`enabled` /
+ * `staleTime` functions) and encoding walks user data, so either can throw;
+ * a failure skips only that entity, like a failing change in `flush`.
  */
-function encodeWire<T>(value: T): T {
-  return encodeBigInts(value) as T;
-}
-
 function postSnapshot(client: QueryClient): void {
-  const queries = client
-    .getQueryCache()
-    .getAll()
-    .map((q) => extractQuery(q));
-  const mutations = client
-    .getMutationCache()
-    .getAll()
-    .map((m) => extractMutation(m));
+  const queries: QueryEntry[] = [];
+  for (const query of client.getQueryCache().getAll()) {
+    safely("query snapshot", () => {
+      queries.push(encodeQueryEntry(extractQuery(query)).value);
+    });
+  }
+  const mutations: MutationEntry[] = [];
+  for (const mutation of client.getMutationCache().getAll()) {
+    safely("mutation snapshot", () => {
+      mutations.push(encodeMutationEntry(extractMutation(mutation)).value);
+    });
+  }
   postBridge({
     source: BRIDGE_SOURCE,
     type: "SYNC_SNAPSHOT",
-    payload: encodeWire({ queries, mutations }),
+    payload: { queries, mutations },
   });
 }
 
@@ -296,7 +303,7 @@ function createSyncSession() {
             entry: extractQuery(live),
           };
         }
-        changes.push(encodeWire(change));
+        changes.push(encodeChange(change).value);
       });
     }
 
@@ -311,7 +318,7 @@ function createSyncSession() {
                 mutationId,
                 entry: extractMutation(mutation),
               };
-        changes.push(encodeWire(change));
+        changes.push(encodeChange(change).value);
       });
     }
 
