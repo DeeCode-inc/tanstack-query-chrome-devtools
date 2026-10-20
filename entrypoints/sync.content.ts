@@ -25,7 +25,7 @@ import {
   TARGET_MESSAGE_BYTES,
 } from "@/utils/chunking";
 import { isPageRequestEnvelope } from "@/utils/guards";
-import type { WireEncoding } from "@/utils/serialization";
+import { EncodePass, type WireEncoding } from "@/utils/serialization";
 import { clearAtPath, deleteAtPath, setAtPath } from "@/utils/set-at-path";
 import {
   encodeChangeForMessage,
@@ -190,15 +190,20 @@ function warnNotSent(label: string): void {
  * `staleTime` functions) and encoding walks user data, so either can throw;
  * a failure skips only that entity, like a failing change in `flush`.
  *
+ * All entries are encoded in one `EncodePass`, so what their fields spend on
+ * values they share (a store graph every query's data reaches, the Fiber tree
+ * behind React elements) is bounded for the whole snapshot.
+ *
  * The snapshot is posted as chunks of about `TARGET_MESSAGE_BYTES`, packed
  * by the exact size of each encoded entry, back to back in this one task so
  * that nothing of the stream comes between them.
  */
 function postSnapshot(client: QueryClient, snapshotId: number): void {
+  const pass = new EncodePass();
   const queries: WireEncoding<QueryEntry>[] = [];
   for (const query of client.getQueryCache().getAll()) {
     safely("query snapshot", () => {
-      const encoded = encodeQueryEntryForMessage(extractQuery(query));
+      const encoded = encodeQueryEntryForMessage(extractQuery(query), pass);
       if (encoded) queries.push(encoded);
       else warnNotSent(`query ${query.queryHash}`);
     });
@@ -206,7 +211,10 @@ function postSnapshot(client: QueryClient, snapshotId: number): void {
   const mutations: WireEncoding<MutationEntry>[] = [];
   for (const mutation of client.getMutationCache().getAll()) {
     safely("mutation snapshot", () => {
-      const encoded = encodeMutationEntryForMessage(extractMutation(mutation));
+      const encoded = encodeMutationEntryForMessage(
+        extractMutation(mutation),
+        pass,
+      );
       if (encoded) mutations.push(encoded);
       else warnNotSent(`mutation ${String(mutation.mutationId)}`);
     });
@@ -312,10 +320,13 @@ function createSyncSession() {
     if (!client) return;
     const queryCache = client.getQueryCache();
     const changes: WireEncoding<ChangeEvent>[] = [];
+    // One pass for the batch, as for a snapshot: a refetch of many queries
+    // that reach one graph pays for repeating it once, not per query.
+    const pass = new EncodePass();
 
     /** Queues the encoded change, or warns that it is not sent. */
     function push(change: ChangeEvent, label: string): void {
-      const encoded = encodeChangeForMessage(change);
+      const encoded = encodeChangeForMessage(change, pass);
       if (encoded) changes.push(encoded);
       else warnNotSent(label);
     }

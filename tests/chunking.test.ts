@@ -31,7 +31,7 @@ import {
   RESYNC_MAX_DELAY_MS,
   RESYNC_MIN_DELAY_MS,
 } from "@/utils/resync";
-import { decodeBigInts, TRUNCATED } from "@/utils/serialization";
+import { decodeBigInts, EncodePass, TRUNCATED } from "@/utils/serialization";
 import {
   encodeChangeForMessage,
   encodeMutationEntryForMessage,
@@ -512,6 +512,62 @@ describe("encoding an item for one message", () => {
     for (const change of changes) {
       expect(encodeChangeForMessage(change)).toBeNull();
     }
+  });
+
+  it("does not take the first attempt at an item for repeats in the next", () => {
+    // No repeats allowed at all: had the first attempt been kept, every
+    // container it opened would be a repeat, cut in place, in the second.
+    const pass = new EncodePass(0);
+    const query = oversizedQuery();
+    expect(encodeQueryEntry(query).utf8Bytes).toBeGreaterThan(MAX_ITEM_BYTES);
+
+    const encoded = encodeQueryEntryForMessage(query, pass);
+    expect(encoded?.utf8Bytes).toBeLessThanOrEqual(MAX_ITEM_BYTES);
+    const decoded = decodeBigInts(overPort(encoded?.value)) as QueryEntry;
+    // Only the strings over the smaller budget are cut, as without a pass
+    expect(decoded.meta).toEqual({ field: TRUNCATED });
+    expect(decoded.state.fetchMeta).toEqual({ field: TRUNCATED });
+    expect(overPort(encoded?.value)).toEqual(
+      overPort(encodeQueryEntryForMessage(query)?.value),
+    );
+
+    // The attempt that was sent is kept: a later item repeats its values
+    const later = encodeQueryEntryForMessage(
+      makeQuery("later", { meta: query.meta }),
+      pass,
+    );
+    expect((decodeBigInts(overPort(later?.value)) as QueryEntry).meta).toBe(
+      TRUNCATED,
+    );
+  });
+
+  it("rolls back an item whose encoding throws", () => {
+    const shared = { rows: [1, 2, 3] };
+    const failing = { first: shared, again: shared };
+    Object.defineProperty(failing, "boom", {
+      enumerable: true,
+      get() {
+        throw new Error("boom");
+      },
+    });
+    // Room for one repeat of `shared`, which the failing item spends before
+    // it throws.
+    const pass = new EncodePass(40);
+    const withData = (queryHash: string, data: unknown) =>
+      makeQuery(queryHash, { state: { ...baseState, data } });
+    expect(() =>
+      encodeQueryEntryForMessage(withData("failing", failing), pass),
+    ).toThrow("boom");
+
+    // Neither what it opened nor what it spent counts: `x` is a first
+    // occurrence, and `y` still has the whole allowance.
+    const encoded = encodeQueryEntryForMessage(
+      withData("next", { x: shared, y: shared }),
+      pass,
+    );
+    expect(
+      (decodeBigInts(overPort(encoded?.value)) as QueryEntry).state.data,
+    ).toEqual({ x: shared, y: shared });
   });
 });
 

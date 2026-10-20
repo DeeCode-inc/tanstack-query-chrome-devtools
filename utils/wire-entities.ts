@@ -2,6 +2,7 @@ import type { ChangeEvent } from "@/types/messages";
 import type { MutationEntry, QueryEntry } from "@/types/ui";
 import { jsonUtf8Bytes, MAX_ITEM_BYTES } from "@/utils/chunking";
 import {
+  EncodePass,
   encodeForWire,
   FIELD_BUDGET_BYTES,
   type WireEncoding,
@@ -19,6 +20,10 @@ import {
  * field keeps its root type: `queryKey` and `mutationKey` stay arrays and
  * `fetchMeta` a record (see `encodeForWire`).
  *
+ * Entities posted together share one `EncodePass`, which bounds what their
+ * fields spend on values they share. A call without one is a pass of its
+ * own.
+ *
  * The returned `utf8Bytes` is the exact JSON size of the encoded entity in
  * UTF-8, for sizing messages.
  *
@@ -26,8 +31,12 @@ import {
  * viewer side reverses every sentinel the encoder writes, the truncation ones
  * included. This is the only cast on encoder output.
  */
-function encodeEntity<T>(skeleton: unknown): WireEncoding<T> {
-  return encodeForWire(skeleton, Number.POSITIVE_INFINITY) as WireEncoding<T>;
+function encodeEntity<T>(skeleton: unknown, pass: EncodePass): WireEncoding<T> {
+  return encodeForWire(
+    skeleton,
+    Number.POSITIVE_INFINITY,
+    pass,
+  ) as WireEncoding<T>;
 }
 
 /** User-data fields of a query entry, and of a mutation entry. */
@@ -76,15 +85,17 @@ function mutationSkeleton(
 export function encodeQueryEntry(
   entry: QueryEntry,
   fieldBudgetBytes: number = FIELD_BUDGET_BYTES,
+  pass: EncodePass = new EncodePass(),
 ): WireEncoding<QueryEntry> {
-  return encodeEntity(querySkeleton(entry, fieldBudgetBytes));
+  return encodeEntity(querySkeleton(entry, fieldBudgetBytes), pass);
 }
 
 export function encodeMutationEntry(
   entry: MutationEntry,
   fieldBudgetBytes: number = FIELD_BUDGET_BYTES,
+  pass: EncodePass = new EncodePass(),
 ): WireEncoding<MutationEntry> {
-  return encodeEntity(mutationSkeleton(entry, fieldBudgetBytes));
+  return encodeEntity(mutationSkeleton(entry, fieldBudgetBytes), pass);
 }
 
 /**
@@ -94,6 +105,7 @@ export function encodeMutationEntry(
 export function encodeChange(
   change: ChangeEvent,
   fieldBudgetBytes: number = FIELD_BUDGET_BYTES,
+  pass: EncodePass = new EncodePass(),
 ): WireEncoding<ChangeEvent> {
   if (change.changeType === "added" || change.changeType === "updated") {
     return encodeEntity(
@@ -103,9 +115,10 @@ export function encodeChange(
             ...change,
             entry: mutationSkeleton(change.entry, fieldBudgetBytes),
           },
+      pass,
     );
   }
-  return encodeEntity(change);
+  return encodeEntity(change, pass);
 }
 
 // === Fitting one message ===
@@ -151,35 +164,63 @@ function isSendableQueryHash(queryHash: string): boolean {
   return jsonUtf8Bytes(queryHash) <= MAX_QUERY_HASH_BYTES;
 }
 
+/**
+ * Encodes one item as an attempt of `pass`: with the default field budgets,
+ * then, if that does not fit in one message, once more with
+ * `FALLBACK_FIELD_BUDGET_BYTES`. The attempt that fits is committed; every
+ * other one, and one that throws (encoding reads page data, whose getters
+ * and proxies can throw), is rolled back, so the next attempt does not take
+ * the item's own values for repeats and the pass pays only for what is sent.
+ */
 function fitToMessage<T>(
+  pass: EncodePass,
   encode: (fieldBudgetBytes: number) => WireEncoding<T>,
 ): WireEncoding<T> | null {
-  const full = encode(FIELD_BUDGET_BYTES);
-  if (full.utf8Bytes <= MAX_ITEM_BYTES) return full;
-  const reduced = encode(FALLBACK_FIELD_BUDGET_BYTES);
-  // Always fits (see FALLBACK_FIELD_BUDGET_BYTES); checked anyway, so that a
-  // wrong bound costs this one item rather than the message carrying it.
-  return reduced.utf8Bytes <= MAX_ITEM_BYTES ? reduced : null;
+  try {
+    const full = encode(FIELD_BUDGET_BYTES);
+    if (full.utf8Bytes <= MAX_ITEM_BYTES) {
+      pass.commit();
+      return full;
+    }
+    pass.rollback();
+    const reduced = encode(FALLBACK_FIELD_BUDGET_BYTES);
+    // Always fits (see FALLBACK_FIELD_BUDGET_BYTES); checked anyway, so that a
+    // wrong bound costs this one item rather than the message carrying it.
+    if (reduced.utf8Bytes <= MAX_ITEM_BYTES) {
+      pass.commit();
+      return reduced;
+    }
+    pass.rollback();
+    return null;
+  } catch (error: unknown) {
+    pass.rollback();
+    throw error;
+  }
 }
 
 /**
  * Encodes an entry so that it fits in one message on its own: with the
  * default field budgets when it fits, otherwise once more with
  * `FALLBACK_FIELD_BUDGET_BYTES` per field. `null` for a query whose hash is
- * over `MAX_QUERY_HASH_BYTES`, which is never sent.
+ * over `MAX_QUERY_HASH_BYTES`, which is never sent. `pass` is the pass of the
+ * message set the entry goes into (see `EncodePass`).
  */
 export function encodeQueryEntryForMessage(
   entry: QueryEntry,
+  pass: EncodePass = new EncodePass(),
 ): WireEncoding<QueryEntry> | null {
   if (!isSendableQueryHash(entry.queryHash)) return null;
-  return fitToMessage((budget) => encodeQueryEntry(entry, budget));
+  return fitToMessage(pass, (budget) => encodeQueryEntry(entry, budget, pass));
 }
 
 /** `encodeQueryEntryForMessage` for a mutation, whose structure is bounded. */
 export function encodeMutationEntryForMessage(
   entry: MutationEntry,
+  pass: EncodePass = new EncodePass(),
 ): WireEncoding<MutationEntry> | null {
-  return fitToMessage((budget) => encodeMutationEntry(entry, budget));
+  return fitToMessage(pass, (budget) =>
+    encodeMutationEntry(entry, budget, pass),
+  );
 }
 
 /**
@@ -189,8 +230,9 @@ export function encodeMutationEntryForMessage(
  */
 export function encodeChangeForMessage(
   change: ChangeEvent,
+  pass: EncodePass = new EncodePass(),
 ): WireEncoding<ChangeEvent> | null {
   if (change.entityType === "query" && !isSendableQueryHash(change.queryHash))
     return null;
-  return fitToMessage((budget) => encodeChange(change, budget));
+  return fitToMessage(pass, (budget) => encodeChange(change, budget, pass));
 }

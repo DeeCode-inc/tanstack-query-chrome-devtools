@@ -16,6 +16,10 @@ import {
 import { MAX_MESSAGE_BYTES, TARGET_MESSAGE_BYTES } from "@/utils/chunking";
 import { RESYNC_MAX_DELAY_MS, RESYNC_MIN_DELAY_MS } from "@/utils/resync";
 import {
+  FIELD_BUDGET_BYTES,
+  REPEAT_ALLOWANCE_BYTES,
+} from "@/utils/serialization";
+import {
   createViewerStream,
   initialSyncState,
   syncReducer,
@@ -136,6 +140,50 @@ describe("page to viewer", () => {
     expect(updates.length).toBeGreaterThan(1);
     for (const { bytes } of updates) {
       expect(bytes).toBeLessThanOrEqual(CHUNK_LIMIT_BYTES);
+    }
+  });
+
+  it("bounds the snapshot and the updates of queries that reach one graph", async () => {
+    // A store of doubly linked nodes, reachable along many paths: each query
+    // on its own would write a full field budget of it, 30 × 8 MiB.
+    const nodes: Record<string, unknown>[] = Array.from(
+      { length: 5000 },
+      (_, i) => ({ id: i, name: `node ${i}` }),
+    );
+    nodes.forEach((node, i) => {
+      node.prev = nodes[i - 1] ?? null;
+      node.next = nodes[i + 1] ?? null;
+    });
+    const store = { nodes };
+    const client = createClient();
+    for (let i = 0; i < 30; i++) {
+      client.setQueryData(["item", i], { id: i, store });
+    }
+    const extension = await startExtension(client);
+    const viewer = await openViewer(extension);
+    expect(viewer.state.queries.size).toBe(30);
+
+    // One pass for all of them: the store once, plus the repeat allowance
+    // and one field past it
+    const bound = 2 * FIELD_BUDGET_BYTES + REPEAT_ALLOWANCE_BYTES + 30 * 1024;
+    const total = (sent: readonly { bytes: number }[]) =>
+      sent.reduce((sum, { bytes }) => sum + bytes, 0);
+    expect(total(snapshotChunks(extension.relayPort()))).toBeLessThanOrEqual(
+      bound,
+    );
+
+    // A batch of changes to all of them is one pass too
+    for (let i = 0; i < 30; i++) {
+      client.setQueryData(["item", i], { id: i, store, version: 2 });
+    }
+    await vi.advanceTimersByTimeAsync(150);
+    expect(
+      total(extension.relayPort().sentOf("SYNC_UPDATE")),
+    ).toBeLessThanOrEqual(bound);
+    for (let i = 0; i < 30; i++) {
+      expect(
+        viewer.state.queries.get(hashKey(["item", i]))?.state.data,
+      ).toMatchObject({ id: i, version: 2 });
     }
   });
 });

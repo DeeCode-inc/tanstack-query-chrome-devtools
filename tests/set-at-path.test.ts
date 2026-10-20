@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { PathSegment } from "@/types/messages";
+import {
+  decodeBigInts,
+  encodeForWire,
+  omittedCount,
+} from "@/utils/serialization";
 import { clearAtPath, deleteAtPath, setAtPath } from "@/utils/set-at-path";
 
 type Rec = Record<string, unknown>;
@@ -167,6 +172,31 @@ describe("setAtPath", () => {
     expect(Array.from(next.bytes)).toEqual([1, 9, 3]);
     expect(next.bytes.buffer).not.toBe(bytes.buffer);
     expect(Array.from(bytes)).toEqual([1, 2, 3]);
+  });
+
+  it("edits a typed array element at the key the viewer shows for it", () => {
+    // The viewer gets a typed array as an object of its elements, cut short
+    // when large, and addresses an element by its key there.
+    const bytes = new Uint8Array(1000).map((_, i) => i % 256);
+    const root = { bytes };
+    const { value } = encodeForWire(root, 2000);
+    const shown = (
+      decodeBigInts(JSON.parse(JSON.stringify(value))) as {
+        bytes: Rec;
+      }
+    ).bytes;
+    const keys = Object.keys(shown);
+    expect(omittedCount(shown)).toBe(bytes.length - keys.length);
+    const key = keys.at(-1)!;
+    expect(shown[key]).toBe(bytes[Number(key)]);
+
+    const index = Number(key);
+    const edited = (bytes[index]! + 1) % 256;
+    const next = setAtPath(root, ["bytes", key], edited) as typeof root;
+    expect(next.bytes).toBeInstanceOf(Uint8Array);
+    expect(next.bytes).not.toBe(bytes);
+    expect(next.bytes[index]).toBe(edited);
+    expect(next.bytes.length).toBe(bytes.length);
   });
 
   it("ignores a typed array write of the wrong element type", () => {

@@ -93,6 +93,33 @@ function isErrorObject(obj: object): obj is Error {
   );
 }
 
+/**
+ * The intrinsic `%TypedArray%.prototype.length` getter. It reads the internal
+ * length, which an own `length` property cannot fake, and throws on anything
+ * that is not a typed array, a DataView from another realm included (where
+ * `instanceof DataView` fails).
+ */
+const typedArrayLengthGetter = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Int8Array.prototype) as object,
+  "length",
+)?.get;
+
+/** The length of a typed array, or null for any other object. */
+function typedArrayLength(obj: object): number | null {
+  if (
+    !ArrayBuffer.isView(obj) ||
+    obj instanceof DataView ||
+    typedArrayLengthGetter === undefined
+  ) {
+    return null;
+  }
+  try {
+    return typedArrayLengthGetter.call(obj) as number;
+  } catch {
+    return null;
+  }
+}
+
 const BIGINT_WIRE = /^-?\d+$/;
 
 /**
@@ -167,7 +194,8 @@ function writeSlot(
  *
  * 8 MiB keeps ordinary large data whole (20 000 rows of 10 fields encode to
  * about 5 MB in some 30 ms) while a field that would blow up is cut after
- * roughly 20 to 60 ms of work.
+ * roughly 20 to 60 ms of work. What the fields of many entities spend
+ * together on values they share is bounded by `EncodePass`.
  */
 export const FIELD_BUDGET_BYTES = 8 * 1024 * 1024;
 
@@ -337,6 +365,14 @@ function fieldScope(budgetBytes: number): Scope {
   return { remaining: budget - TRUNCATED_BYTES };
 }
 
+/**
+ * Whether the scope is the unbounded one of an entity's structure (see
+ * `withFieldBudget`), which spends nothing and has no repeats.
+ */
+function isUnbounded(scope: Scope): boolean {
+  return scope.remaining === Number.POSITIVE_INFINITY;
+}
+
 /** Marks a subtree that `encodeForWire` encodes with a budget of its own. */
 class FieldBudget {
   readonly value: unknown;
@@ -361,6 +397,113 @@ export function withFieldBudget(
   budgetBytes: number = FIELD_BUDGET_BYTES,
 ): unknown {
   return new FieldBudget(value, budgetBytes);
+}
+
+// === Repeats within a pass ===
+
+/**
+ * Default repeat allowance of an `EncodePass`, in budget bytes.
+ *
+ * Twice the field budget. Ordinary sharing repeats far less than this in a
+ * whole snapshot (normalized users referenced by the posts of 200 queries
+ * repeat about 0.5 MB; detail queries seeded with the items of a list query
+ * repeat the list once), so it keeps being sent in full. A graph that many
+ * entries reach, or that one field reaches along many paths, costs at most
+ * this much on top of its first encoding: some 50 to 100 ms of page time.
+ */
+export const REPEAT_ALLOWANCE_BYTES = 16 * 1024 * 1024;
+
+/**
+ * State shared by the encodings of one pass: the entities posted together by
+ * one snapshot or one flush of changes (`entrypoints/sync.content.ts`).
+ *
+ * Each user-data field has a budget of its own, so a value reachable from
+ * many fields or entities, or along many paths within one (an object graph
+ * the entries share, back-references, the Fiber tree behind a React dev
+ * element's `_owner`), would be written out again up to a full budget in
+ * each. The pass therefore remembers the containers its encodings opened. A
+ * container met again in user data is a *repeat*, unless it is on the
+ * current path, which makes it a cycle and is checked first. A repeat is
+ * encoded as usual, and when it closes, the budget it spent itself (not
+ * what its nested containers spent, which account for themselves) is charged
+ * to an allowance shared by the whole pass. The first occurrence of a
+ * container is never charged. Once the allowance is spent, a repeat is
+ * truncated in place, or cuts its Map or Set short when it is a key or a
+ * member, before any of its children is listed. So a pass costs about the
+ * encoding of the distinct values it reaches, plus the allowance, plus what
+ * one field spends past it, plus the structure.
+ *
+ * Within the allowance the output is the same as without a pass: shared
+ * values are written out at every occurrence. Past it, what an entry shows
+ * depends on what the pass encoded before it, so an unchanged entry can
+ * arrive whole in one message and cut in the next. That only affects the
+ * display: the viewer replaces entries wholesale, and edits resolve their
+ * paths against the page's live data, never against what was sent.
+ *
+ * Encodings belong to the current attempt until `commit` keeps it or
+ * `rollback` forgets it, so that an entity encoded again to fit a message,
+ * or whose encoding threw halfway, does not take its own first attempt for
+ * values already sent, nor pay for it twice.
+ *
+ * Strings are not tracked: JavaScript gives no identity to a string, and V8
+ * hashes a long one by its length alone, so looking long strings up by value
+ * degrades to comparing their contents with every other one of that length.
+ *
+ * A pass holds the containers it opened until it is dropped; it is meant to
+ * live for one synchronous snapshot or flush, never across them.
+ */
+export class EncodePass {
+  /** The attempt that first opened each container. */
+  private readonly firstAttempt = new Map<object, number>();
+  /** Attempts rolled back, whose containers count as never opened. */
+  private readonly discarded = new Set<number>();
+  private attempt = 0;
+  /** Allowance left; below zero once the last repeat charged overshot it. */
+  private allowance: number;
+  /** `allowance` when the current attempt started. */
+  private allowanceAtStart: number;
+
+  constructor(allowanceBytes: number = REPEAT_ALLOWANCE_BYTES) {
+    this.allowance = allowanceBytes;
+    this.allowanceAtStart = allowanceBytes;
+  }
+
+  /** Keeps the current attempt: later encodings see its containers. */
+  commit(): void {
+    this.attempt += 1;
+    this.allowanceAtStart = this.allowance;
+  }
+
+  /** Forgets the current attempt, as if it had never run. */
+  rollback(): void {
+    this.discarded.add(this.attempt);
+    this.attempt += 1;
+    this.allowance = this.allowanceAtStart;
+  }
+
+  /** Whether a kept attempt, or the current one, opened `obj`. */
+  isRepeat(obj: object): boolean {
+    const attempt = this.firstAttempt.get(obj);
+    return (
+      attempt !== undefined &&
+      (attempt === this.attempt || !this.discarded.has(attempt))
+    );
+  }
+
+  /** Records that the current attempt opened `obj` for the first time. */
+  recordFirst(obj: object): void {
+    this.firstAttempt.set(obj, this.attempt);
+  }
+
+  /** Whether a repeat may still be encoded. */
+  hasAllowance(): boolean {
+    return this.allowance > 0;
+  }
+
+  /** Charges a repeat for the budget it spent. */
+  charge(bytes: number): void {
+    this.allowance -= bytes;
+  }
 }
 
 interface MapSentinel {
@@ -399,8 +542,21 @@ interface ValueFrame {
   readonly owner?: MapFrame | SetFrame;
 }
 
+/**
+ * What an open container spent, for the repeat allowance of its pass (see
+ * `EncodePass`). Only containers in a field's budget spend anything.
+ */
+interface ContainerCharge {
+  /** Whether the container is a repeat in its pass. */
+  readonly repeat: boolean;
+  /** Budget available to the container's value when it was opened. */
+  readonly openBudget: number;
+  /** What the closed containers nested in it spent, all of their subtree. */
+  nestedSpend: number;
+}
+
 /** An open array; `index` is the next item to encode. */
-interface ArrayFrame {
+interface ArrayFrame extends ContainerCharge {
   readonly kind: "array";
   readonly obj: readonly unknown[];
   readonly length: number;
@@ -409,11 +565,16 @@ interface ArrayFrame {
   index: number;
 }
 
-/** An open plain object, or the props of an open Error. */
-interface RecordFrame {
+/** An open plain object, typed array, or the props of an open Error. */
+interface RecordFrame extends ContainerCharge {
   readonly kind: "record";
   readonly obj: object;
-  readonly keys: readonly string[];
+  /**
+   * Own keys, or the length of a typed array, whose keys are its indices and
+   * are made as they come: listing them up front would allocate a string
+   * per element, whatever the budget.
+   */
+  readonly keys: readonly string[] | number;
   /** Values by key index, or `null` to read each one from `obj` when due. */
   readonly values: readonly unknown[] | null;
   readonly result: Record<string, unknown>;
@@ -426,7 +587,7 @@ interface RecordFrame {
   index: number;
 }
 
-interface MapFrame {
+interface MapFrame extends ContainerCharge {
   readonly kind: "map";
   readonly obj: object;
   readonly iterator: Iterator<[unknown, unknown]>;
@@ -442,7 +603,7 @@ interface MapFrame {
   cut: boolean;
 }
 
-interface SetFrame {
+interface SetFrame extends ContainerCharge {
   readonly kind: "set";
   readonly obj: object;
   readonly iterator: Iterator<unknown>;
@@ -462,9 +623,10 @@ interface EncodeRun {
   /**
    * Objects on the path from the root to the current frame. Only a reference
    * to one of these is a cycle; an object that is merely shared between
-   * siblings is encoded again at every occurrence.
+   * siblings is encoded again at every occurrence, as a repeat of its pass.
    */
   readonly ancestors: Set<object>;
+  readonly pass: EncodePass;
   /** UTF-8 bytes of JSON written so far. */
   bytes: number;
   truncated: boolean;
@@ -489,13 +651,22 @@ interface EncodeRun {
  * So arrays stay arrays and objects stay records, and the children that are
  * sent keep their index, key or position, which edit paths rely on.
  *
+ * Repeats of containers already encoded in `pass` are bounded by its
+ * allowance (see `EncodePass`); past it they are cut like a value that does
+ * not fit. Without a pass, the call is a pass of its own. The caller commits
+ * or rolls back the pass's current attempt after the call.
+ *
+ * A typed array is encoded as an object of its indexed elements, as JSON
+ * would carry it; properties it has besides its elements are not sent.
+ *
  * The returned `utf8Bytes` is exact, computed while encoding at no extra
- * pass. `budgetBytes` may be `Infinity` for structure that must arrive whole;
+ * walk. `budgetBytes` may be `Infinity` for structure that must arrive whole;
  * its user-data fields are then marked with `withFieldBudget`.
  */
 export function encodeForWire(
   value: unknown,
   budgetBytes: number = FIELD_BUDGET_BYTES,
+  pass: EncodePass = new EncodePass(),
 ): WireEncoding {
   const root: [unknown] = [undefined];
   const run: EncodeRun = {
@@ -509,6 +680,7 @@ export function encodeForWire(
       },
     ],
     ancestors: new Set(),
+    pass,
     bytes: 0,
     truncated: false,
   };
@@ -729,10 +901,7 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
       value: obj.value,
       // Only an unbounded scope hands out budgets of its own: inside a finite
       // one, the field's bytes would escape the enclosing budget.
-      scope:
-        scope.remaining === Number.POSITIVE_INFINITY
-          ? fieldScope(obj.budgetBytes)
-          : scope,
+      scope: isUnbounded(scope) ? fieldScope(obj.budgetBytes) : scope,
     });
     return;
   }
@@ -752,6 +921,8 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
     return;
   }
 
+  // Checked before repeats: an ancestor can be a repeat too, but a
+  // reference to it closes a cycle, which is always written as one.
   if (run.ancestors.has(obj)) {
     place(
       run,
@@ -763,8 +934,18 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
     return;
   }
 
+  // Structure is built afresh for each entity and must arrive whole, so
+  // only user data has repeats.
+  const repeat = !isUnbounded(scope) && run.pass.isRepeat(obj);
+  if (repeat && !run.pass.hasAllowance()) {
+    // Decided before any child is listed, so a repeat past the allowance
+    // costs the same whatever its size.
+    truncateInPlace(run, frame);
+    return;
+  }
+
   if (isErrorObject(obj)) {
-    encodeError(run, frame, obj, available);
+    encodeError(run, frame, obj, available, repeat);
     return;
   }
 
@@ -772,14 +953,16 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
     if (!openContainer(run, frame, 2, available)) return;
     const result: unknown[] = [];
     writeSlot(frame.target, frame.key, result);
-    run.ancestors.add(obj);
-    run.stack.push({
+    enterContainer(run, {
       kind: "array",
       obj,
       length: obj.length,
       result,
       scope,
       index: 0,
+      repeat,
+      openBudget: available,
+      nestedSpend: 0,
     });
     return;
   }
@@ -788,8 +971,7 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
     if (!openContainer(run, frame, MAP_SHELL_BYTES, available)) return;
     const sentinel: MapSentinel = { __tqcd_type: "map", entries: [] };
     writeSlot(frame.target, frame.key, sentinel satisfies TypeSentinel);
-    run.ancestors.add(obj);
-    run.stack.push({
+    enterContainer(run, {
       kind: "map",
       obj,
       iterator: obj.entries(),
@@ -800,6 +982,9 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
       pair: null,
       pairValue: undefined,
       cut: false,
+      repeat,
+      openBudget: available,
+      nestedSpend: 0,
     });
     return;
   }
@@ -808,8 +993,7 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
     if (!openContainer(run, frame, SET_SHELL_BYTES, available)) return;
     const sentinel: SetSentinel = { __tqcd_type: "set", entries: [] };
     writeSlot(frame.target, frame.key, sentinel satisfies TypeSentinel);
-    run.ancestors.add(obj);
-    run.stack.push({
+    enterContainer(run, {
       kind: "set",
       obj,
       iterator: obj.values(),
@@ -818,6 +1002,9 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
       scope,
       index: 0,
       cut: false,
+      repeat,
+      openBudget: available,
+      nestedSpend: 0,
     });
     return;
   }
@@ -825,13 +1012,15 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
   if (!openContainer(run, frame, 2, available)) return;
   const result: Record<string, unknown> = {};
   writeSlot(frame.target, frame.key, result);
-  run.ancestors.add(obj);
-  run.stack.push({
+  // A typed array is a record of its indexed elements (see `RecordFrame`).
+  // DataViews and ArrayBuffers have no own keys and stay empty objects.
+  const typedLength = typedArrayLength(obj);
+  enterContainer(run, {
     kind: "record",
     obj,
     // Keys up front, values as they come: a cut object reads only the
     // values it sends.
-    keys: Object.keys(obj),
+    keys: typedLength ?? Object.keys(obj),
     values: null,
     result,
     scope,
@@ -839,7 +1028,22 @@ function encodeValue(run: EncodeRun, frame: ValueFrame): void {
     key: frame.key,
     errorSentinel: null,
     index: 0,
+    repeat,
+    openBudget: available,
+    nestedSpend: 0,
   });
+}
+
+/**
+ * Pushes a container that `openContainer` opened. It is on the path until it
+ * closes, and the pass records it, unless it is a repeat, as encoded.
+ */
+function enterContainer(run: EncodeRun, frame: ContainerFrame): void {
+  run.ancestors.add(frame.obj);
+  if (!frame.repeat && !isUnbounded(frame.scope)) {
+    run.pass.recordFirst(frame.obj);
+  }
+  run.stack.push(frame);
 }
 
 function encodeError(
@@ -847,6 +1051,7 @@ function encodeError(
   frame: ValueFrame,
   obj: Error,
   available: number,
+  repeat: boolean,
 ): void {
   const name = typeof obj.name === "string" ? obj.name : "Error";
   const message = typeof obj.message === "string" ? obj.message : "";
@@ -891,8 +1096,7 @@ function encodeError(
   ) {
     propEntries.push(["cause", obj.cause]);
   }
-  run.ancestors.add(obj);
-  run.stack.push({
+  enterContainer(run, {
     kind: "record",
     obj,
     keys: propEntries.map(([propKey]) => propKey),
@@ -903,6 +1107,9 @@ function encodeError(
     key: frame.key,
     errorSentinel: sentinel,
     index: 0,
+    repeat,
+    openBudget: available,
+    nestedSpend: 0,
   });
 }
 
@@ -940,18 +1147,19 @@ function stepArray(run: EncodeRun, frame: ArrayFrame): void {
 
 function stepRecord(run: EncodeRun, frame: RecordFrame): void {
   const { index, keys, scope } = frame;
-  if (index >= keys.length) {
+  const keyCount = typeof keys === "number" ? keys : keys.length;
+  if (index >= keyCount) {
     closeContainer(run, frame, 0);
     return;
   }
-  const key = keys[index]!;
+  const key = typeof keys === "number" ? String(index) : keys[index]!;
   const separator = index > 0 ? 1 : 0;
   // `"key":` goes before the value.
   const limit = scope.remaining - TRUNCATED_BYTES - separator - 1;
   const keyBytes = jsonStringBytes(key, limit);
   if (keyBytes > limit) {
     chargeRejectedString(scope, key, limit);
-    closeContainer(run, frame, keys.length - index);
+    closeContainer(run, frame, keyCount - index);
     return;
   }
   const slotBytes = separator + keyBytes + 1;
@@ -1117,6 +1325,29 @@ function closeContainer(
   }
   frame.scope.remaining += TAIL_RESERVE_BYTES - tailBytes;
   run.bytes += tailBytes;
+  settleCharge(run, frame);
+}
+
+/**
+ * Charges a closing repeat for the budget it spent itself, and hands what its
+ * whole subtree spent to the enclosing container, which does not pay for it:
+ * each nested container accounts for itself. Called once the container is
+ * popped, so the top of the stack is the enclosing container; a field's root
+ * has the unbounded structure around it, whose scope differs.
+ */
+function settleCharge(run: EncodeRun, frame: ContainerFrame): void {
+  const { scope } = frame;
+  if (isUnbounded(scope)) return;
+  const spent = frame.openBudget - scope.remaining;
+  if (frame.repeat) run.pass.charge(spent - frame.nestedSpend);
+  const parent = run.stack.at(-1);
+  if (
+    parent !== undefined &&
+    parent.kind !== "value" &&
+    parent.scope === scope
+  ) {
+    parent.nestedSpend += spent;
+  }
 }
 
 // === Decoding ===
@@ -1158,6 +1389,54 @@ function recordOmitted(decoded: object, omitted: unknown): void {
   if (isOmittedCount(omitted) && omitted > 0) {
     omittedChildren.set(decoded, omitted);
   }
+}
+
+/** A wire `omitted` count, if valid, plus `dropped` more. */
+function withDropped(omitted: unknown, dropped: number): number {
+  const sent = isOmittedCount(omitted) ? omitted : 0;
+  return Math.min(sent + dropped, Number.MAX_SAFE_INTEGER);
+}
+
+/**
+ * The decoded Map of decoded entries, which records `omitted` and any
+ * entries dropped for colliding.
+ *
+ * Distinct keys or members of a page Map or Set can decode to the same
+ * value: every `circular` marker to `CIRCULAR`, and a page object shaped
+ * like a sentinel to the value it mimics (`{ __tqcd_type: "undefined" }`
+ * next to `undefined`). A Map or Set built from them would merge the two and
+ * shift every later one, while the viewer addresses them by position
+ * (`mapIndex`, a Set index) in the page's own collection, so an edit would
+ * land on another page member. The decoded collection therefore stops before
+ * the first key or member that collides with an earlier one, and counts it
+ * and the rest as omitted, like children the encoder left out: every one
+ * shown keeps its page position.
+ */
+function decodedMap(
+  entries: readonly [unknown, unknown][],
+  omitted: unknown,
+): Map<unknown, unknown> {
+  const map = new Map<unknown, unknown>();
+  for (const [mapKey, mapValue] of entries) {
+    if (map.has(mapKey)) break;
+    map.set(mapKey, mapValue);
+  }
+  recordOmitted(map, withDropped(omitted, entries.length - map.size));
+  return map;
+}
+
+/** `decodedMap` for a Set. */
+function decodedSet(
+  members: readonly unknown[],
+  omitted: unknown,
+): Set<unknown> {
+  const set = new Set<unknown>();
+  for (const member of members) {
+    if (set.has(member)) break;
+    set.add(member);
+  }
+  recordOmitted(set, withDropped(omitted, members.length - set.size));
+  return set;
 }
 
 /**
@@ -1222,15 +1501,19 @@ export function decodeBigInts(value: unknown): unknown {
       continue;
     }
     if (frame.kind === "finalize-map") {
-      const map = new Map(frame.entries);
-      recordOmitted(map, frame.omitted);
-      writeSlot(frame.target, frame.key, map);
+      writeSlot(
+        frame.target,
+        frame.key,
+        decodedMap(frame.entries, frame.omitted),
+      );
       continue;
     }
     if (frame.kind === "finalize-set") {
-      const set = new Set(frame.entries);
-      recordOmitted(set, frame.omitted);
-      writeSlot(frame.target, frame.key, set);
+      writeSlot(
+        frame.target,
+        frame.key,
+        decodedSet(frame.entries, frame.omitted),
+      );
       continue;
     }
 
