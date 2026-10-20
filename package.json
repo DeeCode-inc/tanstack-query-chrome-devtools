@@ -34,7 +34,7 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "@tanstack/react-virtual": "3.14.13",
+    "@tanstack/react-virtual": "3.14.21",
     "highlight.js": "^11.12.0",
     "lucide-react": "^1.59.0",
     "react": "^19.3.1",
