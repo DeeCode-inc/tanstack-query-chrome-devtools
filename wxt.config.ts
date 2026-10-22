@@ -15,7 +15,7 @@ export default defineConfig({
         strict_min_version: "128.0",
       },
     },
-    version: "1.1.0",
+    version: "1.1.1",
     description:
       "Real-time TanStack Query devtools in your browser. Inspect queries, mutations, and cache — with zero bundle impact.",
     homepage_url:
