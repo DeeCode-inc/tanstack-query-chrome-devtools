@@ -41,11 +41,31 @@ export default defineBackground(() => {
     128: "icon/icon-128.png",
   } as const;
 
+  /**
+   * The toolbar button: `action` in MV3 (Chrome), `browserAction` in MV2
+   * (Firefox), where `browser.action` is undefined. WXT's `browser` is the
+   * native object and does not alias one to the other.
+   */
+  const toolbarAction = browser.action ?? browser.browserAction;
+
+  /**
+   * Cosmetic only, so it never throws: it runs in the middle of routing
+   * messages, which a failure here (e.g. the tab closed meanwhile) must not
+   * cut short.
+   */
   function updateIcon(tabId: number, variant: "colored" | "gray") {
-    void browser.action.setIcon({
-      tabId,
-      path: variant === "colored" ? COLORED_ICONS : GRAY_ICONS,
-    });
+    try {
+      toolbarAction
+        .setIcon({
+          tabId,
+          path: variant === "colored" ? COLORED_ICONS : GRAY_ICONS,
+        })
+        .catch(() => {
+          /* The tab is gone */
+        });
+    } catch (error: unknown) {
+      console.warn("[background] could not set the toolbar icon:", error);
+    }
   }
 
   // === Ephemeral routing state (rebuilt on reconnection) ===
