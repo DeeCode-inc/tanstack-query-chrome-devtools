@@ -9,7 +9,10 @@ export default defineConfig({
     browser_specific_settings: {
       gecko: {
         id: "tanstack-query-devtools@borysov.dev",
-        strict_min_version: "112.0",
+        // First version that honors `world: "MAIN"` on manifest content
+        // scripts; older ones run sync.content.ts isolated, where it cannot
+        // see the page's __TANSTACK_QUERY_CLIENT__
+        strict_min_version: "128.0",
       },
     },
     version: "1.1.0",
@@ -22,14 +25,9 @@ export default defineConfig({
       "48": "icon/icon-48.png",
       "128": "icon/icon-128.png",
     },
-    action: {
-      default_icon: {
-        "16": "icon/icon-16-gray.png",
-        "48": "icon/icon-48-gray.png",
-        "128": "icon/icon-128-gray.png",
-      },
-      default_title: "TanStack Query DevTools",
-    },
+    // The toolbar button's default icon and title are set on the popup
+    // entrypoint (entrypoints/popup/index.html), which WXT applies to both
+    // `action` (MV3) and `browser_action` (MV2).
   },
   vite: () => ({
     plugins: [tailwindcss()],

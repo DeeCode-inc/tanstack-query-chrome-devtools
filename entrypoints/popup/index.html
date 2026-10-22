@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TanStack Query DevTools</title>
     <meta name="manifest.type" content="browser_action" />
+    <!-- Gray until the background finds a QueryClient on the tab. Set here
+         rather than in wxt.config.ts: WXT drops `action.default_icon` from
+         the config when it builds the MV2 (Firefox) browser_action. -->
+    <meta
+      name="manifest.default_icon"
+      content='{"16": "icon/icon-16-gray.png", "48": "icon/icon-48-gray.png", "128": "icon/icon-128-gray.png"}'
+    />
     <link rel="stylesheet" href="~/assets/tailwind.css" />
     <link rel="stylesheet" href="~/assets/hljs-theme.css" />
   </head>
