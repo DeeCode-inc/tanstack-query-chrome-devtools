@@ -10,7 +10,7 @@ import type {
 } from "@/types/ui";
 import {
   getMutationSearchText,
-  getQueryKeySearchText,
+  getQuerySearchText,
 } from "@/utils/entry-labels";
 import {
   MUTATION_SORT_OPTIONS,
@@ -100,7 +100,7 @@ export function PageLayout({ variant, queries, mutations }: PageLayoutProps) {
   const filteredQueries = useMemo(
     () =>
       needle
-        ? sortedQueries.filter((q) => getQueryKeySearchText(q).includes(needle))
+        ? sortedQueries.filter((q) => getQuerySearchText(q).includes(needle))
         : sortedQueries,
     [sortedQueries, needle],
   );

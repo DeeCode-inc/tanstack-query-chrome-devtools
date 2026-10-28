@@ -1,6 +1,6 @@
 import { memo } from "react";
 import type { QueryEntry } from "@/types/ui";
-import { getQueryKeyLabel } from "@/utils/entry-labels";
+import { getQueryLabel } from "@/utils/entry-labels";
 import { STATUS_THEMES } from "@/utils/status-theme";
 
 interface QueryListItemProps {
@@ -32,7 +32,7 @@ export const QueryListItem = memo(function QueryListItem({
         {query.observerCount}
       </span>
       <span className="font-mono text-xs text-gray-900 dark:text-gray-100 break-all">
-        {getQueryKeyLabel(query)}
+        {getQueryLabel(query)}
       </span>
       {!query.isActive && query.observerCount > 0 && (
         <span className="ml-auto shrink-0 px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400">

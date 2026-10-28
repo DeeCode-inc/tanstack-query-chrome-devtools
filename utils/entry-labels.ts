@@ -15,7 +15,10 @@ const mutationLabels = new WeakMap<MutationEntry, CachedLabel>();
 function cachedQueryLabel(query: QueryEntry): CachedLabel {
   let cached = queryLabels.get(query);
   if (cached === undefined) {
-    const label = stringifyWithBigInt(query.queryKey);
+    // The hash, not a re-serialized key, as in the official devtools: it is
+    // TanStack's own identity for the query and honors a custom
+    // `queryKeyHashFn`, which can name what the key alone cannot (functions).
+    const label = query.queryHash;
     cached = { label, search: label.toLowerCase() };
     queryLabels.set(query, cached);
   }
@@ -34,13 +37,13 @@ function cachedMutationLabel(mutation: MutationEntry): CachedLabel {
   return cached;
 }
 
-/** Text shown for a query in the list. */
-export function getQueryKeyLabel(query: QueryEntry): string {
+/** Text shown for a query in the list: its `queryHash`. */
+export function getQueryLabel(query: QueryEntry): string {
   return cachedQueryLabel(query).label;
 }
 
 /** Lowercase query label, matched by the filter. */
-export function getQueryKeySearchText(query: QueryEntry): string {
+export function getQuerySearchText(query: QueryEntry): string {
   return cachedQueryLabel(query).search;
 }
 
