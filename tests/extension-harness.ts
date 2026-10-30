@@ -2,8 +2,8 @@ import type { QueryClient } from "@tanstack/query-core";
 import { vi } from "vitest";
 import type { Browser } from "wxt/browser";
 import background from "@/entrypoints/background";
-import pageScript from "@/entrypoints/sync.content";
 import relayScript from "@/entrypoints/sync-relay.content";
+import pageScript from "@/entrypoints/sync.content";
 import { utf8ByteLength } from "@/utils/chunking";
 import {
   createViewerStream,
@@ -40,6 +40,7 @@ class FakeEvent<A extends unknown[]> {
   }
 
   emit(...args: A): void {
+    // oxlint-disable-next-line unicorn/no-useless-spread -- iterates a snapshot, so a listener added mid-emit first fires on the next emit.
     for (const listener of [...this.listeners]) listener(...args);
   }
 }

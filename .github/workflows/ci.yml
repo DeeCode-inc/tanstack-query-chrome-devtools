@@ -20,8 +20,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: biome
-            command: pnpm ci:biome
+          - name: lint
+            command: pnpm ci:lint
+          - name: format
+            command: pnpm format:check
           - name: typecheck
             command: pnpm compile
           - name: build

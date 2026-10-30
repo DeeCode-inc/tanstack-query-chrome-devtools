@@ -276,6 +276,7 @@ describe("snapshotChunkMessages", () => {
       const bytes = jsonUtf8Bytes(message);
       expect(bytes).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
       if (message.queries.length + message.mutations.length > 1) {
+        // oxlint-disable-next-line vitest/no-conditional-expect -- only multi-entry chunks are held to the target size; a lone entry may exceed it.
         expect(bytes).toBeLessThanOrEqual(TARGET_MESSAGE_BYTES + 1024);
       }
       // What the viewer receives passes its guard
@@ -582,7 +583,7 @@ describe("createResyncScheduler", () => {
   });
 
   it("folds requests into one resync after the minimum delay", () => {
-    const resync = vi.fn();
+    const resync = vi.fn<() => void>();
     const scheduler = createResyncScheduler(resync);
     scheduler.request();
     scheduler.request();
@@ -596,7 +597,7 @@ describe("createResyncScheduler", () => {
   });
 
   it("doubles the delay while drops recur, up to the maximum", () => {
-    const resync = vi.fn();
+    const resync = vi.fn<() => void>();
     const scheduler = createResyncScheduler(resync);
     const delays: number[] = [];
     let last = Date.now();
@@ -612,7 +613,7 @@ describe("createResyncScheduler", () => {
   });
 
   it("starts over from the minimum after a quiet period", () => {
-    const resync = vi.fn();
+    const resync = vi.fn<() => void>();
     const scheduler = createResyncScheduler(resync);
     for (let i = 0; i < 3; i++) {
       scheduler.request();
@@ -625,7 +626,7 @@ describe("createResyncScheduler", () => {
   });
 
   it("drops a scheduled resync on cancel but keeps the backoff", () => {
-    const resync = vi.fn();
+    const resync = vi.fn<() => void>();
     const scheduler = createResyncScheduler(resync);
     scheduler.request();
     vi.runOnlyPendingTimers();
