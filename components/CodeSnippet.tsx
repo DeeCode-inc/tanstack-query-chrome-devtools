@@ -44,7 +44,7 @@ export function CodeSnippet({
       <pre
         className={`hljs rounded-lg p-4 overflow-x-auto text-sm whitespace-pre-wrap border border-gray-300 dark:border-gray-600${preClassName ? ` ${preClassName}` : ""}`}
       >
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: highlight.js escapes the source text it is given, and `code` only ever receives hardcoded setup snippets, never user content. */}
+        {/* oxlint-disable-next-line react/no-danger -- highlight.js escapes the source text it is given, and `code` only ever receives hardcoded setup snippets, never user content. */}
         <code dangerouslySetInnerHTML={{ __html: highlighted }} />
       </pre>
     </div>

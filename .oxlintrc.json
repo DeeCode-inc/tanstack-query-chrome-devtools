@@ -1,0 +1,144 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "vitest"],
+  // Oxlint's default category: code that is outright wrong or useless.
+  "categories": {
+    "correctness": "error"
+  },
+  // Type-aware rules (e.g. `typescript/no-floating-promises`) run through
+  // oxlint-tsgolint, which reads the same tsconfig as `pnpm compile`.
+  // Stale `oxlint-disable` comments fail the run so suppressions stay honest.
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true
+  },
+  // The `specs` git submodule and the Spec Kit scaffolding are vendored, so
+  // they stay out of linting. Everything in .gitignore is skipped already.
+  "ignorePatterns": ["specs/**", ".specify/**"],
+  // The rules below port Biome's recommended preset (plus its React and test
+  // domains) to their Oxlint equivalents where one exists, on top of the
+  // `correctness` category. Options mirror Biome's defaults.
+  "rules": {
+    "eslint/array-callback-return": ["error", { "checkForEach": true }],
+    "eslint/default-case-last": "error",
+    "eslint/eqeqeq": ["error", "always", { "null": "ignore" }],
+    "eslint/no-array-constructor": "error",
+    "eslint/no-case-declarations": "error",
+    "eslint/no-constructor-return": "error",
+    "eslint/no-extra-label": "error",
+    "eslint/no-fallthrough": "error",
+    "eslint/no-inner-declarations": "error",
+    "eslint/no-label-var": "error",
+    "eslint/no-labels": ["error", { "allowLoop": true }],
+    "eslint/no-lone-blocks": "error",
+    "eslint/no-proto": "error",
+    "eslint/no-prototype-builtins": "error",
+    "eslint/no-redeclare": "error",
+    "eslint/no-regex-spaces": "error",
+    "eslint/no-script-url": "error",
+    "eslint/no-self-compare": "error",
+    "eslint/no-sequences": "error",
+    "eslint/no-template-curly-in-string": "error",
+    "eslint/no-unneeded-ternary": "error",
+    "eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    // Like Biome's `noInvalidUseBeforeDeclaration`: only flags uses that
+    // would hit the temporal dead zone, not hoisted or deferred references.
+    "eslint/no-use-before-define": [
+      "error",
+      {
+        "functions": false,
+        "classes": false,
+        "variables": false,
+        "typedefs": false
+      }
+    ],
+    "eslint/no-useless-computed-key": "error",
+    "eslint/no-useless-constructor": "error",
+    "eslint/prefer-arrow-callback": ["error", { "allowNamedFunctions": true }],
+    "eslint/prefer-const": "error",
+    "eslint/prefer-exponentiation-operator": "error",
+    "eslint/prefer-numeric-literals": "error",
+    "eslint/prefer-regex-literals": "error",
+    "eslint/prefer-rest-params": "error",
+    "eslint/prefer-template": "error",
+    "eslint/radix": "error",
+
+    "typescript/adjacent-overload-signatures": "error",
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-ignore": true,
+        "ts-expect-error": false,
+        "ts-nocheck": false,
+        "ts-check": false
+      }
+    ],
+    "typescript/consistent-type-exports": "error",
+    "typescript/consistent-type-imports": [
+      "error",
+      { "fixStyle": "inline-type-imports" }
+    ],
+    "typescript/dot-notation": "error",
+    "typescript/no-empty-object-type": [
+      "error",
+      { "allowInterfaces": "with-single-extends" }
+    ],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-extraneous-class": "error",
+    // Fire-and-forget promises must be marked with `void`.
+    "typescript/no-floating-promises": "error",
+    "typescript/no-invalid-void-type": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "typescript/prefer-function-type": "error",
+    "typescript/prefer-literal-enum-member": "error",
+    "typescript/prefer-optional-chain": "error",
+
+    "unicorn/new-for-builtins": "error",
+    "unicorn/no-document-cookie": "error",
+    "unicorn/no-instanceof-array": "error",
+    // The serializer and its tests preallocate with `new Array(length)` on
+    // purpose; `Array.from` would fill the holes and change the semantics.
+    "unicorn/no-new-array": "off",
+    "unicorn/no-useless-switch-case": "error",
+    "unicorn/prefer-array-flat-map": "error",
+    "unicorn/prefer-array-index-of": "error",
+    "unicorn/prefer-date-now": "error",
+    "unicorn/prefer-node-protocol": "error",
+    "unicorn/prefer-number-properties": "error",
+
+    "oxc/approx-constant": "error",
+    "oxc/misrefactored-assign-op": "error",
+    "oxc/no-accumulating-spread": "error",
+    "oxc/no-const-enum": "error",
+
+    "react/button-has-type": "error",
+    // Only meaningful under React Compiler, which this project does not use.
+    "react/incompatible-library": "off",
+    "react/jsx-no-comment-textnodes": "error",
+    "react/jsx-no-script-url": "error",
+    "react/jsx-no-target-blank": "error",
+    "react/jsx-no-useless-fragment": ["error", { "allowExpressions": true }],
+    "react/no-array-index-key": "error",
+    "react/no-danger": "error",
+    "react/no-namespace": "error",
+    "react/rules-of-hooks": "error",
+
+    "jsx-a11y/anchor-ambiguous-text": "error",
+
+    "vitest/no-duplicate-hooks": "error",
+    "vitest/no-identical-title": "error"
+  }
+}

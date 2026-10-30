@@ -99,6 +99,7 @@ function isErrorObject(obj: object): obj is Error {
  * that is not a typed array, a DataView from another realm included (where
  * `instanceof DataView` fails).
  */
+// oxlint-disable-next-line typescript/unbound-method -- only ever invoked with an explicit receiver, via `.call(obj)`.
 const typedArrayLengthGetter = Object.getOwnPropertyDescriptor(
   Object.getPrototypeOf(Int8Array.prototype) as object,
   "length",

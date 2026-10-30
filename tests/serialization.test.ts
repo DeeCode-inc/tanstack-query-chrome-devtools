@@ -1090,8 +1090,8 @@ function encodeInOnePass(
   pass = new EncodePass(),
 ) {
   const start = performance.now();
-  const encoded = entries.map(
-    (entry) => encodeQueryEntryForMessage(entry, pass)!,
+  const encoded = entries.map((entry) =>
+    encodeQueryEntryForMessage(entry, pass)!,
   );
   return {
     encoded,

@@ -161,6 +161,7 @@ export function PageLayout({ variant, queries, mutations }: PageLayoutProps) {
       selectedQueryHash !== null &&
       !queries.some((q) => q.queryHash === selectedQueryHash)
     ) {
+      // oxlint-disable-next-line react/set-state-in-effect -- clears a selection whose query left the synced cache; the popup gates its detail view on this raw state.
       setSelectedQueryHash(null);
     }
   }, [selectedQueryHash, queries]);
@@ -171,6 +172,7 @@ export function PageLayout({ variant, queries, mutations }: PageLayoutProps) {
       selectedMutationId !== null &&
       !mutations.some((m) => m.mutationId === selectedMutationId)
     ) {
+      // oxlint-disable-next-line react/set-state-in-effect -- same as above, for mutations.
       setSelectedMutationId(null);
     }
   }, [selectedMutationId, mutations]);

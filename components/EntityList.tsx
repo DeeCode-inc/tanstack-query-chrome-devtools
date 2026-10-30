@@ -169,7 +169,8 @@ export function EntityList<T, K extends string | number>({
           </p>
         </div>
       ) : (
-        // biome-ignore lint/a11y/noStaticElementInteractions: the handlers only observe focus moving between the row buttons inside; they add no interaction of their own.
+        // The focus handlers only observe focus moving between the row buttons
+        // inside; they add no interaction of their own.
         <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto"

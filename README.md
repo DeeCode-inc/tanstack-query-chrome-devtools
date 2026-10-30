@@ -104,13 +104,15 @@ pnpm zip:firefox
 
 ### Other scripts
 
-| Command          | Description                                  |
-| ---------------- | -------------------------------------------- |
-| `pnpm check`     | Lint, format, and import-order check (Biome) |
-| `pnpm check:fix` | Apply Biome fixes and formatting             |
-| `pnpm lint`      | Lint only                                    |
-| `pnpm format`    | Auto-format all files                        |
-| `pnpm compile`   | Type-check with TypeScript                   |
+| Command             | Description                                                   |
+| ------------------- | ------------------------------------------------------------- |
+| `pnpm check`        | Lint (Oxlint), then check formatting and import order (Oxfmt) |
+| `pnpm check:fix`    | Apply Oxlint fixes and Oxfmt formatting                       |
+| `pnpm lint`         | Lint only, including type-aware rules                         |
+| `pnpm lint:fix`     | Lint and apply safe fixes                                     |
+| `pnpm format`       | Auto-format all files                                         |
+| `pnpm format:check` | Check formatting without writing                              |
+| `pnpm compile`      | Type-check with TypeScript                                    |
 
 ## Tech Stack
 
@@ -118,7 +120,7 @@ pnpm zip:firefox
 - [React 19](https://react.dev/) — UI
 - [Tailwind CSS 4](https://tailwindcss.com/) — styling
 - [TypeScript](https://www.typescriptlang.org/) — type safety
-- [Biome](https://biomejs.dev/) — linting and formatting
+- [Oxlint](https://oxc.rs/docs/guide/usage/linter) and [Oxfmt](https://oxc.rs/docs/guide/usage/formatter) — linting and formatting
 - [@tanstack/query-core](https://tanstack.com/query) — query type definitions
 
 ## Architecture
