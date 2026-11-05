@@ -43,7 +43,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.4",
     "@tanstack/query-core": "^5.105.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
