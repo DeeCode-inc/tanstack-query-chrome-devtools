@@ -50,7 +50,7 @@
     "@wxt-dev/module-react": "^1.2.2",
     "oxfmt": "0.75.0",
     "oxlint": "1.90.0",
-    "oxlint-tsgolint": "7.0.2005",
+    "oxlint-tsgolint": "7.0.2006",
     "tailwindcss": "^4.3.3",
     "typescript": "7.0.2",
     "vitest": "5.0.5",
