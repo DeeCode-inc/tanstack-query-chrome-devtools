@@ -49,7 +49,7 @@
     "@types/react-dom": "^19.3.0",
     "@wxt-dev/module-react": "^1.2.2",
     "oxfmt": "0.75.0",
-    "oxlint": "1.90.0",
+    "oxlint": "1.92.0",
     "oxlint-tsgolint": "7.0.2005",
     "tailwindcss": "^4.3.3",
     "typescript": "7.0.2",
