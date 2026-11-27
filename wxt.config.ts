@@ -9,13 +9,14 @@ export default defineConfig({
     browser_specific_settings: {
       gecko: {
         id: "tanstack-query-devtools@borysov.dev",
-        // First version that honors `world: "MAIN"` on manifest content
-        // scripts; older ones run sync.content.ts isolated, where it cannot
-        // see the page's __TANSTACK_QUERY_CLIENT__
-        strict_min_version: "128.0",
-        // Required by AMO for new submissions. Query data only travels
-        // between the inspected page and the devtools panel inside the
-        // browser; nothing is transmitted off-device
+        // First version that supports `data_collection_permissions` (below).
+        // It also has to be 128+ so `world: "MAIN"` on manifest content
+        // scripts is honored; older ones run sync.content.ts isolated, where
+        // it cannot see the page's __TANSTACK_QUERY_CLIENT__
+        strict_min_version: "140.0",
+        // Query data only travels between the inspected page and the
+        // devtools panel inside the browser; nothing is transmitted
+        // off-device
         data_collection_permissions: {
           required: ["none"],
         },
