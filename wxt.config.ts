@@ -13,6 +13,12 @@ export default defineConfig({
         // scripts; older ones run sync.content.ts isolated, where it cannot
         // see the page's __TANSTACK_QUERY_CLIENT__
         strict_min_version: "128.0",
+        // Required by AMO for new submissions. Query data only travels
+        // between the inspected page and the devtools panel inside the
+        // browser; nothing is transmitted off-device
+        data_collection_permissions: {
+          required: ["none"],
+        },
       },
     },
     version: "1.1.2",
