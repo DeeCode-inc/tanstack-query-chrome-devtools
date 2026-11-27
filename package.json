@@ -38,7 +38,7 @@
   "dependencies": {
     "@tanstack/react-virtual": "3.14.28",
     "highlight.js": "^11.12.0",
-    "lucide-react": "^1.78.0",
+    "lucide-react": "^1.79.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
